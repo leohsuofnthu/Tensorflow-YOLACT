@@ -20,9 +20,13 @@ class Yolcat(tf.keras.Model):
     """
 
     def __init__(self):
+        #TODO RESNET component
+        #TODO FPN component
+        #TODO Protonet component
+        #TODO Prediction head component
+
         pass
 
-    def call(self, inputs, training=True):
-        #
+    def call(self, inputs):
         pass
 
