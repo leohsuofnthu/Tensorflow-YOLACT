@@ -7,7 +7,7 @@ import tensorflow as tf
 assert tf.__version__.startswith('2')
 
 
-class Protonet(tf.keras.Model):
+class ProtoNet(tf.keras.Model):
     """
         Creating the component of Protonet
         Arguments:
@@ -15,7 +15,7 @@ class Protonet(tf.keras.Model):
     """
 
     def __init__(self):
-        # TODO ResNet sub-component
+        super(ProtoNet, self).__init__()
         pass
 
     def call(self, inputs):
