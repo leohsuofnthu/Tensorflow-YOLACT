@@ -19,7 +19,10 @@ class ProtoNet(tf.keras.Model):
         self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 2, padding="same")
         self.upSampling = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
     def call(self, p3):
-        p3 = self.initialConv(p3)
-        p3 = self.initialConv(p3)
-
-        pass
+        # (3,3) convlolution * 3
+        proto = self.initialConv(p3)
+        proto = self.initialConv(proto)
+        proto = self.initialConv(proto)
+        proto = self.upSampling(proto)
+        proto = self.finalConv(proto)
+        return proto
