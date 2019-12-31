@@ -11,7 +11,7 @@ class FeaturePyramidNeck(tf.keras.Model):
 
     def __init__(self, num_fpn_filters):
         super(FeaturePyramidNeck, self).__init__()
-        self.upSample = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='nearest')
+        self.upSample = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
         self.downSample = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same")
         self.lateralCov = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same")
 
