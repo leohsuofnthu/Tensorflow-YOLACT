@@ -22,11 +22,14 @@ class PredictionModule(tf.keras.Model):
 
     def __init__(self, out_channels, f_size, num_class, num_mask, aspect_ratio, scale):
         super(PredictionModule, self).__init__()
-        self.anchors = self._make_priors(f_size, scale, aspect_ratio)
+        self.anchors = self._make_priors(f_size, aspect_ratio, scale)
         self.num_anchors = len(self.anchors)
         self.num_class = num_class
         self.num_mask = num_mask
-        self.initialConv = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
+
+        self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
+        self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
+
         self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
                                                 activation="relu")
         self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same", activation="relu")
@@ -34,14 +37,15 @@ class PredictionModule(tf.keras.Model):
                                                activation="relu")
 
     def call(self, p):
-        p = self.initialConv(p)
-        p = self.initialConv(p)
+        p = self.Conv1(p)
+        p = self.Conv2(p)
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)
         pred_mask = self.maskConv(p)
 
         return [pred_class, pred_box, pred_mask]
 
-    def _make_priors(self, size, scale, aspect_ratio):
+    @staticmethod
+    def _make_priors(self, size, aspect_ratio, scale):
         return [1]
         pass

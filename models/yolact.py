@@ -19,7 +19,7 @@ class Yolact(tf.keras.Model):
 
     """
 
-    def __init__(self, fpn_channels, selected_layer_pred=0, num_class=1, num_mask=4, aspect_ratio=1, scale=1):
+    def __init__(self, fpn_channels, feature_map_size=[69, 35, 18, 9, 5], num_class=1, num_mask=4, aspect_ratio=1, scale=1):
         super(Yolact, self).__init__()
         out = ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out']
         # use pre-trained ResNet50
@@ -32,7 +32,11 @@ class Yolact(tf.keras.Model):
                                               outputs=[base_model.get_layer(x).output for x in out])
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
         self.protonet = ProtoNet(num_mask)
-        # Todo Prediction head modules
+        self.predictionHead = []
+
+        # create prediction module for each feature maps from FPN
+        for size in feature_map_size:
+            self.predictionHead.append(PredictionModule(256, size, num_class, num_mask, aspect_ratio, scale))
 
     def call(self, inputs):
         c3, c4, c5 = self.backbone_resnet(inputs)
