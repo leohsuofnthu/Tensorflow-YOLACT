@@ -14,7 +14,7 @@ class ProtoNet(tf.keras.Model):
         self.Conv1 = tf.keras.layers.Conv2D(256, (3, 3), 1, padding="same", activation="relu")
         self.Conv2 = tf.keras.layers.Conv2D(256, (3, 3), 1, padding="same", activation="relu")
         self.Conv3 = tf.keras.layers.Conv2D(256, (3, 3), 1, padding="same", activation="relu")
-        self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 2, padding="same", activation="relu")
+        self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 1, padding="same", activation="relu")
         self.upSampling = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
 
     def call(self, p3):

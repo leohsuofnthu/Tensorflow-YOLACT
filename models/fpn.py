@@ -1,4 +1,5 @@
 import tensorflow as tf
+
 assert tf.__version__.startswith('2')
 
 
@@ -27,8 +28,21 @@ class FeaturePyramidNeck(tf.keras.Model):
         print("p6: ", p6.shape)
         p7 = self.downSample2(p6)
         print("p7: ", p7.shape)
-        p4 = tf.add(self.upSample(p5), self.lateralCov2(c4))
+        p4 = self._crop_and_concat(self.upSample(p5), self.lateralCov2(c4))
         print("p4: ", p4.shape)
-        p3 = tf.add(self.upSample(p4), self.lateralCov3(c3))
+        p3 = self._crop_and_concat(self.upSample(p4), self.lateralCov3(c3))
         print("p3: ", p3.shape)
         return [p3, p4, p5, p6, p7]
+
+    @staticmethod
+    def _crop_and_concat(x1, x2):
+        """
+        for p4, c4; p3, c3 to concatenate with matched shape
+        https://tf-unet.readthedocs.io/en/latest/_modules/tf_unet/layers.html
+        """
+        x1_shape = x1.shape
+        x2_shape = x2.shape
+        offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, 0]
+        size = [-1, x2_shape[1], x2_shape[2], -1]
+        x1_crop = tf.slice(x1, offsets, size)
+        return tf.add(x1_crop, x2)
