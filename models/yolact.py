@@ -19,14 +19,14 @@ class Yolact(tf.keras.Model):
 
     """
 
-    def __init__(self, fpn_channels, selected_layer_pred=0, num_class=1, num_mask=4,  aspect_ratio=1, scale=1):
+    def __init__(self, fpn_channels, selected_layer_pred=0, num_class=1, num_mask=4, aspect_ratio=1, scale=1):
         super(Yolact, self).__init__()
         out = ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out']
         # use pre-trained ResNet50
         # Todo figure out how pre-trained can be train again
         base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
-                                                     include_top=False,
-                                                     weights='imagenet')
+                                                    include_top=False,
+                                                    weights='imagenet')
         # extract certain feature maps for FPN
         self.backbone_resnet = tf.keras.Model(inputs=base_model.input,
                                               outputs=[base_model.get_layer(x).output for x in out])

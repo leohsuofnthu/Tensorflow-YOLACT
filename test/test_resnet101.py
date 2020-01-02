@@ -1,18 +1,18 @@
 from models import resnet
 import tensorflow as tf
 import numpy as np
+
 """
 model = resnet.ResNetBackbone101("channel_last")
 model.build(input_shape=(None, 224, 224, 3))
 model.summary()
 """
 base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
-                                               include_top=False,
-                                               weights='imagenet')
+                                            include_top=False,
+                                            weights='imagenet')
 
 assert tf.test.is_built_with_cuda()
 assert tf.test.is_gpu_available()
-
 
 base_model.summary()
 """
