@@ -6,7 +6,7 @@ model = resnet.ResNetBackbone101("channel_last")
 model.build(input_shape=(None, 224, 224, 3))
 model.summary()
 """
-base_model = tf.keras.applications.ResNet101(input_shape=(550, 550, 3),
+base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
                                                include_top=False,
                                                weights='imagenet')
 
