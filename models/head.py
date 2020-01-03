@@ -20,10 +20,9 @@ class PredictionModule(tf.keras.Model):
                          from parent instead of from this module.
     """
 
-    def __init__(self, out_channels, f_size, num_class, num_mask, aspect_ratio, scale):
+    def __init__(self, out_channels, f_size, num_anchor, num_class, num_mask):
         super(PredictionModule, self).__init__()
-        self.anchors = self._make_priors(f_size, aspect_ratio, scale)
-        self.num_anchors = len(self.anchors)
+        self.num_anchors = num_anchor
         self.num_class = num_class
         self.num_mask = num_mask
 

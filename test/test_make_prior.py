@@ -5,5 +5,5 @@ f_size = [69, 35, 18, 9, 5]
 aspect_ratio = [1, 0.5, 2]
 scales = [24, 48, 96, 192, 384]
 
-box = make_priors(img_size, f_size[4] , aspect_ratio, scales[4])
-
+_, box = make_priors(img_size, f_size, aspect_ratio, scales)
+print(box)
