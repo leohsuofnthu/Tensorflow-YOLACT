@@ -1,9 +1,7 @@
 import tensorflow as tf
 
-assert tf.__version__.startswith('2')
 
-
-class FeaturePyramidNeck(tf.keras.Model):
+class FeaturePyramidNeck(tf.keras.layers.Layer):
     """
         Creating the backbone component of feature Pyramid Network
         Arguments:

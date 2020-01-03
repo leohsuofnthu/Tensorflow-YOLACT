@@ -1,9 +1,7 @@
 import tensorflow as tf
 
-assert tf.__version__.startswith('2')
 
-
-class PredictionModule(tf.keras.Model):
+class PredictionModule(tf.keras.layers.Layer):
     """
         Args:
         - in_channels:   The input feature size.
@@ -43,5 +41,3 @@ class PredictionModule(tf.keras.Model):
         pred_mask = self.maskConv(p)
 
         return [pred_class, pred_box, pred_mask]
-
-

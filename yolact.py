@@ -4,9 +4,9 @@ Ref: https://arxiv.org/abs/1904.02689
 
 Arthor: HSU, CHIHCHAO
 """
-from models.fpn import FeaturePyramidNeck
-from models.protonet import ProtoNet
-from models.head import PredictionModule
+from layers.fpn import FeaturePyramidNeck
+from layers.protonet import ProtoNet
+from layers.head import PredictionModule
 from utils.create_prior import make_priors
 import tensorflow as tf
 

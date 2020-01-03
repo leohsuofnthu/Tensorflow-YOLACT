@@ -1,8 +1,6 @@
 import tensorflow as tf
 from tensorflow.keras import layers
 
-assert tf.__version__.startswith('2')
-
 
 class Bottleneck(tf.keras.Model):
     """
