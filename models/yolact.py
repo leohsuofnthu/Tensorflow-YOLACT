@@ -33,11 +33,11 @@ class Yolact(tf.keras.Model):
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
         self.protonet = ProtoNet(num_mask)
         self.predictionHead = []
-
+        """
         # create prediction module for each feature maps from FPN
         for size in feature_map_size:
             self.predictionHead.append(PredictionModule(256, size, num_class, num_mask, aspect_ratio, scale))
-
+        """
     def call(self, inputs):
         c3, c4, c5 = self.backbone_resnet(inputs)
         print("c3: ", c3.shape)

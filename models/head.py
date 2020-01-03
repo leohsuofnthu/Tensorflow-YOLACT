@@ -45,7 +45,4 @@ class PredictionModule(tf.keras.Model):
 
         return [pred_class, pred_box, pred_mask]
 
-    @staticmethod
-    def _make_priors(self, size, aspect_ratio, scale):
-        return [1]
-        pass
+
