@@ -18,9 +18,9 @@ class PredictionModule(tf.keras.layers.Layer):
                          from parent instead of from this module.
     """
 
-    def __init__(self, out_channels, f_size, num_anchor, num_class, num_mask):
+    def __init__(self, out_channels, f_size, num_anchors, num_class, num_mask):
         super(PredictionModule, self).__init__()
-        self.num_anchors = num_anchor
+        self.num_anchors = num_anchors
         self.num_class = num_class
         self.num_mask = num_mask
 
@@ -36,8 +36,14 @@ class PredictionModule(tf.keras.layers.Layer):
     def call(self, p):
         p = self.Conv1(p)
         p = self.Conv2(p)
+
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)
         pred_mask = self.maskConv(p)
+
+        # reshape the prediction head result for following loss calculation
+        pred_class = tf.reshape(pred_class, [pred_class.shape[0], -1, self.num_class])
+        pred_box = tf.reshape(pred_box, [pred_box.shape[0], -1, 4])
+        pred_mask = tf.reshape(pred_mask, [pred_mask.shape[0], -1, self.num_mask])
 
         return [pred_class, pred_box, pred_mask]

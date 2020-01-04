@@ -35,10 +35,10 @@ class Yolact(tf.keras.Model):
         self.protonet = ProtoNet(num_mask)
         self.num_anchor, self.priors = make_priors(input_size, feature_map_size, aspect_ratio, scales)
         print("prior shape:", self.priors.shape)
-        print("num anchor: ", self.num_anchor)
+        print("num anchor per feature map: ", self.num_anchor)
         self.predictionHead = []
         for idx, f_size in enumerate(feature_map_size):
-            pred = PredictionModule(2, f_size, self.num_anchor[idx], num_class, num_mask)
+            pred = PredictionModule(2, f_size, len(aspect_ratio), num_class, num_mask)
             self.predictionHead.append(pred)
 
     def call(self, inputs):
