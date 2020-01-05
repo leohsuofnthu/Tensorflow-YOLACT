@@ -56,10 +56,14 @@ class Yolact(tf.keras.Model):
 
         # Prediction Head branch
         prediction = []
+
         for idx, f_map in enumerate(fpn_out):
             preds = self.predictionHead[idx](f_map)
+            print("p%s prediction:" % (idx+3))
             for i, p in enumerate(preds):
-                print("p"+str(i), p.shape)
-            prediction.append(p)
+                print(p.shape)
+            prediction.append(preds)
+        print(len(prediction))
 
+        # Todo concatenate each prediction (conf, loc, mask)
         return prediction, protonet_out

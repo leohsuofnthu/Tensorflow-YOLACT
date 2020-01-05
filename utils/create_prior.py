@@ -15,6 +15,7 @@ def make_priors(img_size, feature_map_size, aspect_ratio, scale):
     prior_boxes = []
     num_anchors = []
     for idx, f_size in enumerate(feature_map_size):
+        print("Create priors for f_size:%s", f_size)
         count_anchor = 0
         for j, i in product(range(f_size), range(f_size)):
             # +0.5 because priors are in center-size notation
