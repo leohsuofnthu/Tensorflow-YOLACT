@@ -1,4 +1,5 @@
 import os
+import json
 import tensorflow as tf
 
 """
@@ -40,3 +41,8 @@ if not os.path.exists(os.path.abspath('.') + '/' + val_zip):
     PATH_valid = os.path.dirname(image_zip) + '/val2017/'
 else:
     PATH_valid = os.path.abspath('.') + '/val2017/'
+
+# Read the json file
+print("Load annotation .json")
+with open(annotation_train, 'r') as f:
+    annotations = json.load(f)
