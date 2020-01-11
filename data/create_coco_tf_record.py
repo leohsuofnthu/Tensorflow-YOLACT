@@ -27,10 +27,6 @@ Example usage:
       --testdev_annotations_file="${TESTDEV_ANNOTATIONS_FILE}" \
       --output_dir="${OUTPUT_DIR}"
 """
-from __future__ import absolute_import
-from __future__ import division
-from __future__ import print_function
-
 import hashlib
 import io
 import json
@@ -45,29 +41,27 @@ from pycocotools import mask
 from absl import app
 from absl import flags
 from absl import logging
+
 import tensorflow as tf
+from data import dataset_util
 
-import data.dataset_util as dataset_util
+FLAGS = flags.FLAGS
 
-flags = flags.FLAGS
-flags.DEFINE_boolean('include_masks', False,
-                     'Whether to include instance segmentations masks '
-                     '(PNG encoded) in the result. default: False.')
-flags.DEFINE_string('train_image_dir', '',
+flags.DEFINE_boolean('include_masks', True,
+                     'Whether to include instance segmentations masks (PNG encoded) in the result. default: False.')
+flags.DEFINE_string('train_image_dir', 'train2017',
                     'Training image directory.')
-flags.DEFINE_string('val_image_dir', '',
+flags.DEFINE_string('val_image_dir', 'val2017',
                     'Validation image directory.')
 flags.DEFINE_string('test_image_dir', '',
                     'Test image directory.')
-flags.DEFINE_string('train_annotations_file', '',
+flags.DEFINE_string('train_annotations_file', 'annotations/instances_train2017.json',
                     'Training annotations JSON file.')
-flags.DEFINE_string('val_annotations_file', '',
+flags.DEFINE_string('val_annotations_file', 'annotations/instances_val2017.json',
                     'Validation annotations JSON file.')
 flags.DEFINE_string('testdev_annotations_file', '',
                     'Test-dev annotations JSON file.')
-flags.DEFINE_string('output_dir', '/tmp/', 'Output data directory.')
-
-FLAGS = flags.FLAGS
+flags.DEFINE_string('output_dir', './coco', 'Output data directory.')
 
 logging.set_verbosity(logging.INFO)
 
