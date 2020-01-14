@@ -9,32 +9,53 @@ import os
 import tensorflow as tf
 
 
+def decode_png_mask(image_buffer):
+    image = tf.squeeze(
+        tf.image.decode_png(image_buffer, channels=1), axis=2)
+    image.set_shape([None, None])
+    image = tf.cast(tf.greater(image, 0), dtype=tf.float32)
+    return image
+
+
 # the features we want to extract
 def _parse_fn(example_serialized):
     feature_map = {
         'image/height': tf.io.FixedLenFeature([], dtype=tf.int64),
         'image/width': tf.io.FixedLenFeature([], dtype=tf.int64),
         'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string),
-        'image/object/bbox/xmin': tf.io.FixedLenFeature([], dtype=tf.float32),
-        'image/object/bbox/xmax': tf.io.FixedLenFeature([], dtype=tf.float32),
-        'image/object/bbox/ymin': tf.io.FixedLenFeature([], dtype=tf.float32),
-        'image/object/bbox/ymax': tf.io.FixedLenFeature([], dtype=tf.float32),
-        'image/object/is_crowd': tf.io.FixedLenFeature([], dtype=tf.int64),
-        'image/object/mask': tf.io.FixedLenFeature([], dtype=tf.string)
+        'image/object/bbox/xmin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/is_crowd': tf.io.VarLenFeature(dtype=tf.int64),
+        'image/object/mask': tf.io.VarLenFeature(dtype=tf.string),
     }
     # need to be parsed in a batch way
     parsed = tf.io.parse_single_example(example_serialized, feature_map)
-    img = tf.image.decode_image(parsed['image/encoded'])
-    """
-    mask = tf.image.decode_image(parsed['image/object/mask'])
-    iscrowd = parsed['image/object/is_crowd']
-    xmin = parsed['image/object/bbox/xmin']
-    xmax = parsed['image/object/bbox/xmax']
-    ymin = parsed['image/object/bbox/ymin']
-    ymax = parsed['image/object/bbox/ymax']
-    return img, mask, iscrowd, xmin, xmax, ymin, ymax
-    """
-    return img
+    height = parsed['image/height']
+    width = parsed['image/width']
+    img = tf.image.decode_jpeg(parsed['image/encoded'])
+    # img = tf.image.resize(img, [550, 550])
+    png_masks = parsed['image/object/mask']
+    png_masks = tf.sparse.to_dense(png_masks, default_value='')
+    masks = tf.cond(
+        tf.greater(tf.size(png_masks), 0),
+        lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
+        lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))
+    iscrowd = tf.sparse.to_dense(parsed['image/object/is_crowd'])
+    xmin = tf.sparse.to_dense(parsed['image/object/bbox/xmin'])
+    xmax = tf.sparse.to_dense(parsed['image/object/bbox/xmax'])
+    ymin = tf.sparse.to_dense(parsed['image/object/bbox/ymin'])
+    ymax = tf.sparse.to_dense(parsed['image/object/bbox/ymax'])
+
+    tf.print("img", tf.shape(img))
+    tf.print("masks", tf.shape(masks))
+    tf.print("xmin", xmin)
+    tf.print("xmax", xmax)
+    tf.print("isCrowd", iscrowd)
+    tf.print("ymin", ymin)
+    tf.print("ymax", ymax)
+    return img, masks, iscrowd, xmin, xmax, ymin, ymax
 
 
 # Todo encapsulate it as a class
@@ -49,20 +70,18 @@ def get_dataset(tfrecord_dir, subset, batch_size):
     dataset = dataset.shuffle(buffer_size=1024)
     # Todo parser function for mapping and data augmentation
     dataset = dataset.map(map_func=_parse_fn, num_parallel_calls=4)
-    # dataset = dataset.batch(batch_size)
-    # dataset = dataset.prefetch(batch_size)
+    dataset = dataset.batch(batch_size)
+    dataset = dataset.prefetch(batch_size)
 
     return dataset
 
 
-d = get_dataset("./coco", "train", 2)
+d = get_dataset("./coco", "train", 5)
 print(d)
-
 
 count = 1
 for sample in d:
-    print(tf.shape(sample))
+    print(sample)
     count -= 1
     if not count:
         break
-
