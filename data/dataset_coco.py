@@ -27,6 +27,7 @@ def _parse_fn(example_serialized):
         'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
         'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
         'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
+        'image/object/class/text': tf.io.VarLenFeature(dtype=tf.string),
         'image/object/is_crowd': tf.io.VarLenFeature(dtype=tf.int64),
         'image/object/mask': tf.io.VarLenFeature(dtype=tf.string),
     }
@@ -35,7 +36,7 @@ def _parse_fn(example_serialized):
     height = parsed['image/height']
     width = parsed['image/width']
     img = tf.image.decode_jpeg(parsed['image/encoded'])
-    # img = tf.image.resize(img, [550, 550])
+    img = tf.image.resize(img, [550, 550])
     png_masks = parsed['image/object/mask']
     png_masks = tf.sparse.to_dense(png_masks, default_value='')
     masks = tf.cond(
@@ -43,19 +44,32 @@ def _parse_fn(example_serialized):
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
         lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))
     iscrowd = tf.sparse.to_dense(parsed['image/object/is_crowd'])
+    labels = tf.sparse.to_dense(parsed['image/object/class/text'])
     xmin = tf.sparse.to_dense(parsed['image/object/bbox/xmin'])
     xmax = tf.sparse.to_dense(parsed['image/object/bbox/xmax'])
     ymin = tf.sparse.to_dense(parsed['image/object/bbox/ymin'])
     ymax = tf.sparse.to_dense(parsed['image/object/bbox/ymax'])
 
+    tensor_dict = dict([('image', img), ('masks', masks), ('xmin', xmin), ('xmax', xmax), ('ymin', ymin), ('ymax', ymax),
+                       ('iscrowd', iscrowd)])
+
+    tensor_dict['image'].set_shape([None, None, 3])
+    tensor_dict['masks'].set_shape([None, None, None])
+    tensor_dict['xmin'].set_shape([None])
+    tensor_dict['ymin'].set_shape([None])
+    tensor_dict['xmax'].set_shape([None])
+    tensor_dict['ymax'].set_shape([None])
+    tensor_dict['iscrowd'].set_shape([None])
+
     tf.print("img", tf.shape(img))
     tf.print("masks", tf.shape(masks))
+    tf.print("label", labels)
     tf.print("xmin", xmin)
     tf.print("xmax", xmax)
     tf.print("isCrowd", iscrowd)
     tf.print("ymin", ymin)
     tf.print("ymax", ymax)
-    return img, masks, iscrowd, xmin, xmax, ymin, ymax
+    return tensor_dict
 
 
 # Todo encapsulate it as a class
@@ -76,7 +90,7 @@ def get_dataset(tfrecord_dir, subset, batch_size):
     return dataset
 
 
-d = get_dataset("./coco", "train", 5)
+d = get_dataset("./coco", "train", 2)
 print(d)
 
 count = 1
