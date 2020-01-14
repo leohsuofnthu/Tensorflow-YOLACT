@@ -10,8 +10,9 @@ import tensorflow as tf
 
 
 def decode_png_mask(image_buffer):
+    decode_png = tf.image.decode_png(image_buffer, channels=1)
     image = tf.squeeze(
-        tf.image.decode_png(image_buffer, channels=1), axis=2)
+        tf.image.resize(decode_png, [550, 550]), axis=2)
     image.set_shape([None, None])
     image = tf.cast(tf.greater(image, 0), dtype=tf.float32)
     return image
@@ -35,7 +36,7 @@ def _parse_fn(example_serialized):
     parsed = tf.io.parse_single_example(example_serialized, feature_map)
     height = parsed['image/height']
     width = parsed['image/width']
-    img = tf.image.decode_jpeg(parsed['image/encoded'])
+    img = tf.image.decode_jpeg(parsed['image/encoded'], channels=3)
     img = tf.image.resize(img, [550, 550])
     png_masks = parsed['image/object/mask']
     png_masks = tf.sparse.to_dense(png_masks, default_value='')
@@ -43,23 +44,15 @@ def _parse_fn(example_serialized):
         tf.greater(tf.size(png_masks), 0),
         lambda: tf.map_fn(decode_png_mask, png_masks, dtype=tf.float32),
         lambda: tf.zeros(tf.cast(tf.stack([0, height, width]), dtype=tf.int32)))
+
     iscrowd = tf.sparse.to_dense(parsed['image/object/is_crowd'])
     labels = tf.sparse.to_dense(parsed['image/object/class/text'])
+
     xmin = tf.sparse.to_dense(parsed['image/object/bbox/xmin'])
     xmax = tf.sparse.to_dense(parsed['image/object/bbox/xmax'])
     ymin = tf.sparse.to_dense(parsed['image/object/bbox/ymin'])
     ymax = tf.sparse.to_dense(parsed['image/object/bbox/ymax'])
-
-    tensor_dict = dict([('image', img), ('masks', masks), ('xmin', xmin), ('xmax', xmax), ('ymin', ymin), ('ymax', ymax),
-                       ('iscrowd', iscrowd)])
-
-    tensor_dict['image'].set_shape([None, None, 3])
-    tensor_dict['masks'].set_shape([None, None, None])
-    tensor_dict['xmin'].set_shape([None])
-    tensor_dict['ymin'].set_shape([None])
-    tensor_dict['xmax'].set_shape([None])
-    tensor_dict['ymax'].set_shape([None])
-    tensor_dict['iscrowd'].set_shape([None])
+    bbox = tf.stack([xmin, ymin, xmax, ymax], axis=1)
 
     tf.print("img", tf.shape(img))
     tf.print("masks", tf.shape(masks))
@@ -69,7 +62,8 @@ def _parse_fn(example_serialized):
     tf.print("isCrowd", iscrowd)
     tf.print("ymin", ymin)
     tf.print("ymax", ymax)
-    return tensor_dict
+    tf.print("bbox", bbox)
+    return img, masks, bbox, iscrowd, labels
 
 
 # Todo encapsulate it as a class
@@ -90,7 +84,7 @@ def get_dataset(tfrecord_dir, subset, batch_size):
     return dataset
 
 
-d = get_dataset("./coco", "train", 2)
+d = get_dataset("./coco", "train", 1)
 print(d)
 
 count = 1
