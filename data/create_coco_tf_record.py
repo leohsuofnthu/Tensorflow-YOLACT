@@ -175,8 +175,10 @@ def create_tf_example(image,
             dataset_util.float_list_feature(ymin),
         'image/object/bbox/ymax':
             dataset_util.float_list_feature(ymax),
-        'image/object/class/text':
+        'image/object/class/label_text':
             dataset_util.bytes_list_feature(category_names),
+        'image/object/class/label_id':
+            dataset_util.int64_list_feature(category_ids),
         'image/object/is_crowd':
             dataset_util.int64_list_feature(is_crowd),
         'image/object/area':

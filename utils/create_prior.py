@@ -1,6 +1,6 @@
 from itertools import product
 from math import sqrt
-import numpy as np
+import tensorflow as tf
 
 
 def make_priors(img_size, feature_map_size, aspect_ratio, scale):
@@ -18,20 +18,16 @@ def make_priors(img_size, feature_map_size, aspect_ratio, scale):
         print("Create priors for f_size:%s", f_size)
         count_anchor = 0
         for j, i in product(range(f_size), range(f_size)):
-            # +0.5 because priors are in center-size notation
-            # print(j, i)
-            f_k = img_size / (img_size / f_size)
-            x = (i + 0.5) / f_k
-            y = (j + 0.5) / f_k
-
+            f_k = img_size / (f_size + 1)
+            x = f_k * (i + 1)
+            y = f_k * (j + 1)
             for ars in aspect_ratio:
                 a = sqrt(ars)
                 w = scale[idx] * a
                 h = scale[idx] / a
                 prior_boxes += [x, y, w, h]
                 count_anchor += 1
-                # print(x * img_size, y * img_size, w, h)
         num_anchors.append(count_anchor)
         print(f_size, count_anchor)
-    output = np.asarray(prior_boxes).reshape(-1, 4)
+    output = tf.reshape(tf.convert_to_tensor(prior_boxes), [-1, 4])
     return num_anchors, output

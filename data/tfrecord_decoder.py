@@ -20,7 +20,7 @@ class TfExampleDecoder(object):
         }
 
     def _decode_image(self, parsed_tensors):
-        image = tf.io.decode_image(parsed_tensors['image/encoded'], channels = 3)
+        image = tf.io.decode_image(parsed_tensors['image/encoded'], channels=3)
         image.set_shape([None, None, 3])
         return image
 
@@ -65,16 +65,20 @@ class TfExampleDecoder(object):
         image = self._decode_image(parsed_tensors)
         boxes = self._decode_bboxes(parsed_tensors)
         masks = self._decode_masks(parsed_tensors)
+        is_crowds = tf.cond(
+            tf.greater(tf.shape(parsed_tensors['image/object/is_crowd']), 0),
+            lambda: tf.cast(parsed_tensors['image/object/is_crowd'], dtype=tf.bool),
+            lambda: tf.zeros_like(parsed_tensors['image/object/class/label'], dtype=tf.bool))
 
         decoded_tensors = {
-            'image':image,
-            'height':parsed_tensors['image/height'],
+            'image': image,
+            'height': parsed_tensors['image/height'],
             'width': parsed_tensors['image/width'],
-            'gt_classes': parsed_tensors['image/object/class/text'],
-            'gt_is_crowd': parsed_tensors['image/object/is_crowd'],
+            # Todo Mapping the class to numbers using dict
+            'gt_classes': parsed_tensors['image/object/class/label_id'],
+            'gt_is_crowd': is_crowds,
             'gt_bboxes': boxes,
             'gt_masks': masks
         }
 
         return decoded_tensors
-
