@@ -75,7 +75,6 @@ class TfExampleDecoder(object):
             'image': image,
             'height': parsed_tensors['image/height'],
             'width': parsed_tensors['image/width'],
-            # Todo Mapping the class to numbers using dict
             'gt_classes': parsed_tensors['image/object/class/label_id'],
             'gt_is_crowd': is_crowds,
             'gt_bboxes': boxes,
