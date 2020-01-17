@@ -25,7 +25,7 @@ def make_priors(img_size, feature_map_size, aspect_ratio, scale):
                 a = sqrt(ars)
                 w = scale[idx] * a
                 h = scale[idx] / a
-                prior_boxes += [x, y, w, h]
+                prior_boxes += [x-(w/2), y-(h/2), x+(w/2), y+(h/2)]
                 count_anchor += 1
         num_anchors.append(count_anchor)
         print(f_size, count_anchor)

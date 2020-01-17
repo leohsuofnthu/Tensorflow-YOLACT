@@ -25,10 +25,11 @@ class TfExampleDecoder(object):
         return image
 
     def _decode_boxes(self, parsed_tensors):
-        xmin = parsed_tensors['image/object/bbox/xmin']
-        xmax = parsed_tensors['image/object/bbox/xmax']
-        ymin = parsed_tensors['image/object/bbox/ymin']
-        ymax = parsed_tensors['image/object/bbox/ymax']
+        # denormalize the box here
+        xmin = parsed_tensors['image/object/bbox/xmin'] * parsed_tensors['image/width']
+        xmax = parsed_tensors['image/object/bbox/xmax'] * parsed_tensors['image/height']
+        ymin = parsed_tensors['image/object/bbox/ymin'] * parsed_tensors['image/width']
+        ymax = parsed_tensors['image/object/bbox/ymax'] * parsed_tensors['image/height']
         return tf.stack([xmin, ymin, xmax, ymax])
 
     def _decode_masks(self, parsed_tensors):

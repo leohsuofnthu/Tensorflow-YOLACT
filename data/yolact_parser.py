@@ -71,11 +71,10 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
 
         image = data['image']
-        # Todo: size and value of images
+        # Todo: normalize of images and check the shape of box
         # resize the image, box, mask
         image = tf.image.resize(image, [self.output_size, self.output_size])
         # normalize the image
-        # denormalize the box
 
         # Todo: Data Augmentation in here (image, bboxes, masks)
         # Photometric Distortions on image
