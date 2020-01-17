@@ -56,12 +56,11 @@ class Anchor(object):
         # area of each gt
 
         # intersection of every anchors and gts
-        
 
         pass
 
     def _pairwise_iou(self, gt_bbox):
-        """
+        """ˇ
         :param gt_bbox:
         :return:
         """

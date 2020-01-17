@@ -6,8 +6,6 @@ class Parser(object):
 
     def __init__(self,
                  output_size,
-                 min_level,
-                 max_level,
                  num_scales,
                  aspect_ratios,
                  anchor_size,
@@ -27,8 +25,6 @@ class Parser(object):
 
         # Anchor.
         self._output_size = output_size
-        self._min_level = min_level
-        self._max_level = max_level
         self._num_scales = num_scales
         self._aspect_ratios = aspect_ratios
         self._anchor_size = anchor_size
