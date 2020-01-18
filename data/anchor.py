@@ -118,7 +118,7 @@ class Anchor(object):
 
         # force the anchors which is the best matched of each gt to predict the correspond gt
         used_anchors = set()
-        for idx in tf.range(num_gt):
+        for idx in num_gt:
             max_id_for_gt = tf.math.argmax(pairwise_iou[:, idx], axis=0)
             # retrive the max anchor idx
             count = 0

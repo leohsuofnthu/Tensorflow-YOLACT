@@ -6,28 +6,21 @@ class Parser(object):
 
     def __init__(self,
                  output_size,
-                 num_scales,
-                 aspect_ratios,
-                 anchor_size,
+                 anchor_instance,
                  match_threshold=0.5,
                  unmatched_threshold=0.5,
                  skip_crow_during_training=True,
-                 max_num_instances=100,
                  use_bfloat16=True,
                  mode=None):
 
         self._mode = mode
-        self._max_num_instances = max_num_instances
         self._skip_crowd_during_training = skip_crow_during_training
         self._is_training = (mode == "train")
 
         self._example_decoder = tfrecord_decoder.TfExampleDecoder()
 
-        # Anchor.
         self._output_size = output_size
-        self._num_scales = num_scales
-        self._aspect_ratios = aspect_ratios
-        self._anchor_size = anchor_size
+        self.anchor_instance = anchor_instance
         self._match_threshold = match_threshold
         self._unmatched_threshold = unmatched_threshold
 
@@ -67,7 +60,7 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
 
         image = data['image']
-        # Todo: normalize of images and check the shape of box
+        # Todo: normalize of images
         # resize the image, box, mask
         image = tf.image.resize(image, [self.output_size, self.output_size])
         # normalize the image
@@ -76,20 +69,19 @@ class Parser(object):
         # Photometric Distortions on image
         # Geometric Distortions on image, bboxes and mask
 
-        # Todo: Create anchors and matches anchors in here
-        # create anchors
         # match anchors
+        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self.anchor_instance.match(
+            self._match_threshold, self._unmatched_threshold, boxes, classes)
+
+        # Todo process the mask target
 
         # label information need to be returned 
         labels = {
-            """
             'cls_targets': cls_targets,
             'box_targets': box_targets,
-            'mask_target': mask_targets,
-            'anchor_boxes': input_anchor.multilevel_boxes,
-            'num_positives': num_positives,
-            'image_info': image_info
-            """
+            'positiveness': match_positiveness,
+            # 'mask_target': mask_targets,
+            # 'image_info': image_info
         }
         return image, labels
 

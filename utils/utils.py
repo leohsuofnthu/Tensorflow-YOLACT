@@ -21,12 +21,19 @@ def map_to_point_form(x):
     return tf.stack([xmin, ymin, xmax, ymax])
 
 
+# encode the gt and anchors to offset
 def map_to_offset(x):
     g_hat_cx = (x[0, 0] - x[0, 1]) / x[2, 1]
     g_hat_cy = (x[1, 0] - x[1, 1]) / x[3, 1]
     g_hat_w = tf.math.log(x[2, 0] / x[2, 1])
     g_hat_h = tf.math.log(x[3, 0] / x[3, 1])
     return tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h])
+
+
+# decode the offset back to center form bounding box when evaluation and prediction
+def map_to_bbox(x):
+    pass
+
 
 def single_pair_iou(pred, target):
     # IOU of single pair of bbox, for the purpose in NMS, pairwise IOU is implemented within "Anchor" class
