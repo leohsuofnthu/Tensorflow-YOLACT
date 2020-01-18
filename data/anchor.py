@@ -1,5 +1,6 @@
 from itertools import product
 from math import sqrt
+from utils.utils import map_to_center_form, map_to_offset
 import tensorflow as tf
 
 
@@ -133,7 +134,6 @@ class Anchor(object):
             max_iou_for_anchors[max_fit_anchor_id].assign(pairwise_iou[max_fit_anchor_id, idx])
 
         # decide the anchors to be positive or negative based on the IoU and given threshold
-        @tf.function
         def _map_pos_match(x, pos, neg):
             if x < pos:
                 return -1.
@@ -159,7 +159,13 @@ class Anchor(object):
         target_cls = tf.multiply(match_labels, match_positiveness)
 
         # create loc target
-        # convert [xmin, ymin, xmax, ymax] in gt into "offest" form (another mapping)
+        map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
 
+        # convert to center form
+        center_anchors = tf.map_fn(lambda x: map_to_center_form(x), self.anchors)
+        center_gt = tf.map_fn(lambda x: map_to_center_form(x), map_loc)
 
-        return target_cls, target_loc, max_iou
+        # calculate offset
+        target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
+
+        return target_cls, target_loc, max_id_for_anchors, match_positiveness
