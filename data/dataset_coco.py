@@ -20,7 +20,7 @@ def get_dataset(tfrecord_dir, subset, batch_size):
     dataset = shards.interleave(tf.data.TFRecordDataset, cycle_length=4)
     dataset = dataset.shuffle(buffer_size=1024)
     # Todo parser function for mapping and data augmentation
-    dataset = dataset.map(map_func=_parse_fn, num_parallel_calls=4)
+    dataset = dataset.map(map_func=_parse_fn, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(batch_size)
 
