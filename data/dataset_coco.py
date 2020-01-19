@@ -38,7 +38,7 @@ def get_dataset(tfrecord_dir, subset, batch_size):
     return dataset
 
 
-d = get_dataset("./coco", "train", 1)
+d = get_dataset("./coco", "train", 2)
 print(d)
 
 count = 1

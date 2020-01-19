@@ -91,7 +91,7 @@ class Parser(object):
             'cls_targets': cls_targets,
             'box_targets': box_targets,
             'positiveness': match_positiveness,
-            'mask_target': masks,
+            #'mask_target': masks,
             # 'image_info': image_info
         }
         return image, labels
