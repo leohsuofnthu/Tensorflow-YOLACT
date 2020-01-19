@@ -14,7 +14,7 @@ class TfExampleDecoder(object):
             'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
             'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
             'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
-            'image/object/class/text': tf.io.VarLenFeature(dtype=tf.string),
+            'image/object/class/label_id': tf.io.VarLenFeature(dtype=tf.int64),
             'image/object/is_crowd': tf.io.VarLenFeature(dtype=tf.int64),
             'image/object/mask': tf.io.VarLenFeature(dtype=tf.string),
         }
@@ -26,11 +26,11 @@ class TfExampleDecoder(object):
 
     def _decode_boxes(self, parsed_tensors):
         # denormalize the box here
-        xmin = parsed_tensors['image/object/bbox/xmin'] * parsed_tensors['image/width']
-        xmax = parsed_tensors['image/object/bbox/xmax'] * parsed_tensors['image/height']
-        ymin = parsed_tensors['image/object/bbox/ymin'] * parsed_tensors['image/width']
-        ymax = parsed_tensors['image/object/bbox/ymax'] * parsed_tensors['image/height']
-        return tf.stack([xmin, ymin, xmax, ymax])
+        xmin = parsed_tensors['image/object/bbox/xmin'] * tf.cast(parsed_tensors['image/width'], tf.float32)
+        xmax = parsed_tensors['image/object/bbox/xmax'] * tf.cast(parsed_tensors['image/height'], tf.float32)
+        ymin = parsed_tensors['image/object/bbox/ymin'] * tf.cast(parsed_tensors['image/width'], tf.float32)
+        ymax = parsed_tensors['image/object/bbox/ymax'] * tf.cast(parsed_tensors['image/height'], tf.float32)
+        return tf.stack([xmin, ymin, xmax, ymax], axis=-1)
 
     def _decode_masks(self, parsed_tensors):
         def _decode_png_mask(png_bytes):
@@ -64,12 +64,12 @@ class TfExampleDecoder(object):
                         parsed_tensors[k], default_value=0)
 
         image = self._decode_image(parsed_tensors)
-        boxes = self._decode_bboxes(parsed_tensors)
+        boxes = self._decode_boxes(parsed_tensors)
         masks = self._decode_masks(parsed_tensors)
         is_crowds = tf.cond(
             tf.greater(tf.shape(parsed_tensors['image/object/is_crowd']), 0),
             lambda: tf.cast(parsed_tensors['image/object/is_crowd'], dtype=tf.bool),
-            lambda: tf.zeros_like(parsed_tensors['image/object/class/label'], dtype=tf.bool))
+            lambda: tf.zeros_like(parsed_tensors['image/object/class/label_id'], dtype=tf.bool))
 
         decoded_tensors = {
             'image': image,

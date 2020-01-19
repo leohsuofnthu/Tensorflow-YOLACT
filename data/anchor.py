@@ -25,7 +25,7 @@ class Anchor(object):
         :return:
         """
         prior_boxes = []
-        num_anchors = []
+        num_anchors = 0
         for idx, f_size in enumerate(feature_map_size):
             print("Create priors for f_size:%s", f_size)
             count_anchor = 0
@@ -40,32 +40,31 @@ class Anchor(object):
                     # directly use point form here => [xmin, ymin, xmax, ymax]
                     prior_boxes += [x - (w / 2), y - (h / 2), x + (w / 2), y + (h / 2)]
                     count_anchor += 1
-            num_anchors.append(count_anchor)
+            num_anchors += count_anchor
             print(f_size, count_anchor)
         output = tf.reshape(tf.convert_to_tensor(prior_boxes), [-1, 4])
         return num_anchors, output
 
     def _pairwise_intersection(self, num_gt, gt_bbox):
         """
+        ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py#L209
         :param gt_bbox: [num_obj, 4]
         :return:
         """
-        # anchors = [num_anchors, 4]
-        tf.print('num_anchors:', self.num_anchors)
 
-        # intersection of every anchors and gts
-        xy_min_anchors = tf.broadcast_to(tf.expand_dims(self.anchors[:, :2], axis=1), [self.num_anchors, num_gt])
-        xy_min_gt = tf.broadcast_to(tf.expand_dims(gt_bbox[:, :2], axis=0), [self.num_anchors, num_gt])
-        xy_max_anchors = tf.broadcast_to(tf.expand_dims(self.anchors[:, 2:], axis=1), [self.num_anchors, num_gt])
-        xy_max_gt = tf.broadcast_to(tf.expand_dims(gt_bbox[:, 2:], axis=0), [self.num_anchors, num_gt])
+        # unstack the xmin, ymin, xmax, ymax
+        xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(self.anchors, axis=-1)
+        xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(self.anchors, axis=-1)
 
-        xy_min = tf.math.maximum(xy_min_anchors, xy_min_gt)
-        xy_max = tf.math.minimum(xy_max_anchors, xy_max_gt)
+        # calculate intersection
+        all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=0))
+        all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=0))
+        all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=0))
+        all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=0))
+        intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
+        intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
 
-        side_length = tf.clip_by_value((xy_max - xy_min), clip_value_min=0)
-        intersection = side_length[:, 0] * side_length[:, 1]
-
-        return intersection
+        return intersect_heights * intersect_widths
 
     def _pairwise_iou(self, num_gt, gt_bbox):
         """ˇ
@@ -73,28 +72,30 @@ class Anchor(object):
         :return:
         """
         # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
-        print('num_gt:', num_gt)
+        # calculate A ∩ B (pairwise)
+        pairwise_inter = self._pairwise_intersection(num_gt=num_gt, gt_bbox=gt_bbox)
 
         # calculate areaA, areaB
-        area_anchors = tf.broadcast_to(
-            tf.expand_dims((self.anchors[:, 2] - self.anchors[:, 0]) * (self.anchors[:, 3] - self.anchors[:, 1]),
-                           axis=-1),
-            [self.num_anchors, num_gt])
+        xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(self.anchors, axis=-1)
+        xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(self.anchors, axis=-1)
 
-        area_gt = tf.broadcast_to(
-            tf.expand_dims((gt_bbox[:, 2] - gt_bbox[:, 0]) * (gt_bbox[:, 3] - gt_bbox[:, 1]), axis=0),
-            [self.num_anchors, num_gt])
+        area_anchor = (xmax_anchor-xmin_anchor) * (ymax_anchor - ymin_anchor)
+        area_gt = (xmax_gt-xmin_anchor) * (xmax_gt - xmin_gt)
 
-        # calculate A ∩ B (pairwise)
-        inter = self._pairwise_intersection(num_gt=num_gt, gt_bbox=gt_bbox)
+        # create same shape of matrix as intersection
+        pairwise_area = tf.expand_dims(area_anchor, 0) + tf.expand_dims(area_gt, 1)
 
         # calculate A ∪ B
-        union = area_anchors + area_gt - inter
+        pairwise_union = pairwise_area - pairwise_inter
 
-        # IOU(Jaccard overlap)
-        iou = inter / union
+        # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
+        iou = pairwise_inter / pairwise_union
 
-        return iou
+        print("finish pairwise IOU calculation...")
+
+        return tf.where(
+            tf.equal(pairwise_inter, 0.0),
+            tf.zeros_like(pairwise_inter), pairwise_inter/pairwise_union)
 
     def get_anchors(self):
         return self.anchors
@@ -108,6 +109,8 @@ class Anchor(object):
         :return:
         """
         num_gt = gt_bbox.shape[0]
+        print(tf.size(gt_bbox))
+        print('num_gt:', num_gt)
 
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(num_gt=num_gt, gt_bbox=gt_bbox)

@@ -1,4 +1,5 @@
 from data import tfrecord_decoder
+from utils import augmentation
 import tensorflow as tf
 
 
@@ -20,7 +21,7 @@ class Parser(object):
         self._example_decoder = tfrecord_decoder.TfExampleDecoder()
 
         self._output_size = output_size
-        self.anchor_instance = anchor_instance
+        self._anchor_instance = anchor_instance
         self._match_threshold = match_threshold
         self._unmatched_threshold = unmatched_threshold
 
@@ -43,12 +44,14 @@ class Parser(object):
             return self._parse_fn(data)
 
     def _parse_train_data(self, data):
+        is_crowds = data['gt_is_crowd']
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
-        is_crowds = data['gt_is_crowd']
+        masks = data['gt_masks']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
+        tf.print("Ignore crowd annotation")
         if self._skip_crowd_during_training and self._is_training:
             num_groundtrtuhs = tf.shape(input=classes)[0]
             with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
@@ -58,29 +61,37 @@ class Parser(object):
                     false_fn=lambda: tf.cast(tf.range(num_groundtrtuhs), tf.int64))
             classes = tf.gather(classes, indices)
             boxes = tf.gather(boxes, indices)
+            masks = tf.gather(masks, indices)
 
         image = data['image']
-        # Todo: normalize of images
-        # resize the image, box, mask
-        image = tf.image.resize(image, [self.output_size, self.output_size])
-        # normalize the image
 
-        # Todo: Data Augmentation in here (image, bboxes, masks)
-        # Photometric Distortions on image
-        # Geometric Distortions on image, bboxes and mask
+        print("classes", classes)
+
+        # resize the image, box, mask
+        tf.print("Resize image")
+        image = tf.image.resize(image, [self._output_size, self._output_size])
+        # Todo: resize boxes and masks
+
+        # normalize the image
+        tf.print("normalize image")
+        image = tf.image.per_image_standardization(image)
+
+        # data augmentation randomly
+        print("data augmentation")
+        image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
         # match anchors
-        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self.anchor_instance.match(
+        print("anchor matching")
+        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
-        # Todo process the mask target
-
-        # label information need to be returned 
+        # Todo check the shape of mask
+        # label information need to be returned
         labels = {
             'cls_targets': cls_targets,
             'box_targets': box_targets,
             'positiveness': match_positiveness,
-            # 'mask_target': mask_targets,
+            'mask_target': masks,
             # 'image_info': image_info
         }
         return image, labels
