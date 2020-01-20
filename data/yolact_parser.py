@@ -49,6 +49,7 @@ class Parser(object):
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
 
+        tf.print(tf.shape(masks)[0])
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
         tf.print("Ignore crowd annotation")
@@ -64,6 +65,8 @@ class Parser(object):
             masks = tf.gather(masks, indices)
 
         image = data['image']
+        tf.print("box", boxes)
+        tf.print("anchor", self._anchor_instance.get_anchors())
 
         print("classes", classes)
 

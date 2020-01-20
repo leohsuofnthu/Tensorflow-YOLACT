@@ -27,8 +27,8 @@ class TfExampleDecoder(object):
     def _decode_boxes(self, parsed_tensors):
         # denormalize the box here
         xmin = parsed_tensors['image/object/bbox/xmin'] * tf.cast(parsed_tensors['image/width'], tf.float32)
-        xmax = parsed_tensors['image/object/bbox/xmax'] * tf.cast(parsed_tensors['image/height'], tf.float32)
-        ymin = parsed_tensors['image/object/bbox/ymin'] * tf.cast(parsed_tensors['image/width'], tf.float32)
+        ymin = parsed_tensors['image/object/bbox/ymin'] * tf.cast(parsed_tensors['image/height'], tf.float32)
+        xmax = parsed_tensors['image/object/bbox/xmax'] * tf.cast(parsed_tensors['image/width'], tf.float32)
         ymax = parsed_tensors['image/object/bbox/ymax'] * tf.cast(parsed_tensors['image/height'], tf.float32)
         return tf.stack([xmin, ymin, xmax, ymax], axis=-1)
 
