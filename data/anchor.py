@@ -79,7 +79,6 @@ class Anchor(object):
         # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
         # calculate A ∩ B (pairwise)
         pairwise_inter = self._pairwise_intersection(gt_bbox=gt_bbox)
-        print("inter", pairwise_inter)
 
         # calculate areaA, areaB
         xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(self.anchors, axis=-1)
@@ -87,18 +86,14 @@ class Anchor(object):
 
         area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
         area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
-        tf.print("area anchor", area_anchor)
-        tf.print("area gt", area_gt)
 
         # create same shape of matrix as intersection
         pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=0)
-        print("area", pairwise_area)
 
         # calculate A ∪ B
         pairwise_union = pairwise_area - pairwise_inter
 
         # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
-        print("finish pairwise IOU calculation...")
 
         return tf.where(
             tf.equal(pairwise_inter, 0.0),
@@ -124,36 +119,20 @@ class Anchor(object):
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
 
-        tf.print("max ious", tf.sort(max_iou_for_anchors, direction="DESCENDING"))
+        tf.print("MAX_IOUS", tf.sort(max_iou_for_anchors, direction="DESCENDING"))
 
-        """
         # force the anchors which is the best matched of each gt to predict the correspond gt
-        # Todo force match for gts
-        tf.print("num_gt", num_gt)
+        forced_update_id = tf.cast(tf.range(0, num_gt), tf.int64)
+        tf.print("fid:", tf.shape(forced_update_id))
+        forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
+        tf.print("fiou:", tf.shape(forced_update_iou))
+        forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
+        tf.print("indice:", forced_update_indice)
+        max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
+        max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
 
-        max_id_for_gt = tf.argsort(pairwise_iou, direction='DESCENDING', axis=0)
-        tf.print(max_id_for_gt)
-        used_anchors = []
-        for idx in tf.range(num_gt):
-            tf.print("idx", idx)
-            tf.print(used_anchors)
-            # retrive the max anchor idx
-            count = tf.constant(0)
-            # check if is existed in set
-            tf.print("ggg:", max_id_for_gt[count, idx])
-            while max_id_for_gt[count, idx] in used_anchors:
-                count += 1
-                tf.print("anchor: %d has been assigned" % count)
-            # yes, to next, no, add to set
-            max_fit_anchor_id = max_id_for_gt[count, idx]
-            tf.print("max id", max_fit_anchor_id)
-            used_anchors.append(max_fit_anchor_id)
-            tf.print(used_anchors)
-            max_id_for_anchors[max_fit_anchor_id].assign(idx)
-            max_iou_for_anchors[max_fit_anchor_id].assign(pairwise_iou[max_fit_anchor_id, idx])
-            """
-
-        tf.print("forced done")
+        tf.print(max_id_for_anchors)
+        tf.print("Forced done")
 
         # decide the anchors to be positive or negative based on the IoU and given threshold
         def _map_pos_match(x, pos, neg):
