@@ -86,12 +86,12 @@ class Anchor(object):
         xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(gt_bbox, axis=-1)
 
         area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
-        area_gt = (xmax_gt - xmin_gt) * (xmax_gt - xmin_gt)
+        area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
         tf.print("area anchor", area_anchor)
         tf.print("area gt", area_gt)
 
         # create same shape of matrix as intersection
-        pairwise_area = tf.expand_dims(area_anchor, 1) + tf.expand_dims(area_gt, 0)
+        pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=0)
         print("area", pairwise_area)
 
         # calculate A ∪ B
@@ -124,7 +124,7 @@ class Anchor(object):
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
 
-        tf.print("max ID", tf.sort(max_iou_for_anchors, direction="DESCENDING"))
+        tf.print("max ious", tf.sort(max_iou_for_anchors, direction="DESCENDING"))
 
         """
         # force the anchors which is the best matched of each gt to predict the correspond gt
