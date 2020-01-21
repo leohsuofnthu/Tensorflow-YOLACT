@@ -75,6 +75,7 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
+        tf.print("num_gt = ", tf.shape(classes)[0])
         image = data['image']
         tf.print("box", boxes)
         tf.print("anchor", self._anchor_instance.get_anchors())
@@ -120,8 +121,6 @@ class Parser(object):
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
-        # Todo check the shape of mask and padding
-        # label information need to be returned
         labels = {
             'cls_targets': cls_targets,
             'box_targets': box_targets,
