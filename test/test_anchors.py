@@ -10,6 +10,7 @@ idx = tf.Variable([0, 1, 2])
 map_loc = tf.map_fn(lambda x: gt_bbox[x], idx, dtype=tf.float32)
 tf.print("mapping idx:\n", map_loc)
 
+
 # to center form
 def map_to_center_form(x):
     w = x[2] - x[0]
@@ -49,6 +50,7 @@ loc_target = tf.map_fn(lambda x: map_to_offset(x), concat)
 
 tf.print("original anchors:\n", tf.map_fn(lambda x: map_to_point_form(x), center_anchors))
 tf.print("offset:\n", loc_target)
+
 
 # to center form
 
