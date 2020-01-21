@@ -2,6 +2,7 @@ from data import tfrecord_decoder
 from utils import augmentation
 from utils.utils import normalize_image
 import tensorflow as tf
+import matplotlib.pyplot as plt
 
 
 class Parser(object):
@@ -57,6 +58,8 @@ class Parser(object):
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
+        image_height = data['height']
+        image_width = data['width']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
@@ -85,8 +88,11 @@ class Parser(object):
         masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size])
         masks = tf.squeeze(masks)
 
-        # Todo: resize boxes
-
+        # resize boxes
+        scale_x = tf.cast(self._output_size / image_width, tf.float32)
+        scale_y = tf.cast(self._output_size / image_height, tf.float32)
+        scales = tf.stack([scale_x, scale_y, scale_x, scale_y])
+        boxes = boxes / scales
         # normalize the image
         tf.print("normalize image")
         image = normalize_image(image)
@@ -101,10 +107,10 @@ class Parser(object):
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
 
-        classes = tf.concat([classes, pad_classes], axis=0)
-        if tf.size(classes) == 1:
+        if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
         masks = tf.concat([masks, pad_masks], axis=0)
+        classes = tf.concat([classes, pad_classes], axis=0)
 
         tf.print("class", tf.shape(classes))
         tf.print("mask", tf.shape(masks))
