@@ -119,29 +119,21 @@ class Anchor(object):
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
 
-        tf.print("MAX_IOUS", tf.sort(max_iou_for_anchors, direction="DESCENDING"))
-
         # force the anchors which is the best matched of each gt to predict the correspond gt
         forced_update_id = tf.cast(tf.range(0, num_gt), tf.int64)
-        tf.print("fid:", tf.shape(forced_update_id))
         forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
-        tf.print("fiou:", tf.shape(forced_update_iou))
         forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
-        tf.print("indice:", forced_update_indice)
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
 
-        tf.print(max_id_for_anchors)
-        tf.print("Forced done")
-
         # decide the anchors to be positive or negative based on the IoU and given threshold
         def _map_pos_match(x, pos, neg):
+            p = 1.
             if x < pos:
-                return -1.
-            elif x < neg:
-                return 0.
-            else:
-                return 1.
+                p = -1.
+            if x < neg:
+                p = 0.
+            return p
 
         match_positiveness = tf.map_fn(lambda x: _map_pos_match(x, threshold_pos, threshold_neg)
                                        , max_iou_for_anchors)
@@ -158,6 +150,7 @@ class Anchor(object):
         it can be useful to distinguish positive sample during loss calculation  
         """
         target_cls = tf.multiply(tf.cast(match_labels, tf.float32), match_positiveness)
+        num_positive = tf.math.count_nonzero(target_cls)
 
         # create loc target
         map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
@@ -169,4 +162,4 @@ class Anchor(object):
         # calculate offset
         target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
 
-        return target_cls, target_loc, max_id_for_anchors, match_positiveness
+        return target_cls, target_loc, num_positive, max_id_for_anchors, match_positiveness

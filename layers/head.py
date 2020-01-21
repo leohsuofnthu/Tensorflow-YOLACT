@@ -24,6 +24,7 @@ class PredictionModule(tf.keras.layers.Layer):
         self.num_class = num_class
         self.num_mask = num_mask
 
+        # Todo those module are share for all predictions
         self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
         self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
 

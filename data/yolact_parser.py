@@ -1,5 +1,6 @@
 from data import tfrecord_decoder
 from utils import augmentation
+from utils.utils import normalize_image
 import tensorflow as tf
 
 
@@ -8,8 +9,10 @@ class Parser(object):
     def __init__(self,
                  output_size,
                  anchor_instance,
-                 match_threshold=0.5,
+                 match_threshold=0.6,
                  unmatched_threshold=0.5,
+                 num_max_fix_padding=100,
+                 proto_output_size=138,
                  skip_crow_during_training=True,
                  use_bfloat16=True,
                  mode=None):
@@ -24,6 +27,12 @@ class Parser(object):
         self._anchor_instance = anchor_instance
         self._match_threshold = match_threshold
         self._unmatched_threshold = unmatched_threshold
+
+        # output related
+        # for classes and mask to be padded to fix length
+        self._num_max_fix_padding = num_max_fix_padding
+        # resize the mask to proto output size in advance (always 138, from paper's figure)
+        self._proto_output_size = proto_output_size
 
         # Device.
         self._use_bfloat16 = use_bfloat16
@@ -49,7 +58,6 @@ class Parser(object):
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
 
-        tf.print(tf.shape(masks)[0])
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
         tf.print("Ignore crowd annotation")
@@ -68,34 +76,53 @@ class Parser(object):
         tf.print("box", boxes)
         tf.print("anchor", self._anchor_instance.get_anchors())
 
-        print("classes", classes)
-
-        # resize the image, box, mask
+        # resize the image, box
         tf.print("Resize image")
         image = tf.image.resize(image, [self._output_size, self._output_size])
-        # Todo: resize boxes and masks
+
+        # resize mask
+        masks = tf.expand_dims(masks, axis=-1)
+        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size])
+        masks = tf.squeeze(masks)
+
+        # Todo: resize boxes
 
         # normalize the image
         tf.print("normalize image")
-        image = tf.image.per_image_standardization(image)
+        image = normalize_image(image)
 
+        # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         print("data augmentation")
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
+        # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
+        num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
+        pad_classes = tf.zeros([num_padding], dtype=tf.int64)
+        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
+
+        classes = tf.concat([classes, pad_classes], axis=0)
+        if tf.size(classes) == 1:
+            masks = tf.expand_dims(masks, axis=0)
+        masks = tf.concat([masks, pad_masks], axis=0)
+
+        tf.print("class", tf.shape(classes))
+        tf.print("mask", tf.shape(masks))
+
         # match anchors
         print("anchor matching")
-        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
+        cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
-        # Todo check the shape of mask
+        # Todo check the shape of mask and padding
         # label information need to be returned
         labels = {
             'cls_targets': cls_targets,
             'box_targets': box_targets,
+            'num_positive': num_pos,
             'positiveness': match_positiveness,
-            #'mask_target': masks,
-            # 'image_info': image_info
+            'classes': classes,
+            'mask_target': masks
         }
         return image, labels
 
