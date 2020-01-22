@@ -38,7 +38,7 @@ class Yolact(tf.keras.Model):
         print("num anchor per feature map: ", self.num_anchor)
         self.predictionHead = []
         for idx, f_size in enumerate(feature_map_size):
-            pred = PredictionModule(2, f_size, len(aspect_ratio), num_class, num_mask)
+            pred = PredictionModule(256, f_size, len(aspect_ratio), num_class, num_mask)
             self.predictionHead.append(pred)
 
     def call(self, inputs):
