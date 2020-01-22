@@ -46,15 +46,12 @@ class YOLACTLoss(object):
         :param gt_offset (box_target): [batch, num_anchor, 4]
         :return:
         """
-        # reshape the positiveness from [batch, num_anchor] => [batch*num_anchor, 1]
         positiveness = tf.expand_dims(positiveness, axis=-1)
 
         # get postive indices
         pos_indices = tf.where(positiveness > 0)
 
-        # reshape the pred_offset from [batch, num_anchor, 4] => [batch*num_anchor, 4]
         pred_offset = tf.gather_nd(pred_offset, pos_indices[:, :-1])
-        # reshape the gt_offset from [batch, num_anchor, 4] => [batch*num_anchor, 4]
         gt_offset = tf.gather_nd(gt_offset, pos_indices[:, :-1])
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
@@ -63,7 +60,7 @@ class YOLACTLoss(object):
         tf.print("loss_loc:", loss_loc)
         return loss_loc
 
-    def _loss_class(self, pred_cls, gt_cls, num_cls, positive_indices, num_pos):
+    def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness, num_pos):
         """
 
         :param pred_cls: [batch, num_anchor, num_cls]
@@ -76,20 +73,27 @@ class YOLACTLoss(object):
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(-1, num_cls)
         tf.print("pred_cls:", tf.shape(pred_cls))
+
+        # reshape gt_cls from [batch, num_anchor] => [batch * num_anchor, 1]
         gt_cls = tf.expand_dims(gt_cls, axis=-1)
         gt_cls = tf.reshape(-1, 1)
-        tf.print(tf.shape(gt_cls))
+        tf.print("gt_cls:", tf.shape(gt_cls))
+
         # apply softmax on the pred_cls
-        softmax_pred_cls = tf.nn.softmax(pred_cls, axis=-1)
-        assert tf.reduce_sum(softmax_pred_cls[:, 0]) == 1
+        softmax_pred_cls = tf.nn.softmax(pred_cls)
 
         # -log(softmax class 0)
-        loss_minus_log_class0 = -1 * tf.math.log(softmax_pred_cls[:, 0])
+        loss_minus_log_class0 = tf.expand_dims(-1 * tf.math.log(softmax_pred_cls[:, 0]), axis=-1)
 
-        # eliminate the pos, neutral samples index
+        # reshape positiveness to [batch*num_anchor, 1]
+        positiveness = tf.expand_dims(positiveness, axis=-1)
+        positiveness = tf.reshape(positiveness, [-1, 1])
+        pos_indices = tf.where(positiveness > 0)
 
         # calculate the needed amount of  negative sample
         num_neg_needed = num_pos * self._neg_pos_ratio
+
+        # eliminate the pos, neutral samples index
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
 
