@@ -57,6 +57,7 @@ class Yolact(tf.keras.Model):
         # Prediction Head branch
         prediction = []
 
+        # Todo Share same prediction module and concate the output for each prediction to be [batch, num_anchor, ..]
         for idx, f_map in enumerate(fpn_out):
             preds = self.predictionHead[idx](f_map)
             print("p%s prediction:" % (idx+3))
