@@ -86,14 +86,21 @@ class YOLACTLoss(object):
 
         pass
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_masks, positive_indices, max_masks_for_train):
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_offset, gt_masks, positive_indices, max_masks_for_train):
         """
         loss of linear combination loss
         :return:
         """
-        # resize the gt_masks to proto output size (already done in parser)
-        # extract the positive masks coef for train accroding to the positive_indices
-        # check if the positive example <= max_masks_for_train and adjust
-        # sigmoid(proto_output * positive mask coef) to get the masks
-        # calculate the BCE loss of each sample accroding to the gt_cls
+        num_batch = tf.shape(proto_output)[0]
+        tf.print("Batch_size:", num_batch)
+        loss_mask = 0
+        # Todo let s see if access by index is available
+        for idx in tf.range(num_batch):
+            # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
+            # calculate sigmoid(pred_mask_coef_positive @ proto_output => [138, 138, num_pos])
+            # create [138, 138, num_pos] correspond gt mask
+            # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
+            # loss_mask += BCE(pred_mask, gt_mask)
+            pass
+
         pass

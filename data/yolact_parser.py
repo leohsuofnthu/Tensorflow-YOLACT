@@ -115,7 +115,7 @@ class Parser(object):
 
         tf.print("class", tf.shape(classes))
         tf.print("mask", tf.shape(masks))
-
+        tf.print("indice access", masks[0])
         # match anchors
         print("anchor matching")
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
