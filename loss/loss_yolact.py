@@ -119,9 +119,9 @@ class YOLACTLoss(object):
         target_labels = tf.concat([pos_gt, neg_gt_for_loss], axis=0)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)
+        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
 
-        return loss_confe
+        return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_offset, gt_masks, positive_indices,
                    max_masks_for_train):
