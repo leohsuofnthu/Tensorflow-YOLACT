@@ -14,7 +14,7 @@ class YOLACTLoss(object):
         self._neg_pos_ratio = neg_pos_ratio
         self._max_masks_for_train = max_masks_for_train
 
-    def loss_yolact(self, pred, label):
+    def loss(self, pred, label, num_classes):
         """
         :param anchors:
         :param num_pos:
@@ -23,6 +23,10 @@ class YOLACTLoss(object):
         :return:
         """
         # all prediction component
+        # pred_cls = pred['pred_cls']
+        # pred_offset = pred['pred_offset']
+        # pred_mask_corf = pred['pred_mask_coef']
+        # proto_out = pred['proto_out']
 
         # all label component
         cls_targets = label['cls_targets']
@@ -31,12 +35,11 @@ class YOLACTLoss(object):
         positiveness = label['positiveness']
         classes = label['classes']
         masks = label['mask_target']
+        max_id_for_anchors = label['max_id_for_anchors']
 
-        # _loss_location(pred_offset, gt_offset, positive_indices)
-
-        # calculate the area of pred bounding boxes (anchors, pre_offset) for normalize the cls loss
-
-        # _loss_class(pred_cls, gt_cls, positive_indices, neg_pos_ration)
+        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        # conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
+        # mask_loss = (pred_cls, gt_cls, positive_indices, neg_pos_ration)
 
         pass
 
@@ -123,22 +126,42 @@ class YOLACTLoss(object):
 
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_offset, gt_masks, positive_indices,
-                   max_masks_for_train):
+    def _loss_mask(self, proto_output, pred_mask_coef, num_k, gt_cls, gt_offset, gt_masks, positiveness,
+                   max_masks_for_train, max_id_for_anchors):
         """
-        loss of linear combination loss
+
+        :param proto_output: [batch, 138, 138, k]
+        :param pred_mask_coef: [batch, num_anchors, k]
+        :param num_k:
+        :param gt_cls: [batch, num_anchors]
+        :param gt_offset: [batch, num_anchors, 4]
+        :param gt_masks: [batch, 100, 138, 138]
+        :param positiveness: [batch, num_anchors]
+        :param max_masks_for_train:
+        :param max_id_for_anchors: [batch, num_anchor]
         :return:
         """
         num_batch = tf.shape(proto_output)[0]
         tf.print("Batch_size:", num_batch)
         loss_mask = 0
-        # Todo let s see if access by index is available
+        # Todo let s see if access by index is feasible
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
-            # calculate sigmoid(pred_mask_coef_positive @ proto_output => [138, 138, num_pos])
+            proto = proto_output[idx]
+            mask_coef = pred_mask_coef[idx]
+            pos = positiveness[idx]
+            max_id = max_id_for_anchors[idx]
+
+            pos_indices = tf.random.shuffle(tf.squeeze(tf.where(pos > 0)))
+            # Todo decrease the number pf positive to be 100
+            # [num_pos, k]
+            pos_mask_coef = tf.gather(mask_coef, pos_indices)
+            pos_max_id = tf.gather(max_id, pos_indices)
+            # [138, 138, num_pos]
+            pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
+            tf.print("shape of predmask:,", tf.shape(pred_mask))
             # create [138, 138, num_pos] correspond gt mask
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             # loss_mask += BCE(pred_mask, gt_mask)
-            pass
 
-        pass
+        return loss_mask

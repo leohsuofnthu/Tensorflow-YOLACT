@@ -47,4 +47,4 @@ class PredictionModule(tf.keras.layers.Layer):
         pred_box = tf.reshape(pred_box, [pred_box.shape[0], -1, 4])
         pred_mask = tf.reshape(pred_mask, [pred_mask.shape[0], -1, self.num_mask])
 
-        return [pred_class, pred_box, pred_mask]
+        return pred_class, pred_box, pred_mask

@@ -103,6 +103,7 @@ class Parser(object):
         print("data augmentation")
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
+        tf.print("class original:", classes)
         # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
@@ -121,13 +122,16 @@ class Parser(object):
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
+        tf.print("id for anchors", max_id_for_anchors)
+
         labels = {
             'cls_targets': cls_targets,
             'box_targets': box_targets,
             'num_positive': num_pos,
             'positiveness': match_positiveness,
             'classes': classes,
-            'mask_target': masks
+            'mask_target': masks,
+            'max_id_for_anchors': max_id_for_anchors
         }
         return image, labels
 

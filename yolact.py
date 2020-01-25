@@ -20,7 +20,7 @@ class Yolact(tf.keras.Model):
 
     """
 
-    def __init__(self, input_size, fpn_channels, feature_map_size, num_class , num_mask, aspect_ratio, scales):
+    def __init__(self, input_size, fpn_channels, feature_map_size, num_class, num_mask, aspect_ratio, scales):
         super(Yolact, self).__init__()
         out = ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out']
         # use pre-trained ResNet50
@@ -55,16 +55,27 @@ class Yolact(tf.keras.Model):
         print("protonet: ", protonet_out.shape)
 
         # Prediction Head branch
-        prediction = []
+        pred_cls = []
+        pred_offset = []
+        pred_mask_coef = []
 
         # Todo Share same prediction module and concate the output for each prediction to be [batch, num_anchor, ..]
         for idx, f_map in enumerate(fpn_out):
-            preds = self.predictionHead[idx](f_map)
-            print("p%s prediction:" % (idx+3))
-            for i, p in enumerate(preds):
-                print(p.shape)
-            prediction.append(preds)
-        print(len(prediction))
+            cls, offset, coef = self.predictionHead[idx](f_map)
+            pred_cls.append(cls)
+            pred_offset.append(offset)
+            pred_mask_coef.append(coef)
+
+        pred_cls = tf.concat(pred_cls, axis=1)
+        pred_offset = tf.concat(pred_offset, axis=1)
+        pred_mask_coef = tf.concat(pred_mask_coef, axis=1)
+
+        pred = {
+            'pred_cls': pred_cls,
+            'pred_offset': pred_offset,
+            'pred_mask_coef': pred_mask_coef,
+            'proto_out': protonet_out
+        }
 
         # Todo concatenate each prediction (conf, loc, mask)
-        return prediction, protonet_out
+        return pred
