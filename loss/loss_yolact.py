@@ -37,11 +37,12 @@ class YOLACTLoss(object):
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
-        # conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
+
+        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
         # mask_loss = (pred_cls, gt_cls, positive_indices, neg_pos_ration)
 
-        return loc_loss
+        return conf_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
@@ -63,7 +64,7 @@ class YOLACTLoss(object):
         tf.print("loss_loc:", loss_loc)
         return loss_loc
 
-    def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness, num_pos):
+    def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
         """
 
         :param pred_cls: [batch, num_anchor, num_cls]
@@ -89,7 +90,10 @@ class YOLACTLoss(object):
         neg_indices = tf.where(positiveness == 0)
 
         # calculate the needed amount of  negative sample
+        num_pos = tf.size(pos_indices[:, 0])
+        tf.print("num_pos = ", num_pos)
         num_neg_needed = num_pos * self._neg_pos_ratio
+        tf.print("num_neg = ", num_neg_needed)
 
         # gather pos data, neg data separately
         pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
@@ -120,10 +124,11 @@ class YOLACTLoss(object):
         # concat positive and negtive data
         target_logits = tf.concat([pos_pred_cls, neg_pred_cls_for_loss], axis=0)
         target_labels = tf.concat([pos_gt, neg_gt_for_loss], axis=0)
+        target_labels = tf.cast(target_labels, tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
         loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
-
+        tf.print("loss_conf:", loss_conf)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, num_k, gt_cls, gt_offset, gt_masks, positiveness,

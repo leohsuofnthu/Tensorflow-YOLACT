@@ -40,10 +40,10 @@ def get_dataset(tfrecord_dir, batch_size, subset="train"):
     return dataset
 
 
-train_dataloader = get_dataset("./coco", 1, "train")
+train_dataloader = get_dataset("./coco", 2, "train")
 print(train_dataloader)
 
-model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=21, num_mask=4,
+model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
                aspect_ratio=[1, 0.5, 2], scales=[24, 48, 96, 192, 384])
 model.build(input_shape=(4, 550, 550, 3))
 model.summary()
@@ -56,7 +56,7 @@ for image, labels in train_dataloader:
     tf.print(tf.shape(image))
     # tf.print(tf.shape(labels))
     output = model(image)
-    loss = cirterion.loss(output, labels, 21)
+    loss = cirterion.loss(output, labels, 91)
     tf.print("loss:", loss)
     count -= 1
     if not count:
