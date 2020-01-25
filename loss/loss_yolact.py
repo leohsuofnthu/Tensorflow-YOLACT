@@ -23,10 +23,10 @@ class YOLACTLoss(object):
         :return:
         """
         # all prediction component
-        # pred_cls = pred['pred_cls']
-        # pred_offset = pred['pred_offset']
-        # pred_mask_corf = pred['pred_mask_coef']
-        # proto_out = pred['proto_out']
+        pred_cls = pred['pred_cls']
+        pred_offset = pred['pred_offset']
+        pred_mask_corf = pred['pred_mask_coef']
+        proto_out = pred['proto_out']
 
         # all label component
         cls_targets = label['cls_targets']
@@ -37,11 +37,11 @@ class YOLACTLoss(object):
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
         # conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
         # mask_loss = (pred_cls, gt_cls, positive_indices, neg_pos_ration)
 
-        pass
+        return loc_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
