@@ -37,12 +37,12 @@ class YOLACTLoss(object):
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
-        # conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
+        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
         mask_loss = self._loss_mask(proto_out, pred_mask_coef, cls_targets, box_targets, masks, positiveness,
                                     max_id_for_anchors, max_masks_for_train=100)
 
-        return mask_loss
+        return self._loss_weight_box*loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
@@ -165,9 +165,20 @@ class YOLACTLoss(object):
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             tf.print("shape of predmask:,", tf.shape(pred_mask))
-            gt_mask =
-            # create [138, 138, num_pos] correspond gt mask
-            # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
-            # loss_mask += BCE(pred_mask, gt_mask)
+            tf.print(pos_max_id)
 
-        return loss_mask
+            # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
+            loss_mask = []
+            bceloss = tf.keras.losses.BinaryCrossentropy()
+            for num, value in enumerate(pos_max_id):
+                gt = gt_masks[idx][value]
+                pred = tf.nn.sigmoid(pred_mask[:, :, num])
+                loss = bceloss(gt, pred)
+                tf.print(loss)
+                loss_mask.append(loss)
+                # Todo area calculation for normalizaiton
+
+            loss_mask = tf.math.reduce_sum(loss_mask)
+            tf.print("loss_mask:", loss_mask)
+
+        return tf.math.reduce_sum(loss_mask)

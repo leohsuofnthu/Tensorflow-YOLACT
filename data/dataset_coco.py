@@ -48,7 +48,7 @@ model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9
 model.build(input_shape=(4, 550, 550, 3))
 model.summary()
 
-cirterion = YOLACTLoss()
+criterion = YOLACTLoss()
 
 count = 1
 # Todo trying to train one epoch with loss calculated
@@ -56,7 +56,7 @@ for image, labels in train_dataloader:
     tf.print(tf.shape(image))
     # tf.print(tf.shape(labels))
     output = model(image)
-    loss = cirterion.loss(output, labels, 91)
+    loss = criterion.loss(output, labels, 91)
     tf.print("loss:", loss)
     count -= 1
     if not count:
