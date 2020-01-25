@@ -39,10 +39,10 @@ class YOLACTLoss(object):
 
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, cls_targets, box_targets, masks, positiveness,
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness,
                                     max_id_for_anchors, max_masks_for_train=100)
 
-        return self._loss_weight_box*loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
+        return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
@@ -60,7 +60,7 @@ class YOLACTLoss(object):
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=0.5)
-        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
+        loss_loc = tf.reduce_mean(smoothl1loss(gt_offset, pred_offset))
         tf.print("loss_loc:", loss_loc)
         return loss_loc
 
@@ -126,17 +126,16 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
+        loss_conf = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
         tf.print("loss_conf:", loss_conf)
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_offset, gt_masks, positiveness,
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_offset, gt_masks, positiveness,
                    max_id_for_anchors, max_masks_for_train):
         """
 
         :param proto_output: [batch, 138, 138, k]
         :param pred_mask_coef: [batch, num_anchors, k]
-        :param gt_cls: [batch, num_anchors]
         :param gt_offset: [batch, num_anchors, 4]
         :param gt_masks: [batch, 100, 138, 138]
         :param positiveness: [batch, num_anchors]
@@ -148,8 +147,7 @@ class YOLACTLoss(object):
         num_k = tf.shape(proto_output)[-1]
         tf.print("Batch_size:", num_batch)
         tf.print("K:", num_k)
-        loss_mask = 0
-        # Todo let s see if access by index is feasible
+        loss_mask = []
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -168,17 +166,16 @@ class YOLACTLoss(object):
             tf.print(pos_max_id)
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
-            loss_mask = []
+            loss = 0
             bceloss = tf.keras.losses.BinaryCrossentropy()
             for num, value in enumerate(pos_max_id):
                 gt = gt_masks[idx][value]
                 pred = tf.nn.sigmoid(pred_mask[:, :, num])
-                loss = bceloss(gt, pred)
-                tf.print(loss)
-                loss_mask.append(loss)
+                loss = loss + bceloss(gt, pred)
                 # Todo area calculation for normalizaiton
 
-            loss_mask = tf.math.reduce_sum(loss_mask)
-            tf.print("loss_mask:", loss_mask)
+            loss_mask.append(loss)
+        loss_mask = tf.math.reduce_mean(loss_mask)
+        tf.print("loss_mask:", loss_mask)
 
-        return tf.math.reduce_sum(loss_mask)
+        return loss_mask
