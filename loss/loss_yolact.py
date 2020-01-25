@@ -25,7 +25,7 @@ class YOLACTLoss(object):
         # all prediction component
         pred_cls = pred['pred_cls']
         pred_offset = pred['pred_offset']
-        pred_mask_corf = pred['pred_mask_coef']
+        pred_mask_coef = pred['pred_mask_coef']
         proto_out = pred['proto_out']
 
         # all label component
@@ -37,12 +37,12 @@ class YOLACTLoss(object):
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-
         # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
-        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
-        # mask_loss = (pred_cls, gt_cls, positive_indices, neg_pos_ration)
+        # conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, cls_targets, box_targets, masks, positiveness,
+                                    max_id_for_anchors, max_masks_for_train=100)
 
-        return conf_loss
+        return mask_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
@@ -123,21 +123,19 @@ class YOLACTLoss(object):
         # calculate Cross entropy loss and return
         # concat positive and negtive data
         target_logits = tf.concat([pos_pred_cls, neg_pred_cls_for_loss], axis=0)
-        target_labels = tf.concat([pos_gt, neg_gt_for_loss], axis=0)
-        target_labels = tf.cast(target_labels, tf.int64)
+        target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
         loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
         tf.print("loss_conf:", loss_conf)
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, num_k, gt_cls, gt_offset, gt_masks, positiveness,
-                   max_masks_for_train, max_id_for_anchors):
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_cls, gt_offset, gt_masks, positiveness,
+                   max_id_for_anchors, max_masks_for_train):
         """
 
         :param proto_output: [batch, 138, 138, k]
         :param pred_mask_coef: [batch, num_anchors, k]
-        :param num_k:
         :param gt_cls: [batch, num_anchors]
         :param gt_offset: [batch, num_anchors, 4]
         :param gt_masks: [batch, 100, 138, 138]
@@ -147,7 +145,9 @@ class YOLACTLoss(object):
         :return:
         """
         num_batch = tf.shape(proto_output)[0]
+        num_k = tf.shape(proto_output)[-1]
         tf.print("Batch_size:", num_batch)
+        tf.print("K:", num_k)
         loss_mask = 0
         # Todo let s see if access by index is feasible
         for idx in tf.range(num_batch):
@@ -165,6 +165,7 @@ class YOLACTLoss(object):
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             tf.print("shape of predmask:,", tf.shape(pred_mask))
+            gt_mask =
             # create [138, 138, num_pos] correspond gt mask
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             # loss_mask += BCE(pred_mask, gt_mask)
