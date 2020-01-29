@@ -50,14 +50,14 @@ model.summary()
 
 criterion = YOLACTLoss()
 
-count = 1
+optimizer = tf.keras.optimizers.SGD(learning_rate=1e-3, momentum=0.9)
 # Todo trying to train one epoch with loss calculated
 for image, labels in train_dataloader:
-    tf.print(tf.shape(image))
-    # tf.print(tf.shape(labels))
-    output = model(image)
-    loss = criterion.loss(output, labels, 91)
-    tf.print("loss:", loss)
-    count -= 1
-    if not count:
-        break
+    with tf.GradientTape() as tape:
+        tf.print(tf.shape(image))
+        # tf.print(tf.shape(labels))
+        output = model(image)
+        loss = criterion.loss(output, labels, 91)
+        tf.print("loss:", loss)
+    grads = tape.gradient(loss, model.trainable_variables)
+    optimizer.apply_gradients(zip(grads, model.trainable_variables))

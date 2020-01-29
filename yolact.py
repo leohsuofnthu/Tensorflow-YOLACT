@@ -77,5 +77,4 @@ class Yolact(tf.keras.Model):
             'proto_out': protonet_out
         }
 
-        # Todo concatenate each prediction (conf, loc, mask)
         return pred
