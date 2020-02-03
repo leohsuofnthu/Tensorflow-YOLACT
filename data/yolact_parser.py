@@ -74,13 +74,11 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        tf.print("num_gt = ", tf.shape(classes)[0])
+        # read and normalize the image
         image = data['image']
-        tf.print("box", boxes)
-        tf.print("anchor", self._anchor_instance.get_anchors())
+        image = normalize_image(image)
 
-        # resize the image, box
-        tf.print("Resize image")
+        # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
@@ -94,16 +92,11 @@ class Parser(object):
         scale_y = tf.cast(self._output_size / image_height, tf.float32)
         scales = tf.stack([scale_x, scale_y, scale_x, scale_y])
         boxes = boxes / scales
-        # normalize the image
-        tf.print("normalize image")
-        image = normalize_image(image)
 
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
-        print("data augmentation")
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
-        tf.print("class original:", classes)
         # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
@@ -114,19 +107,14 @@ class Parser(object):
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)
 
-        tf.print("class", tf.shape(classes))
-        tf.print("mask", tf.shape(masks))
-
-        # match anchors
-        print("anchor matching")
+        # matching anchors
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
-
-        tf.print("id for anchors", max_id_for_anchors)
 
         labels = {
             'cls_targets': cls_targets,
             'box_targets': box_targets,
+            'bbox': boxes,
             'num_positive': num_pos,
             'positiveness': match_positiveness,
             'classes': classes,

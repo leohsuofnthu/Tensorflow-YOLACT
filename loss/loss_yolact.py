@@ -16,8 +16,8 @@ class YOLACTLoss(object):
 
     def loss(self, pred, label, num_classes):
         """
+        :param num_classes:
         :param anchors:
-        :param num_pos:
         :param label: labels dict from dataset
         :param pred:
         :return:
