@@ -75,7 +75,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        image = image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        # Todo Normalize Images
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
