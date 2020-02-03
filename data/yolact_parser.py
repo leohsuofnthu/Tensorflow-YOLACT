@@ -99,7 +99,7 @@ class Parser(object):
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
         # matching anchors
-        cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
+        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
         # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
@@ -111,10 +111,12 @@ class Parser(object):
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
 
+        """
         # Normalize bbox [ymin, xmin, ymax, xmax]
         w = tf.cast(self._output_size, tf.float32)
         h = tf.cast(self._output_size, tf.float32)
         boxes = boxes / tf.stack([h, w, h, w])
+        """
 
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)
@@ -124,7 +126,6 @@ class Parser(object):
             'cls_targets': cls_targets,
             'box_targets': box_targets,
             'bbox': boxes,
-            'num_positive': num_pos,
             'positiveness': match_positiveness,
             'classes': classes,
             'mask_target': masks,

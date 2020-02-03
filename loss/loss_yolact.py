@@ -31,19 +31,17 @@ class YOLACTLoss(object):
         # all label component
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
-        num_pos = label['num_positive']
         positiveness = label['positiveness']
-        classes = label['classes']
+        bbox = label['bbox']
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
-        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
-        # mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness, max_id_for_anchors,
-        # max_masks_for_train=100)
+        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness)
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness, max_id_for_anchors,
+                                    max_masks_for_train=100)
 
-        return conf_loss
-        # return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
+        return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
@@ -71,8 +69,6 @@ class YOLACTLoss(object):
         :param pred_cls: [batch, num_anchor, num_cls]
         :param gt_cls: [batch, num_anchor, 1]
         :param num_cls:
-        :param positive_indices:
-        :param neg_pos_ratio:
         :return:
         """
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
@@ -172,7 +168,7 @@ class YOLACTLoss(object):
             for num, value in enumerate(pos_max_id):
                 gt = gt_masks[idx][value]
                 pred = tf.nn.sigmoid(pred_mask[:, :, num])
-                
+
                 loss = loss + bceloss(gt, pred)
                 # Todo area calculation for normalizaiton
 

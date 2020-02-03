@@ -150,7 +150,6 @@ class Anchor(object):
         it can be useful to distinguish positive sample during loss calculation  
         """
         target_cls = tf.multiply(tf.cast(match_labels, tf.float32), match_positiveness)
-        num_positive = tf.math.count_nonzero(target_cls)
 
         # create loc target
         map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
@@ -162,4 +161,4 @@ class Anchor(object):
         # calculate offset
         target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
 
-        return target_cls, target_loc, num_positive, max_id_for_anchors, match_positiveness
+        return target_cls, target_loc, max_id_for_anchors, match_positiveness
