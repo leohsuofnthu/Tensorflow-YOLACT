@@ -77,7 +77,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        # Todo Normalize Images
+        image = normalize_image(image)
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])

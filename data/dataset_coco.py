@@ -67,6 +67,8 @@ for image, labels in train_dataloader:
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
 """
+
+"""
 # visualize the training sample
 # Sets up a timestamped log directory.
 logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -89,10 +91,4 @@ for image, labels in train_dataloader:
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
     print(cls)
-    # image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255,255,0), (0,255,255)])
-    """
-    with file_writer.as_default():
-        tf.summary.image("Training data", image_with_box, step=count)
-        # tf.summary.image("Training data", labels['mask_target'][0][0], step=count)
-    """
-    break
+"""
