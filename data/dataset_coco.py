@@ -10,6 +10,10 @@ import datetime
 import tensorflow as tf
 from data import yolact_parser
 from data import anchor
+import matplotlib.pyplot as plt
+import numpy as np
+import cv2
+from utils import label_map
 from yolact import Yolact
 from loss.loss_yolact import YOLACTLoss
 
@@ -41,9 +45,10 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     return dataset
 
 
-train_dataloader = prepare_dataloader("./coco", 2, "train")
+train_dataloader = prepare_dataloader("./coco", 1, "train")
 print(train_dataloader)
 
+"""
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
                aspect_ratio=[1, 0.5, 2], scales=[24, 48, 96, 192, 384])
 model.build(input_shape=(4, 550, 550, 3))
@@ -61,7 +66,6 @@ for image, labels in train_dataloader:
     grads = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-
 """
 # visualize the training sample
 # Sets up a timestamped log directory.
@@ -70,12 +74,21 @@ logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S
 file_writer = tf.summary.create_file_writer(logdir)
 count = 0
 for image, labels in train_dataloader:
-    print(image.shape)
-    boxes = labels['bbox']
-    image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255, 0, 255)])
+    image = np.squeeze(image.numpy())
+    bbox = labels['bbox'].numpy()
+    cls = labels['classes'].numpy()
+    for idx in range(5):
+        b = bbox[0][idx]*550
+        cv2.rectangle(image, (b[1], b[0]), (b[3],b[2]), (255,0,0), 2)
+        cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
 
+    cv2.imshow("check", image)
+    k = cv2.waitKey(0)
+    print(cls)
+    # image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255,255,0), (0,255,255)])
+    """
     with file_writer.as_default():
         tf.summary.image("Training data", image_with_box, step=count)
         # tf.summary.image("Training data", labels['mask_target'][0][0], step=count)
+    """
     break
-"""
