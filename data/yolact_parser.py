@@ -85,7 +85,7 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size], method="nearest")
+        masks = tf.image.resize(masks, [self._output_size, self._output_size], method="nearest")
         masks = tf.squeeze(masks)
 
         # resize boxes
@@ -106,7 +106,7 @@ class Parser(object):
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
-        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
+        pad_masks = tf.zeros([num_padding, self._output_size, self._output_size])
 
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)

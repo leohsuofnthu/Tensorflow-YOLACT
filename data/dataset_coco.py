@@ -77,11 +77,15 @@ for image, labels in train_dataloader:
     image = np.squeeze(image.numpy())
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()
+    mask = labels['mask_target'].numpy()
     for idx in range(5):
         b = bbox[0][idx]*550
         cv2.rectangle(image, (b[1], b[0]), (b[3],b[2]), (255,0,0), 2)
         cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
+        plt.figure()
+        plt.imshow(mask[0][idx])
 
+    plt.show()
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
     print(cls)
