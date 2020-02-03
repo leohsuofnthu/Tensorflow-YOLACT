@@ -15,7 +15,7 @@ from loss.loss_yolact import YOLACTLoss
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
 
-def get_dataset(tfrecord_dir, batch_size, subset="train"):
+def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
     print(tf.shape(files))
     shards = tf.data.Dataset.from_tensor_slices(files)
@@ -40,7 +40,7 @@ def get_dataset(tfrecord_dir, batch_size, subset="train"):
     return dataset
 
 
-train_dataloader = get_dataset("./coco", 2, "train")
+train_dataloader = prepare_dataloader("./coco", 2, "train")
 print(train_dataloader)
 
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
@@ -54,8 +54,6 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=1e-3, momentum=0.9)
 # Todo trying to train one epoch with loss calculated
 for image, labels in train_dataloader:
     with tf.GradientTape() as tape:
-        tf.print(tf.shape(image))
-        # tf.print(tf.shape(labels))
         output = model(image)
         loss = criterion.loss(output, labels, 91)
         tf.print("loss:", loss)

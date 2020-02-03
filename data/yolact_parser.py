@@ -2,7 +2,6 @@ from data import tfrecord_decoder
 from utils import augmentation
 from utils.utils import normalize_image
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 
 class Parser(object):

@@ -171,6 +171,7 @@ class YOLACTLoss(object):
             for num, value in enumerate(pos_max_id):
                 gt = gt_masks[idx][value]
                 pred = tf.nn.sigmoid(pred_mask[:, :, num])
+                
                 loss = loss + bceloss(gt, pred)
                 # Todo area calculation for normalizaiton
 
