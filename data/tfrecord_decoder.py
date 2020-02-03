@@ -30,7 +30,7 @@ class TfExampleDecoder(object):
         ymin = parsed_tensors['image/object/bbox/ymin'] * tf.cast(parsed_tensors['image/height'], tf.float32)
         xmax = parsed_tensors['image/object/bbox/xmax'] * tf.cast(parsed_tensors['image/width'], tf.float32)
         ymax = parsed_tensors['image/object/bbox/ymax'] * tf.cast(parsed_tensors['image/height'], tf.float32)
-        return tf.stack([xmin, ymin, xmax, ymax], axis=-1)
+        return tf.stack([ymin, xmin, ymax, xmax], axis=-1)
 
     def _decode_masks(self, parsed_tensors):
         def _decode_png_mask(png_bytes):

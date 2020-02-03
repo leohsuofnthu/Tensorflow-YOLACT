@@ -62,7 +62,6 @@ class Parser(object):
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
-        tf.print("Ignore crowd annotation")
         if self._skip_crowd_during_training and self._is_training:
             num_groundtrtuhs = tf.shape(input=classes)[0]
             with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
@@ -90,26 +89,41 @@ class Parser(object):
         # resize boxes
         scale_x = tf.cast(self._output_size / image_width, tf.float32)
         scale_y = tf.cast(self._output_size / image_height, tf.float32)
-        scales = tf.stack([scale_x, scale_y, scale_x, scale_y])
+        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes = boxes / scales
 
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
-        # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
-        num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
-        pad_classes = tf.zeros([num_padding], dtype=tf.int64)
-        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
-
-        if tf.shape(classes)[0] == 1:
-            masks = tf.expand_dims(masks, axis=0)
-        masks = tf.concat([masks, pad_masks], axis=0)
-        classes = tf.concat([classes, pad_classes], axis=0)
+        tf.print("image shape:", tf.shape(image))
+        tf.print("boxes shape:", tf.shape(boxes))
+        tf.print("masks shape:", tf.shape(masks))
 
         # matching anchors
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
+
+        # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
+        num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
+        pad_classes = tf.zeros([num_padding], dtype=tf.int64)
+        pad_boxes = tf.zeros([num_padding, 4])
+        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
+
+        if tf.shape(classes)[0] == 1:
+            masks = tf.expand_dims(masks, axis=0)
+
+        # Normalize bbox
+        boxes[0]
+
+        masks = tf.concat([masks, pad_masks], axis=0)
+        classes = tf.concat([classes, pad_classes], axis=0)
+        boxes = tf.concat([boxes, pad_boxes], axis=0)
+
+
+        tf.print("padded masks:", tf.shape(masks))
+        tf.print("padded classes:", tf.shape(classes))
+        tf.print("padded boxes:", tf.shape(boxes))
 
         labels = {
             'cls_targets': cls_targets,

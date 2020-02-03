@@ -37,12 +37,12 @@ class Anchor(object):
                     a = sqrt(ars)
                     w = scale[idx] * a
                     h = scale[idx] / a
-                    # directly use point form here => [xmin, ymin, xmax, ymax]
-                    xmin = max(0, x - (w / 2))
+                    # directly use point form here => [ymin, xmin, ymax, xmax]
                     ymin = max(0, y - (h / 2))
-                    xmax = min(img_size, x + (w / 2))
+                    xmin = max(0, x - (w / 2))
                     ymax = min(img_size, y + (h / 2))
-                    prior_boxes += [xmin, ymin, xmax, ymax]
+                    xmax = min(img_size, x + (w / 2))
+                    prior_boxes += [ymin, xmin, ymax, xmax]
                     count_anchor += 1
             num_anchors += count_anchor
             print(f_size, count_anchor)
@@ -56,9 +56,9 @@ class Anchor(object):
         :return:
         """
 
-        # unstack the xmin, ymin, xmax, ymax
-        xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(self.anchors, axis=-1)
-        xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(gt_bbox, axis=-1)
+        # unstack the ymin, xmin, ymax, xmax
+        ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(self.anchors, axis=-1)
+        ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(gt_bbox, axis=-1)
 
         # calculate intersection
         all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=0))
@@ -81,8 +81,8 @@ class Anchor(object):
         pairwise_inter = self._pairwise_intersection(gt_bbox=gt_bbox)
 
         # calculate areaA, areaB
-        xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(self.anchors, axis=-1)
-        xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(gt_bbox, axis=-1)
+        ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(self.anchors, axis=-1)
+        ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(gt_bbox, axis=-1)
 
         area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
         area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)

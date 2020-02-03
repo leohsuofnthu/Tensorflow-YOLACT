@@ -6,6 +6,7 @@ ref:https://jkjung-avt.github.io/tfrecords-for-keras/
 ref:https://github.com/tensorflow/models/blob/master/research/object_detection/utils/dataset_util.py
 """
 import os
+import datetime
 import tensorflow as tf
 from data import yolact_parser
 from data import anchor
@@ -40,7 +41,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     return dataset
 
 
-train_dataloader = prepare_dataloader("./coco", 2, "train")
+train_dataloader = prepare_dataloader("./coco", 8, "train")
 print(train_dataloader)
 
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
@@ -52,6 +53,7 @@ criterion = YOLACTLoss()
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=1e-3, momentum=0.9)
 # Todo trying to train one epoch with loss calculated
+"""
 for image, labels in train_dataloader:
     with tf.GradientTape() as tape:
         output = model(image)
@@ -59,3 +61,18 @@ for image, labels in train_dataloader:
         tf.print("loss:", loss)
     grads = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
+"""
+
+# visualize the training sample
+# Sets up a timestamped log directory.
+logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+# Creates a file writer for the log directory.
+file_writer = tf.summary.create_file_writer(logdir)
+count = 0
+for image, labels in train_dataloader:
+    print(image.shape)
+    boxes = labels['bbox']
+    # image_with_box = tf.image.draw_bounding_boxes(image, boxes[:1], [(0, 0, 0)])
+    with file_writer.as_default():
+        tf.summary.image("Training data", image, step=count)
+    break
