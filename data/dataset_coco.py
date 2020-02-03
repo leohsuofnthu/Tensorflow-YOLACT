@@ -41,7 +41,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     return dataset
 
 
-train_dataloader = prepare_dataloader("./coco", 8, "train")
+train_dataloader = prepare_dataloader("./coco", 2, "train")
 print(train_dataloader)
 
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
@@ -53,7 +53,6 @@ criterion = YOLACTLoss()
 
 optimizer = tf.keras.optimizers.SGD(learning_rate=1e-3, momentum=0.9)
 # Todo trying to train one epoch with loss calculated
-"""
 for image, labels in train_dataloader:
     with tf.GradientTape() as tape:
         output = model(image)
@@ -61,8 +60,9 @@ for image, labels in train_dataloader:
         tf.print("loss:", loss)
     grads = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
-"""
 
+
+"""
 # visualize the training sample
 # Sets up a timestamped log directory.
 logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
@@ -72,9 +72,10 @@ count = 0
 for image, labels in train_dataloader:
     print(image.shape)
     boxes = labels['bbox']
-    image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255, 255, 0)])
+    image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255, 0, 255)])
 
     with file_writer.as_default():
         tf.summary.image("Training data", image_with_box, step=count)
         # tf.summary.image("Training data", labels['mask_target'][0][0], step=count)
     break
+"""

@@ -37,12 +37,13 @@ class YOLACTLoss(object):
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
-        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
+        # loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness, )
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness,
-                                    max_id_for_anchors, max_masks_for_train=100)
+        # mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness, max_id_for_anchors,
+        # max_masks_for_train=100)
 
-        return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
+        return conf_loss
+        # return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """

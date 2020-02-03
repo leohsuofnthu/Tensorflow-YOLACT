@@ -73,6 +73,8 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
+        # Todo if there r some training sample only have crow label
+
         # read and normalize the image
         image = data['image']
         # Todo Normalize Images
@@ -96,10 +98,6 @@ class Parser(object):
         # data augmentation randomly
         image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
-        tf.print("image shape:", tf.shape(image))
-        tf.print("boxes shape:", tf.shape(boxes))
-        tf.print("masks shape:", tf.shape(masks))
-
         # matching anchors
         cls_targets, box_targets, num_pos, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
@@ -114,17 +112,13 @@ class Parser(object):
             masks = tf.expand_dims(masks, axis=0)
 
         # Normalize bbox [ymin, xmin, ymax, xmax]
-        w = tf.cast(550, tf.float32)
-        h = tf.cast(550, tf.float32)
+        w = tf.cast(self._output_size, tf.float32)
+        h = tf.cast(self._output_size, tf.float32)
         boxes = boxes / tf.stack([h, w, h, w])
 
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)
         boxes = tf.concat([boxes, pad_boxes], axis=0)
-
-        tf.print("padded masks:", tf.shape(masks))
-        tf.print("padded classes:", tf.shape(classes))
-        tf.print("padded boxes:", tf.shape(boxes))
 
         labels = {
             'cls_targets': cls_targets,
