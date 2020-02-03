@@ -72,7 +72,7 @@ count = 0
 for image, labels in train_dataloader:
     print(image.shape)
     boxes = labels['bbox']
-    # image_with_box = tf.image.draw_bounding_boxes(image, boxes[:1], [(0, 0, 0)])
+    image_with_box = tf.image.draw_bounding_boxes(image, boxes, [(255, 255, 0)])
     with file_writer.as_default():
-        tf.summary.image("Training data", image, step=count)
+        tf.summary.image("Training data", image_with_box, step=count)
     break

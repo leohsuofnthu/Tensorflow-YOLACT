@@ -90,7 +90,7 @@ class Parser(object):
         scale_x = tf.cast(self._output_size / image_width, tf.float32)
         scale_y = tf.cast(self._output_size / image_height, tf.float32)
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-        boxes = boxes / scales
+        boxes = boxes * scales
 
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
@@ -113,13 +113,14 @@ class Parser(object):
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
 
-        # Normalize bbox
-        boxes[0]
+        # Normalize bbox [ymin, xmin, ymax, xmax]
+        w = tf.cast(550, tf.float32)
+        h = tf.cast(550, tf.float32)
+        boxes = boxes / tf.stack([h, w, h, w])
 
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)
         boxes = tf.concat([boxes, pad_boxes], axis=0)
-
 
         tf.print("padded masks:", tf.shape(masks))
         tf.print("padded classes:", tf.shape(classes))
