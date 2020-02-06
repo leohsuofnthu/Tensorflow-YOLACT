@@ -15,9 +15,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
-flags.DEFINE_integer('epochs', 100,
-                     'epochs')
-flags.DEFINE_integer('batch_size', 1,
+flags.DEFINE_integer('iter', 1000,
+                     'iteraitons')
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -38,10 +38,12 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image)
-        loss = loss_fn(output, labels, 91)
-    grads = tape.gradient(loss, model.trainable_variables)
+        loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
+    logging.info("loss", total_loss)
+    grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    metrics.update_state(loss)
+    metrics.update_state(total_loss)
+    return loc_loss, conf_loss, mask_loss
 
 
 def valid_step():
@@ -81,6 +83,9 @@ def main(argv):
     optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
+    loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
+    conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
+    mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
 
     # -----------------------------------------------------------------
 
@@ -97,11 +102,32 @@ def main(argv):
 
     # Start the Training and Validation Process
     logging.info("Start the training process...")
-    for epoch in range(FLAGS.epochs):
-        for image, labels in train_dataset:
-            train_step(model, criterion, train_loss, optimizer, image, labels)
-        with train_summary_writer.as_default():
-            tf.summary.scalar('train loss', train_loss.result(), step=epoch)
+    iterations = FLAGS.iter
+    for image, labels in train_dataset:
+        iterations += 1
+        loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
+        loc.update_state(loc_loss)
+        conf.update_state(conf_loss)
+        mask.update_state(mask_loss)
+
+        if iterations < FLAGS.iter and iterations % 100 == 0:
+            with train_summary_writer.as_default():
+                tf.summary.scalar('Total loss', train_loss.result(), step=iterations)
+                tf.summary.scalar('Loc loss', loc.result(), step=iterations)
+                tf.summary.scalar('Conf loss', conf.result(), step=iterations)
+                tf.summary.scalar('Mask loss', mask.result(), step=iterations)
+
+            template = 'Epoch {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}. , Mask Loss: {}'
+            logging.info(template.format(iterations + 1,
+                                         train_loss.result(),
+                                         loc.result(),
+                                         conf.result(),
+                                         mask.result()))
+            # reset the
+            train_loss.reset_states()
+            loc.reset_states()
+            conf.reset_states()
+            mask.reset_states()
 
 
 if __name__ == '__main__':
