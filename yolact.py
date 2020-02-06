@@ -44,15 +44,15 @@ class Yolact(tf.keras.Model):
     def call(self, inputs):
         # backbone(ResNet + FPN)
         c3, c4, c5 = self.backbone_resnet(inputs)
-        print("c3: ", c3.shape)
-        print("c4: ", c4.shape)
-        print("c5: ", c5.shape)
+        # print("c3: ", c3.shape)
+        # print("c4: ", c4.shape)
+        # print("c5: ", c5.shape)
         fpn_out = self.backbone_fpn(c3, c4, c5)
 
         # Protonet branch
         p3 = fpn_out[0]
         protonet_out = self.protonet(p3)
-        print("protonet: ", protonet_out.shape)
+        # print("protonet: ", protonet_out.shape)
 
         # Prediction Head branch
         pred_cls = []

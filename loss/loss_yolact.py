@@ -74,12 +74,12 @@ class YOLACTLoss(object):
         """
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(pred_cls, [-1, num_cls])
-        tf.print("pred_cls:", tf.shape(pred_cls))
+        # tf.print("pred_cls:", tf.shape(pred_cls))
 
         # reshape gt_cls from [batch, num_anchor] => [batch * num_anchor, 1]
         gt_cls = tf.expand_dims(gt_cls, axis=-1)
         gt_cls = tf.reshape(gt_cls, [-1, 1])
-        tf.print("gt_cls:", tf.shape(gt_cls))
+        # tf.print("gt_cls:", tf.shape(gt_cls))
 
         # reshape positiveness to [batch*num_anchor, 1]
         positiveness = tf.expand_dims(positiveness, axis=-1)
@@ -89,9 +89,9 @@ class YOLACTLoss(object):
 
         # calculate the needed amount of  negative sample
         num_pos = tf.size(pos_indices[:, 0])
-        tf.print("num_pos = ", num_pos)
+        # tf.print("num_pos = ", num_pos)
         num_neg_needed = num_pos * self._neg_pos_ratio
-        tf.print("num_neg = ", num_neg_needed)
+        # tf.print("num_neg = ", num_neg_needed)
 
         # gather pos data, neg data separately
         pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
@@ -144,8 +144,8 @@ class YOLACTLoss(object):
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
         num_k = shape_proto[-1]
-        tf.print("Batch_size:", num_batch)
-        tf.print("K:", num_k)
+        # tf.print("Batch_size:", num_batch)
+        # tf.print("K:", num_k)
         loss_mask = []
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
@@ -160,15 +160,15 @@ class YOLACTLoss(object):
 
             pos_indices = tf.random.shuffle(tf.squeeze(tf.where(pos > 0)))
             num_pos = tf.size(pos_indices)
-            tf.print("num_pos =", num_pos)
+            # tf.print("num_pos =", num_pos)
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            tf.print("shape of predmask:,", tf.shape(pred_mask))
-            tf.print(pos_max_id)
+            # tf.print("shape of predmask:,", tf.shape(pred_mask))
+            # tf.print(pos_max_id)
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             loss = 0
