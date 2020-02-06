@@ -77,7 +77,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        image = normalize_image(image)
+        # image = normalize_image(image)
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
@@ -85,14 +85,21 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._output_size, self._output_size], method="nearest")
+        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size], method="nearest")
         masks = tf.squeeze(masks)
 
-        # resize boxes
+        # resize boxes for resized image
         scale_x = tf.cast(self._output_size / image_width, tf.float32)
         scale_y = tf.cast(self._output_size / image_height, tf.float32)
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes = boxes * scales
+
+        # resized boxes for proto output size
+        scale_x = tf.cast(self._proto_output_size/ image_width, tf.float32)
+        scale_y = tf.cast(self._proto_output_size / image_height, tf.float32)
+        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
+        boxes_norm = boxes * scales
+
 
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
@@ -106,7 +113,7 @@ class Parser(object):
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
-        pad_masks = tf.zeros([num_padding, self._output_size, self._output_size])
+        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
 
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
@@ -126,6 +133,7 @@ class Parser(object):
             'cls_targets': cls_targets,
             'box_targets': box_targets,
             'bbox': boxes,
+            'bbox_for_norm': boxes_norm,
             'positiveness': match_positiveness,
             'classes': classes,
             'mask_target': masks,

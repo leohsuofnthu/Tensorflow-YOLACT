@@ -1,4 +1,5 @@
 import tensorflow as tf
+from utils import utils
 
 
 class YOLACTLoss(object):
@@ -32,13 +33,13 @@ class YOLACTLoss(object):
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
         positiveness = label['positiveness']
-        bbox = label['bbox']
+        bbox_norm = label['bbox_for_norm']
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
 
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness)
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness)
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, box_targets, masks, positiveness, max_id_for_anchors,
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
                                     max_masks_for_train=100)
 
         return self._loss_weight_box * loc_loss + self._loss_weight_cls * conf_loss + self._loss_weight_mask * mask_loss
@@ -127,21 +128,22 @@ class YOLACTLoss(object):
         tf.print("loss_conf:", loss_conf)
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_offset, gt_masks, positiveness,
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox, gt_masks, positiveness,
                    max_id_for_anchors, max_masks_for_train):
         """
 
-        :param proto_output: [batch, 138, 138, k]
-        :param pred_mask_coef: [batch, num_anchors, k]
-        :param gt_offset: [batch, num_anchors, 4]
-        :param gt_masks: [batch, 100, 138, 138]
-        :param positiveness: [batch, num_anchors]
+        :param proto_output:
+        :param pred_mask_coef:
+        :param gt_bbox:
+        :param gt_masks:
+        :param positiveness:
+        :param max_id_for_anchors:
         :param max_masks_for_train:
-        :param max_id_for_anchors: [batch, num_anchor]
         :return:
         """
-        num_batch = tf.shape(proto_output)[0]
-        num_k = tf.shape(proto_output)[-1]
+        shape_proto = tf.shape(proto_output)
+        num_batch = shape_proto[0]
+        num_k = shape_proto[-1]
         tf.print("Batch_size:", num_batch)
         tf.print("K:", num_k)
         loss_mask = []
@@ -149,10 +151,16 @@ class YOLACTLoss(object):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
             mask_coef = pred_mask_coef[idx]
+            mask_gt = gt_masks[idx]
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
 
+            # convert bbox to center form for area normalization in mask loss
+            boxes_ct = tf.map_fn(lambda x: utils.map_to_center_form(x), gt_bbox[idx])
+
             pos_indices = tf.random.shuffle(tf.squeeze(tf.where(pos > 0)))
+            num_pos = tf.size(pos_indices)
+            tf.print("num_pos =", num_pos)
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
@@ -166,11 +174,12 @@ class YOLACTLoss(object):
             loss = 0
             bceloss = tf.keras.losses.BinaryCrossentropy()
             for num, value in enumerate(pos_max_id):
-                gt = gt_masks[idx][value]
+                gt = mask_gt[value]
+                # read the w, h of original bbox and scale it to fit proto size
+                box_w = boxes_ct[value][-2]
+                box_h = boxes_ct[value][-1]
                 pred = tf.nn.sigmoid(pred_mask[:, :, num])
-
-                loss = loss + bceloss(gt, pred)
-                # Todo area calculation for normalizaiton
+                loss = loss + (bceloss(gt, pred) / box_w * box_h)
 
             loss_mask.append(loss)
         loss_mask = tf.math.reduce_mean(loss_mask)

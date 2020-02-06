@@ -48,7 +48,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
 train_dataloader = prepare_dataloader("./coco", 1, "train")
 print(train_dataloader)
 
-"""
+
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=4,
                aspect_ratio=[1, 0.5, 2], scales=[24, 48, 96, 192, 384])
 model.build(input_shape=(4, 550, 550, 3))
@@ -66,7 +66,7 @@ for image, labels in train_dataloader:
     grads = tape.gradient(loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
 
-"""
+
 
 """
 # visualize the training sample
@@ -81,7 +81,7 @@ for image, labels in train_dataloader:
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()
     for idx in range(5):
-        b = bbox[0][idx]*550
+        b = bbox[0][idx]
         cv2.rectangle(image, (b[1], b[0]), (b[3],b[2]), (255,0,0), 2)
         cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
         plt.figure()
@@ -91,4 +91,5 @@ for image, labels in train_dataloader:
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
     print(cls)
+    break
 """
