@@ -127,6 +127,7 @@ class Parser(object):
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)
         boxes = tf.concat([boxes, pad_boxes], axis=0)
+        boxes_norm = tf.concat([boxes_norm, pad_boxes], axis=0)
 
         labels = {
             'cls_targets': cls_targets,
