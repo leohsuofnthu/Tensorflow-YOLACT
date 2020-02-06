@@ -15,7 +15,7 @@ class YOLACTLoss(object):
         self._neg_pos_ratio = neg_pos_ratio
         self._max_masks_for_train = max_masks_for_train
 
-    def loss(self, pred, label, num_classes):
+    def __call__(self, pred, label, num_classes):
         """
         :param num_classes:
         :param anchors:
@@ -108,7 +108,7 @@ class YOLACTLoss(object):
 
         # sort of -log(softmax class 0)
         neg_minus_log_class0_sort = tf.argsort(neg_minus_log_class0, direction="DESCENDING")
-        tf.print("neg_minus_log sort", tf.shape(neg_minus_log_class0_sort))
+        # tf.print("neg_minus_log sort", tf.shape(neg_minus_log_class0_sort))
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
         # Todo need to handle the situation if neg samples is not enough

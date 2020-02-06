@@ -95,11 +95,10 @@ class Parser(object):
         boxes = boxes * scales
 
         # resized boxes for proto output size
-        scale_x = tf.cast(self._proto_output_size/ image_width, tf.float32)
+        scale_x = tf.cast(self._proto_output_size / image_width, tf.float32)
         scale_y = tf.cast(self._proto_output_size / image_height, tf.float32)
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes_norm = boxes * scales
-
 
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly

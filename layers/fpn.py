@@ -21,15 +21,15 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
 
     def call(self, c3, c4, c5):
         p5 = self.lateralCov1(c5)
-        print("p5: ", p5.shape)
+        # print("p5: ", p5.shape)
         p6 = self.downSample1(p5)
-        print("p6: ", p6.shape)
+        # print("p6: ", p6.shape)
         p7 = self.downSample2(p6)
-        print("p7: ", p7.shape)
+        # print("p7: ", p7.shape)
         p4 = self._crop_and_concat(self.upSample(p5), self.lateralCov2(c4))
-        print("p4: ", p4.shape)
+        # print("p4: ", p4.shape)
         p3 = self._crop_and_concat(self.upSample(p4), self.lateralCov3(c3))
-        print("p3: ", p3.shape)
+        # print("p3: ", p3.shape)
         return [p3, p4, p5, p6, p7]
 
     @staticmethod
