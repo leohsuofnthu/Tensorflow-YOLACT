@@ -61,8 +61,8 @@ class YOLACTLoss(object):
         gt_offset = tf.gather_nd(gt_offset, pos_indices[:, :-1])
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
-        smoothl1loss = tf.keras.losses.Huber(delta=0.5)
-        loss_loc = tf.reduce_mean(smoothl1loss(gt_offset, pred_offset))
+        smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
+        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
         tf.print("loss_loc:", loss_loc)
         return loss_loc
 
