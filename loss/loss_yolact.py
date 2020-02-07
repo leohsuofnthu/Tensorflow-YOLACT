@@ -76,12 +76,10 @@ class YOLACTLoss(object):
         """
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(pred_cls, [-1, num_cls])
-        # tf.print("pred_cls:", tf.shape(pred_cls))
 
         # reshape gt_cls from [batch, num_anchor] => [batch * num_anchor, 1]
         gt_cls = tf.expand_dims(gt_cls, axis=-1)
         gt_cls = tf.reshape(gt_cls, [-1, 1])
-        # tf.print("gt_cls:", tf.shape(gt_cls))
 
         # reshape positiveness to [batch*num_anchor, 1]
         positiveness = tf.expand_dims(positiveness, axis=-1)
@@ -110,7 +108,6 @@ class YOLACTLoss(object):
 
         # sort of -log(softmax class 0)
         neg_minus_log_class0_sort = tf.argsort(neg_minus_log_class0, direction="DESCENDING")
-        # tf.print("neg_minus_log sort", tf.shape(neg_minus_log_class0_sort))
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
         # Todo need to handle the situation if neg samples is not enough
@@ -126,7 +123,7 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
+        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
         tf.print("loss_conf:", loss_conf)
         return loss_conf
 

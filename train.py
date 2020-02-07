@@ -15,9 +15,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
-flags.DEFINE_integer('iter', 1000,
+flags.DEFINE_integer('iter', 1,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 1,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -104,6 +104,8 @@ def main(argv):
     logging.info("Start the training process...")
     iterations = FLAGS.iter
     for image, labels in train_dataset:
+        if iterations > FLAGS.iter:
+            break
         iterations += 1
         loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
