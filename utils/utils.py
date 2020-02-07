@@ -37,7 +37,7 @@ def map_to_point_form(x):
     ymin = x[1] - (x[3] / 2)
     xmax = x[0] + (x[2] / 2)
     ymax = x[1] + (x[3] / 2)
-    return tf.stack([xmin, ymin, xmax, ymax])
+    return tf.stack([ymin, xmin, ymax, xmax])
 
 
 # encode the gt and anchors to offset

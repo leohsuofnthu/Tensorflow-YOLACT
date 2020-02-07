@@ -17,7 +17,7 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_integer('iter', 100,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 1,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')

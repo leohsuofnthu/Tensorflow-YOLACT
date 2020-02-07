@@ -1,5 +1,6 @@
 import tensorflow as tf
 from utils import utils
+import matplotlib.pyplot as plt
 
 
 class YOLACTLoss(object):
@@ -121,7 +122,9 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (tf.cast(tf.size(pos_indices), tf.float32))
+        loss_conf = tf.reduce_sum(
+            tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
+                        tf.cast(tf.size(pos_indices), tf.float32))
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox, gt_masks, positiveness,
@@ -139,9 +142,6 @@ class YOLACTLoss(object):
         """
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
-        num_k = shape_proto[-1]
-        # tf.print("Batch_size:", num_batch)
-        # tf.print("K:", num_k)
         loss_mask = []
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
@@ -151,11 +151,7 @@ class YOLACTLoss(object):
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
 
-            # convert bbox to center form for area normalization in mask loss
-            boxes_ct = tf.map_fn(lambda x: utils.map_to_center_form(x), gt_bbox[idx])
-
             pos_indices = tf.random.shuffle(tf.squeeze(tf.where(pos > 0)))
-            num_pos = tf.size(pos_indices)
             # tf.print("num_pos =", num_pos)
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
@@ -163,8 +159,6 @@ class YOLACTLoss(object):
             pos_max_id = tf.gather(max_id, pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            # tf.print("shape of predmask:,", tf.shape(pred_mask))
-            # tf.print(pos_max_id)
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             loss = 0
@@ -172,13 +166,9 @@ class YOLACTLoss(object):
             for num, value in enumerate(pos_max_id):
                 gt = mask_gt[value]
                 # read the w, h of original bbox and scale it to fit proto size
-                box_w = boxes_ct[value][-2]
-                box_h = boxes_ct[value][-1]
-                pred = tf.nn.sigmoid(pred_mask[:, :, num])
-                loss = loss + (bceloss(gt, pred) / box_w * box_h)
+                pred = pred_mask[:, :, num]
+                loss = loss + (bceloss(gt, pred))
 
-            loss_mask.append(loss)
-        loss_mask = tf.math.reduce_mean(loss_mask)
-        tf.print("loss_mask:", loss_mask)
-
+            loss_mask.append(loss / tf.cast(tf.size(pos_indices), tf.float32))
+        loss_mask = tf.math.reduce_sum(loss_mask)
         return loss_mask

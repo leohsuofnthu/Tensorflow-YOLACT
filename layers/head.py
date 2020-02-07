@@ -26,21 +26,16 @@ class PredictionModule(tf.keras.layers.Layer):
 
         # Todo those module are share for all predictions
         self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
-        self.Bn1 = tf.keras.layers.BatchNormalization()
         self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
-        self.Bn2 = tf.keras.layers.BatchNormalization()
 
-        self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
-                                                activation= "relu")
-        self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same", activation="relu")
+        self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same")
+        self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same")
         self.maskConv = tf.keras.layers.Conv2D(self.num_mask * self.num_anchors, (3, 3), 1, padding="same",
-                                               activation="relu")
+                                               activation='sigmoid')
 
     def call(self, p):
         p = self.Conv1(p)
-        p = self.Bn1(p)
         p = self.Conv2(p)
-        p = self.Bn2(p)
 
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)
