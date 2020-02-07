@@ -62,7 +62,7 @@ class YOLACTLoss(object):
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
-        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
+        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
         tf.print("loss_loc:", loss_loc)
         return loss_loc
 
@@ -123,7 +123,7 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits))
+        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / tf.cast(tf.size(pos_indices), tf.float32)
         tf.print("loss_conf:", loss_conf)
         return loss_conf
 
