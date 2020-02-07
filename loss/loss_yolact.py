@@ -63,7 +63,6 @@ class YOLACTLoss(object):
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
-        tf.print("loss_loc:", loss_loc)
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
@@ -110,7 +109,6 @@ class YOLACTLoss(object):
         neg_minus_log_class0_sort = tf.argsort(neg_minus_log_class0, direction="DESCENDING")
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
-        # Todo need to handle the situation if neg samples is not enough
         neg_indices_for_loss = neg_minus_log_class0_sort[:num_neg_needed]
 
         # combine the indices of pos and neg sample, create the label for them
@@ -123,8 +121,7 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / tf.cast(tf.size(pos_indices), tf.float32)
-        tf.print("loss_conf:", loss_conf)
+        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (tf.cast(tf.size(pos_indices), tf.float32))
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox, gt_masks, positiveness,
