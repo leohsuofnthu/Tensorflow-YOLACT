@@ -127,7 +127,7 @@ class YOLACTLoss(object):
                         tf.cast(tf.size(pos_indices), tf.float32))
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox, gt_masks, positiveness,
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
                    max_id_for_anchors, max_masks_for_train):
         """
 
@@ -148,6 +148,7 @@ class YOLACTLoss(object):
             proto = proto_output[idx]
             mask_coef = pred_mask_coef[idx]
             mask_gt = gt_masks[idx]
+            bbox_norm = gt_bbox_norm[idx]
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
 
@@ -165,10 +166,24 @@ class YOLACTLoss(object):
             bceloss = tf.keras.losses.BinaryCrossentropy()
             for num, value in enumerate(pos_max_id):
                 gt = mask_gt[value]
+                bbox = bbox_norm[value]
+                bbox_center = utils.map_to_center_form(bbox)
+                tf.print(bbox)
+                tf.print(bbox_center)
+                area = bbox_center[-1] * bbox_center[-2]
+                tf.print(area)
+                ymin, xmin, ymax, xmax = tf.unstack(bbox)
+                ymin = tf.cast(tf.math.floor(ymin), tf.int64)
+                xmin = tf.cast(tf.math.floor(xmin), tf.int64)
+                ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
+                xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
-                loss = loss + (bceloss(gt, pred))
+                loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
+                plt.figure()
+                plt.imshow(gt[ymin:ymax, xmin:xmax])
 
+            plt.show()
             loss_mask.append(loss / tf.cast(tf.size(pos_indices), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
         return loss_mask
