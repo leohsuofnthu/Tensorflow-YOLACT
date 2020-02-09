@@ -64,6 +64,7 @@ class YOLACTLoss(object):
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
+        tf.print("loc loss:", loss_loc)
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
@@ -125,6 +126,7 @@ class YOLACTLoss(object):
         loss_conf = tf.reduce_sum(
             tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
                         tf.cast(tf.size(pos_indices), tf.float32))
+        tf.print("conf loss:", loss_conf)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
@@ -168,10 +170,7 @@ class YOLACTLoss(object):
                 gt = mask_gt[value]
                 bbox = bbox_norm[value]
                 bbox_center = utils.map_to_center_form(bbox)
-                tf.print(bbox)
-                tf.print(bbox_center)
                 area = bbox_center[-1] * bbox_center[-2]
-                tf.print(area)
                 ymin, xmin, ymax, xmax = tf.unstack(bbox)
                 ymin = tf.cast(tf.math.floor(ymin), tf.int64)
                 xmin = tf.cast(tf.math.floor(xmin), tf.int64)
@@ -180,10 +179,7 @@ class YOLACTLoss(object):
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
-                plt.figure()
-                plt.imshow(gt[ymin:ymax, xmin:xmax])
-
-            plt.show()
             loss_mask.append(loss / tf.cast(tf.size(pos_indices), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
+        tf.print("mask loss:", loss_mask)
         return loss_mask
