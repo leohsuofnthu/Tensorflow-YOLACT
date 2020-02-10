@@ -109,7 +109,6 @@ def main(argv):
     logging.info("Start the training process...")
     iterations = 0
     for image, labels in train_dataset:
-        """
         i = np.squeeze(image.numpy())
         bbox = labels['bbox'].numpy()
         cls = labels['classes'].numpy()
@@ -118,13 +117,12 @@ def main(argv):
             b = bbox[0][idx]
             print(b)
             cv2.rectangle(i, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
-            cv2.putText(i, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
-            plt.figure()
-            plt.imshow(mask[0][idx])
+            # cv2.putText(i, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10),
+                        # cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
+            # plt.figure()
+            # plt.imshow(mask[0][idx])
         cv2.imshow("check", i)
         k = cv2.waitKey(0)
-        """
         if iterations > FLAGS.iter:
             break
         iterations += 1

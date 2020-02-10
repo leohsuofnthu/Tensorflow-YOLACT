@@ -49,7 +49,7 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     bboxes = tf.boolean_mask(bboxes, bool_mask)
     tf.print(tf.shape(bboxes))
     masks = tf.boolean_mask(masks, bool_mask)
-    tf.print(tf.shape(masks))
+    tf.print("masks", tf.shape(masks))
 
     # cropped the image
     cropped_image = tf.slice(img, bbox_begin, bbox_size)
@@ -62,6 +62,12 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     cropped_mask = tf.slice(masks, bbox_begin, bbox_size)
     cropped_mask.set_shape([None, None, None, 1])
     tf.print("crop mask", tf.shape(cropped_mask))
+
+    # resize boxes for resized image
+    scale_x = tf.cast(output_size / tf.shape(img)[0], tf.float32)
+    scale_y = tf.cast(output_size / tf.shape(img)[1], tf.float32)
+    scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
+    bboxes = bboxes * scales
 
     # resize cropped to output size
     img = tf.image.resize(img, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
