@@ -6,6 +6,18 @@ Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vg
 """
 
 
+def SSD_geometric_distortion():
+    pass
+
+
+def SSD_photometrics_distortion():
+    pass
+
+
+def random_mirror():
+    pass
+
+
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
     """
 
@@ -67,12 +79,17 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
     # resize mask, using nearest neighbor to make sure the mask still in binary
-    cropped_masks = tf.image.resize(cropped_masks, [proto_output_size, proto_output_size], method=tf.image.ResizeMethod.BILINEAR)
+    cropped_masks = tf.image.resize(cropped_masks, [proto_output_size, proto_output_size],
+                                    method=tf.image.ResizeMethod.BILINEAR)
     # binarize the mask
     cropped_masks = tf.cast(cropped_masks + 0.5, tf.int64)
     cropped_masks = tf.squeeze(cropped_masks)
     cropped_masks = tf.cast(cropped_masks, tf.float32)
     # Random mirroring (img, bbox, mask)
+    cropped_image = tf.image.flip_left_right(cropped_image)
+    cropped_masks = tf.image.flip_left_right(cropped_masks)
+    bboxes = tf.stack([bboxes[:, 0], 1 - bboxes[:, 3],
+                       bboxes[:, 2], 1 - bboxes[:, 1]], axis=-1)
 
     # Photometric Distortions (img)
 
