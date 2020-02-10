@@ -179,7 +179,10 @@ class YOLACTLoss(object):
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
+                plt.figure()
+                plt.imshow(gt[ymin:ymax, xmin:xmax])
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
+        plt.show()
         loss_mask = tf.math.reduce_sum(loss_mask)
         tf.print("mask loss:", loss_mask)
         return loss_mask

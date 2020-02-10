@@ -1,4 +1,5 @@
 import tensorflow as tf
+import numpy as np
 from utils import utils
 
 """
@@ -6,60 +7,13 @@ Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vg
 """
 
 
-def bbox_distortion():
-    pass
-
-
-def color_distortion(image, color_ordering=0):
-    if color_ordering == 0:
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-    elif color_ordering == 1:
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-    elif color_ordering == 2:
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-    elif color_ordering == 3:
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
-    else:
-        raise ValueError('color_ordering must be in [0, 3]')
-        # The random_* ops do not necessarily clamp.
-    return tf.clip_by_value(image, 0.0, 1.0)
-
-
-def random_mirror():
-    pass
-
-
-def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
-    """
-
-    :param img:
-    :param bbox:
-    :param mask:
-    :param output_size:
-    :param proto_output_size:
-    :return:
-    """
-    # normalize the bboxes
-    bboxes = bboxes / output_size
-
+def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes):
     # Geometric Distortions (img, bbox, mask)
     bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
         tf.shape(img),
         bounding_boxes=tf.expand_dims(bboxes, 0),
         min_object_covered=0.3,
-        aspect_ratio_range=(0.9, 1.1),
+        aspect_ratio_range=(0.5, 2),
         area_range=(0.1, 1.0),
         max_attempts=200,
         use_image_if_no_bounding_boxes=True)
@@ -101,23 +55,88 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
 
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
-    # resize mask, using nearest neighbor to make sure the mask still in binary
-    cropped_masks = tf.image.resize(cropped_masks, [proto_output_size, proto_output_size],
-                                    method=tf.image.ResizeMethod.BILINEAR)
-    # binarize the mask
-    cropped_masks = tf.cast(cropped_masks + 0.5, tf.int64)
-    cropped_masks = tf.squeeze(cropped_masks)
-    cropped_masks = tf.cast(cropped_masks, tf.float32)
+
+    return cropped_image, bboxes, cropped_masks, classes
+
+
+def photometric_distortion(image):
+    color_ordering = np.random.randint(4, size=1)[0]
+    if color_ordering == 0:
+        tf.print("order 0")
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+    elif color_ordering == 1:
+        tf.print("order 1")
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+    elif color_ordering == 2:
+        tf.print("order 2")
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    elif color_ordering == 3:
+        tf.print("order 3")
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    else:
+        raise ValueError('color_ordering must be in [0, 3]')
+        # The random_* ops do not necessarily clamp.
+    return tf.clip_by_value(image, 0.0, 1.0)
+
+
+def horizontal_flip(image, bboxes, masks):
     # Random mirroring (img, bbox, mask)
-    cropped_image = tf.image.flip_left_right(cropped_image)
-    cropped_masks = tf.image.flip_left_right(cropped_masks)
+    image = tf.image.flip_left_right(image)
+    masks = tf.image.flip_left_right(masks)
     bboxes = tf.stack([bboxes[:, 0], 1 - bboxes[:, 3],
                        bboxes[:, 2], 1 - bboxes[:, 1]], axis=-1)
+    return image, bboxes, masks
 
-    # Photometric Distortions (img)
-    cropped_image = color_distortion(cropped_image)
+
+def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
+    """
+
+    :param img:
+    :param bbox:
+    :param mask:
+    :param output_size:
+    :param proto_output_size:
+    :return:
+    """
+    # normalize the bboxes
+    bboxes = bboxes / output_size
+
+    # generate random
+    FLAGS = np.random.randint(2, size=3)
+    FLAG_GEO_DISTORTION = FLAGS[0]
+    FLAG_PHOTO_DISTORTION = FLAGS[1]
+    FLAG_HOR_FLIP = FLAGS[2]
+
+    # Random Geometric Distortion (img, bboxes, masks)
+    if FLAG_GEO_DISTORTION:
+        img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
+
+    # Random Photometric Distortions (img)
+    if FLAG_PHOTO_DISTORTION:
+        img = photometric_distortion(img)
+
+    if FLAG_HOR_FLIP:
+        img, bboxes, masks = horizontal_flip(img, bboxes, masks)
+
+    # resize masks to protosize
+    masks = tf.image.resize(masks, [proto_output_size, proto_output_size],
+                            method=tf.image.ResizeMethod.BILINEAR)
+    masks = tf.cast(masks + 0.5, tf.int64)
+    masks = tf.squeeze(masks)
+    masks = tf.cast(masks, tf.float32)
 
     # rescale to ResNet input (0~255) and use preprocess input function from tf keras ResNet 50
     # cropped_image = cropped_image * 255
-
-    return cropped_image, bboxes, cropped_masks, classes
+    return img, bboxes, masks, classes
