@@ -31,6 +31,18 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
     distort_bbox = distort_bbox[0, 0]
 
+    # cropped the image
+    cropped_image = tf.slice(img, bbox_begin, bbox_size)
+    tf.print("crop img", tf.shape(cropped_image))
+    cropped_image.set_shape([None, None, 3])
+
+    # cropped the mask
+    bbox_begin = tf.concat([[0], bbox_begin], axis=0)
+    bbox_size = tf.concat([[-1], bbox_size], axis=0)
+    cropped_masks = tf.slice(masks, bbox_begin, bbox_size)
+    cropped_masks.set_shape([None, None, None, 1])
+    tf.print("crop mask", tf.shape(cropped_masks))
+
     # resize the scale of bboxes for cropped image
     v = tf.stack([distort_bbox[0], distort_bbox[1], distort_bbox[0], distort_bbox[1]])
     bboxes = bboxes - v
@@ -40,6 +52,7 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
                   distort_bbox[3] - distort_bbox[1]])
     bboxes = bboxes / s
 
+    # filter out
     tf.print("original bbox", tf.shape(bboxes))
     scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype), bboxes)
     bool_mask = scores > 0.5
@@ -48,39 +61,21 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     tf.print(tf.shape(classes))
     bboxes = tf.boolean_mask(bboxes, bool_mask)
     tf.print(tf.shape(bboxes))
-    masks = tf.boolean_mask(masks, bool_mask)
-    tf.print("masks", tf.shape(masks))
-
-    # cropped the image
-    cropped_image = tf.slice(img, bbox_begin, bbox_size)
-    tf.print("crop img", tf.shape(cropped_image))
-    cropped_image.set_shape([None, None, 3])
-
-    # cropped the mask
-    bbox_begin = tf.concat([[0], bbox_begin], axis=0)
-    bbox_size = tf.concat([[-1], bbox_size], axis=0)
-    cropped_mask = tf.slice(masks, bbox_begin, bbox_size)
-    cropped_mask.set_shape([None, None, None, 1])
-    tf.print("crop mask", tf.shape(cropped_mask))
-
-    # resize boxes for resized image
-    scale_x = tf.cast(output_size / tf.shape(img)[0], tf.float32)
-    scale_y = tf.cast(output_size / tf.shape(img)[1], tf.float32)
-    scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-    bboxes = bboxes * scales
+    cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
+    tf.print("masks", tf.shape(cropped_masks))
 
     # resize cropped to output size
-    img = tf.image.resize(img, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
+    cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
     # resize mask, using nearest neighbor to make sure the mask still in binary
-    masks = tf.image.resize(cropped_mask, [proto_output_size, proto_output_size], method=tf.image.ResizeMethod.BILINEAR)
+    cropped_masks = tf.image.resize(cropped_masks, [proto_output_size, proto_output_size], method=tf.image.ResizeMethod.BILINEAR)
     # binarize the mask
-    masks = tf.cast(masks + 0.5, tf.int64)
-    masks = tf.squeeze(masks)
-    masks = tf.cast(masks, tf.float32)
+    cropped_masks = tf.cast(cropped_masks + 0.5, tf.int64)
+    cropped_masks = tf.squeeze(cropped_masks)
+    cropped_masks = tf.cast(cropped_masks, tf.float32)
     # Random mirroring (img, bbox, mask)
 
     # Photometric Distortions (img)
 
     # rescale to ResNet input (0~255) and use preprocess input function from tf keras ResNet 50
 
-    return img, bboxes, masks, classes
+    return cropped_image, bboxes, cropped_masks, classes
