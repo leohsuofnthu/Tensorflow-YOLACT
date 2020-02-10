@@ -6,12 +6,35 @@ Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vg
 """
 
 
-def SSD_geometric_distortion():
+def bbox_distortion():
     pass
 
 
-def SSD_photometrics_distortion():
-    pass
+def color_distortion(image, color_ordering=0):
+    if color_ordering == 0:
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+    elif color_ordering == 1:
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+    elif color_ordering == 2:
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+    elif color_ordering == 3:
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    else:
+        raise ValueError('color_ordering must be in [0, 3]')
+        # The random_* ops do not necessarily clamp.
+    return tf.clip_by_value(image, 0.0, 1.0)
 
 
 def random_mirror():
@@ -92,7 +115,9 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
                        bboxes[:, 2], 1 - bboxes[:, 1]], axis=-1)
 
     # Photometric Distortions (img)
+    cropped_image = color_distortion(cropped_image)
 
     # rescale to ResNet input (0~255) and use preprocess input function from tf keras ResNet 50
+    # cropped_image = cropped_image * 255
 
     return cropped_image, bboxes, cropped_masks, classes
