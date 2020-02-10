@@ -74,10 +74,11 @@ class Parser(object):
             masks = tf.gather(masks, indices)
 
         # Todo if there r some training sample only have crow label
+        if tf.size(classes) == 0:
+            tf.print("Detect image without any labels")
 
         # read and normalize the image
         image = data['image']
-        # image = normalize_image(image)
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
@@ -85,8 +86,7 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size], method="nearest")
-        masks = tf.squeeze(masks)
+        masks = tf.image.resize(masks, [self._output_size, self._output_size], method="nearest")
 
         # resize boxes for resized image
         scale_x = tf.cast(self._output_size / image_width, tf.float32)
@@ -94,15 +94,19 @@ class Parser(object):
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes = boxes * scales
 
+        # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
+        # data augmentation randomly
+        image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
+                                                                        self._proto_output_size, classes)
+
+        # remember to unnormalized the bbox
+        boxes = boxes * self._output_size
+
         # resized boxes for proto output size
         scale_x = tf.cast(self._proto_output_size / self._output_size, tf.float32)
         scale_y = tf.cast(self._proto_output_size / self._output_size, tf.float32)
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes_norm = boxes * scales
-
-        # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
-        # data augmentation randomly
-        image, boxes, masks = augmentation.random_augmentation(image, boxes, masks)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
@@ -135,6 +139,7 @@ class Parser(object):
         return image, labels
 
     def _parse_eval_data(self, data):
+
         pass
 
     def _parse_predict_data(self, data):

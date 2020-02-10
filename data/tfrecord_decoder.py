@@ -22,7 +22,6 @@ class TfExampleDecoder(object):
     def _decode_image(self, parsed_tensors):
         image = tf.io.decode_jpeg(parsed_tensors['image/encoded'])
         image.set_shape([None, None, 3])
-        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         return image
 
     def _decode_boxes(self, parsed_tensors):
