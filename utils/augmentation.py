@@ -42,7 +42,7 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
 
     # filter out
     scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype), bboxes)
-    bool_mask = scores > 0.5
+    bool_mask = scores > 0.3
     classes = tf.boolean_mask(classes, bool_mask)
     bboxes = tf.boolean_mask(bboxes, bool_mask)
     cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
@@ -56,19 +56,19 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
 def photometric_distortion(image):
     color_ordering = np.random.randint(4, size=1)[0]
     if color_ordering == 0:
-        tf.print("order 0")
+        # tf.print("order 0")
         image = tf.image.random_brightness(image, max_delta=32. / 255.)
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
     elif color_ordering == 1:
-        tf.print("order 1")
+        # tf.print("order 1")
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
         image = tf.image.random_brightness(image, max_delta=32. / 255.)
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
     elif color_ordering == 2:
-        tf.print("order 2")
+        # tf.print("order 2")
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
         image = tf.image.random_brightness(image, max_delta=32. / 255.)

@@ -54,6 +54,7 @@ class Parser(object):
 
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
+
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
