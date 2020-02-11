@@ -133,5 +133,6 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     masks = tf.cast(masks, tf.float32)
 
     # rescale to ResNet input (0~255) and use preprocess input function from tf keras ResNet 50
-    # cropped_image = cropped_image * 255
+    img = img * 255
+
     return img, bboxes, masks, classes
