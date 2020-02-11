@@ -40,8 +40,8 @@ class Parser(object):
         # Data is parsed depending on the model.
         if mode == "train":
             self._parse_fn = self._parse_train_data
-        elif mode == "eval":
-            self._parse_fn = self._parse_eval_data
+        elif mode == "val":
+            self._parse_fn = self._parse_train_data
         elif mode == "test":
             self._parse_fn = self._parse_predict_data
         else:
@@ -60,8 +60,6 @@ class Parser(object):
         image_height = data['height']
         image_width = data['width']
 
-        tf.print(tf.shape(masks))
-
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
         if self._skip_crowd_during_training and self._is_training:
@@ -75,12 +73,12 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # Todo if there r some training sample only have crow label
+        # There might be some samples only have crowd annotation
         if tf.size(classes) == 0:
-            tf.print("Detect image without any labels")
-            classes = tf.zeros(2, tf.int64)
-            boxes = tf.zeros([2, 4], tf.float32)
-            masks = tf.zeros([2, image_height, image_width], tf.float32)
+            tf.print("Detect image with only crowd")
+            classes = tf.zeros(1, tf.int64)
+            boxes = tf.zeros([1, 4], tf.float32)
+            masks = tf.zeros([1, image_height, image_width], tf.float32)
 
         # read and normalize the image
         image = data['image']
@@ -100,10 +98,19 @@ class Parser(object):
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes = boxes * scales
 
+        tf.print("image shape", tf.shape(image))
+
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
                                                                         self._proto_output_size, classes)
+
+        # There might be no label after augmentation
+        if tf.size(classes) == 0:
+            tf.print("Detect image without any labels after aug")
+            classes = tf.zeros(1, tf.int64)
+            boxes = tf.zeros([1, 4], tf.float32)
+            masks = tf.zeros([self._proto_output_size, self._proto_output_size], tf.float32)
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
@@ -131,6 +138,9 @@ class Parser(object):
         classes = tf.concat([classes, pad_classes], axis=0)
         boxes = tf.concat([boxes, pad_boxes], axis=0)
         boxes_norm = tf.concat([boxes_norm, pad_boxes], axis=0)
+
+        tf.print("return img", tf.shape(image))
+        tf.print("return mask", tf.shape(masks))
 
         labels = {
             'cls_targets': cls_targets,

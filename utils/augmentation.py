@@ -1,5 +1,6 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 from utils import utils
 
 """
@@ -115,20 +116,28 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
 
     # generate random
     FLAGS = np.random.randint(2, size=3)
-    FLAG_GEO_DISTORTION = FLAGS[0]
-    FLAG_PHOTO_DISTORTION = FLAGS[1]
-    FLAG_HOR_FLIP = FLAGS[2]
+    FLAG_GEO_DISTORTION = 1
+    FLAG_PHOTO_DISTORTION = 1
+    FLAG_HOR_FLIP = 1
 
     # Random Geometric Distortion (img, bboxes, masks)
     if FLAG_GEO_DISTORTION:
         img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
+        tf.print("geo img", tf.shape(img))
+        tf.print("geo bboxes", tf.shape(bboxes))
+        tf.print("geo masks", tf.shape(masks))
 
     # Random Photometric Distortions (img)
     if FLAG_PHOTO_DISTORTION:
         img = photometric_distortion(img)
+        tf.print("pho img", tf.shape(img))
 
     if FLAG_HOR_FLIP:
-        img, bboxes, masks = horizontal_flip(img, bboxes, masks)
+        if tf.size(bboxes) > 0:
+            img, bboxes, masks = horizontal_flip(img, bboxes, masks)
+            tf.print("flip img", tf.shape(img))
+            tf.print("flip bboxes", tf.shape(bboxes))
+            tf.print("flip masks", tf.shape(masks))
 
     # resize masks to protosize
     masks = tf.image.resize(masks, [proto_output_size, proto_output_size],

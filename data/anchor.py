@@ -110,10 +110,11 @@ class Anchor(object):
         :return:
         """
         num_gt = tf.shape(gt_bbox)[0]
-        tf.print("num gt", num_gt)
+        # tf.print("num gt", num_gt)
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox)
-        tf.print("iou", pairwise_iou)
+        # tf.print("iou", pairwise_iou)
+
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
@@ -148,6 +149,7 @@ class Anchor(object):
         3. neural sample will have -1 * label[idx] = -1 * label[idx] 
         it can be useful to distinguish positive sample during loss calculation  
         """
+
         target_cls = tf.multiply(tf.cast(match_labels, tf.float32), match_positiveness)
 
         # create loc target

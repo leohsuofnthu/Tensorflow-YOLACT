@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import cv2
 from utils import label_map
-from yolact import Yolact
 from loss.loss_yolact import YOLACTLoss
+from yolact import Yolact
 
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
@@ -38,15 +38,15 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                                   unmatched_threshold=0.5,
                                   mode=subset)
 
-    dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    dataset = dataset.map(map_func=parser)
     dataset = dataset.batch(batch_size)
-    # dataset = dataset.prefetch(batch_size)
+    dataset = dataset.prefetch(batch_size)
 
     return dataset
 
 
 """
-train_dataloader = prepare_dataloader("./coco", 1, "train")
+train_dataloader = prepare_dataloader("./coco", 8, "train")
 print(train_dataloader)
 # visualize the training sample
 # Sets up a timestamped log directory.
@@ -54,7 +54,7 @@ logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S
 # Creates a file writer for the log directory.
 file_writer = tf.summary.create_file_writer(logdir)
 count = 0
-for image, labels in train_dataloader:
+for image, label in train_dataloader:
     image = np.squeeze(image.numpy())
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()

@@ -159,11 +159,19 @@ class YOLACTLoss(object):
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
-            if tf.size(pos_mask_coef) == 0:
-                tf.print("No Positive, ignore this batch")
-                continue
             pos_max_id = tf.gather(max_id, pos_indices)
+
+            if tf.size(pos_indices) == 0:
+                tf.print("detect no positive")
+                continue
+            elif tf.size(pos_indices) == 1:
+                tf.print("detect only one dim")
+                pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
+                pos_max_id = tf.expand_dims(pos_max_id, axis=0)
+
             # [138, 138, num_pos]
+            tf.print("proto shape", tf.shape(proto))
+            tf.print("pos_mask_coef shape", tf.shape(pos_mask_coef))
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
