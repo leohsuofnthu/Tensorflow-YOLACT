@@ -159,6 +159,9 @@ class YOLACTLoss(object):
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
+            if tf.size(pos_mask_coef) == 0:
+                tf.print("No Positive, ignore this batch")
+                continue
             pos_max_id = tf.gather(max_id, pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
@@ -179,10 +182,7 @@ class YOLACTLoss(object):
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
-                plt.figure()
-                plt.imshow(gt[ymin:ymax, xmin:xmax])
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
-        plt.show()
         loss_mask = tf.math.reduce_sum(loss_mask)
         tf.print("mask loss:", loss_mask)
         return loss_mask

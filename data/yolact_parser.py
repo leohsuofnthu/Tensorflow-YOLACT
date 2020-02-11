@@ -60,6 +60,8 @@ class Parser(object):
         image_height = data['height']
         image_width = data['width']
 
+        tf.print(tf.shape(masks))
+
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
         if self._skip_crowd_during_training and self._is_training:
@@ -76,6 +78,9 @@ class Parser(object):
         # Todo if there r some training sample only have crow label
         if tf.size(classes) == 0:
             tf.print("Detect image without any labels")
+            classes = tf.zeros(2, tf.int64)
+            boxes = tf.zeros([2, 4], tf.float32)
+            masks = tf.zeros([2, image_height, image_width], tf.float32)
 
         # read and normalize the image
         image = data['image']

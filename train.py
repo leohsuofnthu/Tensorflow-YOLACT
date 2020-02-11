@@ -109,6 +109,8 @@ def main(argv):
     logging.info("Start the training process...")
     iterations = 0
     for image, labels in train_dataset:
+
+        """
         i = np.squeeze(image.numpy())
         bbox = labels['bbox'].numpy()
         cls = labels['classes'].numpy()
@@ -123,6 +125,7 @@ def main(argv):
             plt.imshow(m[0][idx])
         cv2.imshow("check", i)
         k = cv2.waitKey(0)
+        """
         if iterations > FLAGS.iter:
             break
         iterations += 1

@@ -40,7 +40,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
 
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(batch_size)
+    # dataset = dataset.prefetch(batch_size)
 
     return dataset
 

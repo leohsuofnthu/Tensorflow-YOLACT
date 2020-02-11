@@ -94,10 +94,9 @@ class Anchor(object):
         pairwise_union = pairwise_area - pairwise_inter
 
         # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
-
         return tf.where(
-            tf.equal(pairwise_inter, 0.0),
-            tf.zeros_like(pairwise_inter), pairwise_inter / pairwise_union)
+            tf.equal(pairwise_union, 0.0),
+            tf.zeros_like(pairwise_union), pairwise_inter / pairwise_union)
 
     def get_anchors(self):
         return self.anchors
@@ -111,10 +110,10 @@ class Anchor(object):
         :return:
         """
         num_gt = tf.shape(gt_bbox)[0]
-
+        tf.print("num gt", num_gt)
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox)
-
+        tf.print("iou", pairwise_iou)
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
