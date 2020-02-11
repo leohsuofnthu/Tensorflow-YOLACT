@@ -12,12 +12,22 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
         super(FeaturePyramidNeck, self).__init__()
         self.upSample = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
 
-        self.downSample1 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same", activation="relu")
-        self.downSample2 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same", activation="relu")
+        self.downSample1 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
+                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  activation="relu")
+        self.downSample2 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
+                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  activation="relu")
 
-        self.lateralCov1 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same", activation="relu")
-        self.lateralCov2 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same", activation="relu")
-        self.lateralCov3 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same", activation="relu")
+        self.lateralCov1 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
+                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  activation="relu")
+        self.lateralCov2 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
+                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  activation="relu")
+        self.lateralCov3 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
+                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  activation="relu")
 
     def call(self, c3, c4, c5):
         p5 = self.lateralCov1(c5)

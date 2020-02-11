@@ -22,9 +22,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 100,
+flags.DEFINE_integer('train_iter', 1000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 1,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -32,9 +32,9 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 10000,
+flags.DEFINE_float('save_interval', 100,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 50,
+flags.DEFINE_float('valid_iter', 500,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -126,25 +126,26 @@ def main(argv):
     # Start the Training and Validation Process
     logging.info("Start the training process...")
     iterations = 0
+    # Freeze the BN layers in pre-trained backbone
+    model.set_bn('train')
     for image, labels in train_dataset:
         """
         i = np.squeeze(image.numpy())
         bbox = labels['bbox'].numpy()
         cls = labels['classes'].numpy()
         m = labels['mask_target'].numpy()
-        for idx in range(3):
+        for idx in range(2):
             b = bbox[0][idx]
             print(b)
             cv2.rectangle(i, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
-            # cv2.putText(i, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10),
-                        # cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
+            cv2.putText(i, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
             plt.figure()
             plt.imshow(m[0][idx])
         cv2.imshow("check", i)
         k = cv2.waitKey(0)
         """
         # check iteration and change the learning rate
-
         if iterations > FLAGS.train_iter:
             break
 
@@ -155,6 +156,7 @@ def main(argv):
         mask.update_state(mask_loss)
 
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
+            model.set_bn('valid')
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
@@ -187,7 +189,7 @@ def main(argv):
                                                loc.result(),
                                                conf.result(),
                                                mask.result()))
-            logging.info(train_template.format(iterations + 1,
+            logging.info(valid_template.format(iterations + 1,
                                                valid_loss.result(),
                                                v_loc.result(),
                                                v_conf.result(),
@@ -202,7 +204,7 @@ def main(argv):
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
-
+            model.set_bn('train')
 
 if __name__ == '__main__':
     app.run(main)

@@ -25,12 +25,19 @@ class PredictionModule(tf.keras.layers.Layer):
         self.num_mask = num_mask
 
         # Todo those module are share for all predictions
-        self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
-        self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same", activation="relu")
+        self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
+                                            kernel_initializer=tf.keras.initializers.he_normal(),
+                                            activation="relu")
+        self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
+                                            kernel_initializer=tf.keras.initializers.he_normal(),
+                                            activation="relu")
 
-        self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same")
-        self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same")
+        self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
+                                                kernel_initializer=tf.keras.initializers.he_normal())
+        self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same",
+                                              kernel_initializer=tf.keras.initializers.he_normal())
         self.maskConv = tf.keras.layers.Conv2D(self.num_mask * self.num_anchors, (3, 3), 1, padding="same",
+                                               kernel_initializer=tf.keras.initializers.he_normal(),
                                                activation='sigmoid')
 
     def call(self, p):

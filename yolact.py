@@ -41,6 +41,16 @@ class Yolact(tf.keras.Model):
             pred = PredictionModule(256, f_size, len(aspect_ratio), num_class, num_mask)
             self.predictionHead.append(pred)
 
+    def set_bn(self, mode='train'):
+        if mode == 'train':
+            for layer in self.backbone_resnet.layers:
+                if isinstance(layer, tf.keras.layers.BatchNormalization):
+                    layer.trainable = False
+        else:
+            for layer in self.backbone_resnet.layers:
+                if isinstance(layer, tf.keras.layers.BatchNormalization):
+                    layer.trainable = True
+
     def call(self, inputs):
         # backbone(ResNet + FPN)
         c3, c4, c5 = self.backbone_resnet(inputs)

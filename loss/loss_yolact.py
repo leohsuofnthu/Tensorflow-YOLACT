@@ -170,8 +170,6 @@ class YOLACTLoss(object):
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
 
             # [138, 138, num_pos]
-            tf.print("proto shape", tf.shape(proto))
-            tf.print("pos_mask_coef shape", tf.shape(pos_mask_coef))
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
@@ -190,6 +188,9 @@ class YOLACTLoss(object):
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
+                # plt.figure()
+                # plt.imshow(gt[ymin:ymax, xmin:xmax])
+            # plt.show()
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
         tf.print("mask loss:", loss_mask)

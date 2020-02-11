@@ -23,7 +23,6 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
 
     # cropped the image
     cropped_image = tf.slice(img, bbox_begin, bbox_size)
-    tf.print("crop img", tf.shape(cropped_image))
     cropped_image.set_shape([None, None, 3])
 
     # cropped the mask
@@ -31,7 +30,6 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bbox_size = tf.concat([[-1], bbox_size], axis=0)
     cropped_masks = tf.slice(masks, bbox_begin, bbox_size)
     cropped_masks.set_shape([None, None, None, 1])
-    tf.print("crop mask", tf.shape(cropped_masks))
 
     # resize the scale of bboxes for cropped image
     v = tf.stack([distort_bbox[0], distort_bbox[1], distort_bbox[0], distort_bbox[1]])
@@ -43,16 +41,11 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bboxes = bboxes / s
 
     # filter out
-    tf.print("original bbox", tf.shape(bboxes))
     scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype), bboxes)
     bool_mask = scores > 0.5
-    tf.print(bool_mask)
     classes = tf.boolean_mask(classes, bool_mask)
-    tf.print(tf.shape(classes))
     bboxes = tf.boolean_mask(bboxes, bool_mask)
-    tf.print(tf.shape(bboxes))
     cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
-    tf.print("masks", tf.shape(cropped_masks))
 
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
@@ -123,21 +116,14 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     # Random Geometric Distortion (img, bboxes, masks)
     if FLAG_GEO_DISTORTION:
         img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
-        tf.print("geo img", tf.shape(img))
-        tf.print("geo bboxes", tf.shape(bboxes))
-        tf.print("geo masks", tf.shape(masks))
 
     # Random Photometric Distortions (img)
     if FLAG_PHOTO_DISTORTION:
         img = photometric_distortion(img)
-        tf.print("pho img", tf.shape(img))
 
     if FLAG_HOR_FLIP:
         if tf.size(bboxes) > 0:
             img, bboxes, masks = horizontal_flip(img, bboxes, masks)
-            tf.print("flip img", tf.shape(img))
-            tf.print("flip bboxes", tf.shape(bboxes))
-            tf.print("flip masks", tf.shape(masks))
 
     # resize masks to protosize
     masks = tf.image.resize(masks, [proto_output_size, proto_output_size],
