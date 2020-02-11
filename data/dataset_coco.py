@@ -38,7 +38,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                                   unmatched_threshold=0.5,
                                   mode=subset)
 
-    dataset = dataset.map(map_func=parser)
+    dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(batch_size)
 
