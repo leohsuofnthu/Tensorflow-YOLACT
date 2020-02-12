@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-
+from object_detection.core import preprocessor
 from utils import utils
 
 """
@@ -13,10 +13,10 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
         tf.shape(img),
         bounding_boxes=tf.expand_dims(bboxes, 0),
-        min_object_covered=0.3,
-        aspect_ratio_range=(0.5, 2),
+        min_object_covered=0.25,
+        aspect_ratio_range=(0.6, 1.67),
         area_range=(0.1, 1.0),
-        max_attempts=300)
+        max_attempts=200)
     # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
     distort_bbox = distort_bbox[0, 0]
 
@@ -39,14 +39,12 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
                   distort_bbox[3] - distort_bbox[1]])
     bboxes = bboxes / s
 
-    """
     # filter out
     scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype), bboxes)
     bool_mask = scores > 0.5
     classes = tf.boolean_mask(classes, bool_mask)
     bboxes = tf.boolean_mask(bboxes, bool_mask)
     cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
-    """
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
 
@@ -114,9 +112,7 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     FLAG_HOR_FLIP = 1
 
     # Random Geometric Distortion (img, bboxes, masks)
-    if FLAG_GEO_DISTORTION:
-        img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
-
+    img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
     # Random Photometric Distortions (img)
     if FLAG_PHOTO_DISTORTION:
         img = photometric_distortion(img)
