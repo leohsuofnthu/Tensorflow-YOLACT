@@ -42,7 +42,7 @@ class PredictionModule(tf.keras.layers.Layer):
 
     def call(self, p):
         p = self.Conv1(p)
-        p = self.Conv2(p)
+        # p = self.Conv2(p)
 
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)

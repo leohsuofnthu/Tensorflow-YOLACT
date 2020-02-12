@@ -91,7 +91,10 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._output_size, self._output_size], method="nearest")
+        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
+                                method=tf.image.ResizeMethod.BILINEAR)
+        masks = tf.cast(masks + 0.5, tf.int64)
+        masks = tf.squeeze(tf.cast(masks, tf.float32))
 
         # resize boxes for resized image
         scale_x = tf.cast(self._output_size / image_width, tf.float32)
@@ -99,10 +102,12 @@ class Parser(object):
         scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
         boxes = boxes * scales
 
+        """
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
                                                                         self._proto_output_size, classes)
+        
 
         # There might be no label after augmentation
         if tf.size(classes) == 0:
@@ -113,6 +118,7 @@ class Parser(object):
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
+        """
 
         # resized boxes for proto output size
         scale_x = tf.cast(self._proto_output_size / self._output_size, tf.float32)
