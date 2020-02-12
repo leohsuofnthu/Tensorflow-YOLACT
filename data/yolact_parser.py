@@ -82,10 +82,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        # if a grey image is loaded
-        if tf.shape(image)[-1]:
-            tf.print("Detect Grey Image")
-            image = tf.image.grayscale_to_rgb(image)
+
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
@@ -183,10 +180,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        # if a grey image is loaded
-        if tf.shape(image)[-1]:
-            tf.print("Detect Grey Image")
-            image = tf.image.grayscale_to_rgb(image)
+
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
@@ -195,7 +189,9 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._output_size, self._output_size], method="nearest")
+        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],  method=tf.image.ResizeMethod.BILINEAR)
+        masks = tf.cast(masks + 0.5, tf.int64)
+        masks = tf.squeeze(tf.cast(masks, tf.float32))
 
         # resize boxes for resized image
         scale_x = tf.cast(self._output_size / image_width, tf.float32)

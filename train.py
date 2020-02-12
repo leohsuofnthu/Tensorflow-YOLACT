@@ -22,7 +22,7 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 1000,
+flags.DEFINE_integer('train_iter', 100,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 1,
                      'batch size')
@@ -32,9 +32,9 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 100,
+flags.DEFINE_float('save_interval', 10,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 500,
+flags.DEFINE_float('valid_iter', 50,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -205,6 +205,7 @@ def main(argv):
             v_conf.reset_states()
             v_mask.reset_states()
             model.set_bn('train')
+
 
 if __name__ == '__main__':
     app.run(main)

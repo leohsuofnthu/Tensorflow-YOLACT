@@ -16,8 +16,7 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
         min_object_covered=0.3,
         aspect_ratio_range=(0.5, 2),
         area_range=(0.1, 1.0),
-        max_attempts=200,
-        use_image_if_no_bounding_boxes=True)
+        max_attempts=300)
     # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
     distort_bbox = distort_bbox[0, 0]
 
@@ -40,13 +39,14 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
                   distort_bbox[3] - distort_bbox[1]])
     bboxes = bboxes / s
 
+    """
     # filter out
     scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], bboxes.dtype), bboxes)
-    bool_mask = scores > 0.3
+    bool_mask = scores > 0.5
     classes = tf.boolean_mask(classes, bool_mask)
     bboxes = tf.boolean_mask(bboxes, bool_mask)
     cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
-
+    """
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
 
@@ -74,7 +74,7 @@ def photometric_distortion(image):
         image = tf.image.random_brightness(image, max_delta=32. / 255.)
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
     elif color_ordering == 3:
-        tf.print("order 3")
+        # tf.print("order 3")
         image = tf.image.random_hue(image, max_delta=0.2)
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
