@@ -235,11 +235,21 @@ def _create_tf_record_from_coco_annotations(
             if idx % 100 == 0:
                 logging.info('On image %d of %d', idx, len(images))
             annotations_list = annotations_index[image['id']]
-            _, tf_example, num_annotations_skipped = create_tf_example(
-                image, annotations_list, image_dir, category_index, include_masks)
-            total_num_annotations_skipped += num_annotations_skipped
-            shard_idx = idx % num_shards
-            output_tfrecords[shard_idx].write(tf_example.SerializeToString())
+            # ignore image only have crowd annotation
+            num_crowd = 0
+            for object_annotations in annotations_list:
+                if object_annotations['iscrowd']:
+                    num_crowd += 1
+            if num_crowd != len(annotations_list):
+                _, tf_example, num_annotations_skipped = create_tf_example(
+                    image, annotations_list, image_dir, category_index, include_masks)
+                total_num_annotations_skipped += num_annotations_skipped
+                shard_idx = idx % num_shards
+                output_tfrecords[shard_idx].write(tf_example.SerializeToString())
+            else:
+                logging.info('Image only have crowd annotation ignored')
+                total_num_annotations_skipped += len(annotations_list)
+
         logging.info('Finished writing, skipped %d annotations.',
                      total_num_annotations_skipped)
 

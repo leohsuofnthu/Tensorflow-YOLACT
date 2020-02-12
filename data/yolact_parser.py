@@ -54,7 +54,6 @@ class Parser(object):
 
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
-
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
@@ -83,6 +82,10 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
+        # if a grey image is loaded
+        if tf.shape(image)[-1]:
+            tf.print("Detect Grey Image")
+            image = tf.image.grayscale_to_rgb(image)
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
@@ -180,6 +183,10 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
+        # if a grey image is loaded
+        if tf.shape(image)[-1]:
+            tf.print("Detect Grey Image")
+            image = tf.image.grayscale_to_rgb(image)
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
