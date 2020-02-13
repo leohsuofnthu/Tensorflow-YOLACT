@@ -82,7 +82,14 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
+        # deal with grayscale image
+        image = tf.cond(
+            tf.shape(image)[-1] < 3,
+            true_fn=lambda: tf.image.grayscale_to_rgb(image),
+            false_fn=lambda: image
+        )
 
+        # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
@@ -154,6 +161,7 @@ class Parser(object):
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors
         }
+
         return image, labels
 
     def _parse_eval_data(self, data):
@@ -186,7 +194,14 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
+        # deal with grayscale image
+        image = tf.cond(
+            tf.shape(image)[-1] < 3,
+            true_fn=lambda: tf.image.grayscale_to_rgb(image),
+            false_fn=lambda: image
+        )
 
+        # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
 
         # resize the image
@@ -195,7 +210,8 @@ class Parser(object):
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
         # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],  method=tf.image.ResizeMethod.BILINEAR)
+        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
+                                method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
         masks = tf.squeeze(tf.cast(masks, tf.float32))
 
