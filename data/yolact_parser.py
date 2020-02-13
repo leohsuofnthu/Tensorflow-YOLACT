@@ -82,15 +82,16 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        # deal with grayscale image
-        image = tf.cond(
-            tf.shape(image)[-1] < 3,
-            true_fn=lambda: tf.image.grayscale_to_rgb(image),
-            false_fn=lambda: image
-        )
 
         # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
+
+        # ignore grayscale image, set it zero
+        image = tf.cond(
+            tf.equal(tf.shape(image)[-1], tf.constant(3)),
+            true_fn=lambda: image,
+            false_fn=lambda: tf.zeros_like(image)
+        )
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
@@ -194,15 +195,16 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
-        # deal with grayscale image
-        image = tf.cond(
-            tf.shape(image)[-1] < 3,
-            true_fn=lambda: tf.image.grayscale_to_rgb(image),
-            false_fn=lambda: image
-        )
 
         # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
+
+        # ignore grayscale image, set it zero
+        image = tf.cond(
+            tf.equal(tf.shape(image)[-1], tf.constant(3)),
+            true_fn=lambda: image,
+            false_fn=lambda: tf.zeros_like(image)
+        )
 
         # resize the image
         image = tf.image.resize(image, [self._output_size, self._output_size])
