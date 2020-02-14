@@ -2,21 +2,6 @@ import tensorflow as tf
 
 
 class PredictionModule(tf.keras.layers.Layer):
-    """
-        Args:
-        - in_channels:   The input feature size.
-        - out_channels:  The output feature size (must be a multiple of 4).
-        - aspect_ratios: A list of lists of priorbox aspect ratios (one list per scale).
-        - scales:        A list of priorbox scales relative to this layer's convsize.
-                         For instance: If this layer has convouts of size 30x30 for
-                                       an image of size 600x600, the 'default' (scale
-                                       of 1) for this layer would produce bounding
-                                       boxes with an area of 20x20px. If the scale is
-                                       .5 on the other hand, this layer would consider
-                                       bounding boxes with area 10x10px, etc.
-        - parent:        If parent is a PredictionModule, this module will use all the layers
-                         from parent instead of from this module.
-    """
 
     def __init__(self, out_channels, num_anchors, num_class, num_mask):
         super(PredictionModule, self).__init__()
