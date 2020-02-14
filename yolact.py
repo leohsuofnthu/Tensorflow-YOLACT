@@ -27,6 +27,7 @@ class Yolact(tf.keras.Model):
         # Todo figure out how pre-trained can be train again
         base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
                                                     include_top=False,
+                                                    layers=tf.keras.layers,
                                                     weights='imagenet')
         # extract certain feature maps for FPN
         self.backbone_resnet = tf.keras.Model(inputs=base_model.input,

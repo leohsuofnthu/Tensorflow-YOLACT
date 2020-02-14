@@ -11,6 +11,8 @@ from data import dataset_coco
 from loss import loss_yolact
 import yolact
 
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
+
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
@@ -155,6 +157,12 @@ def main(argv):
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
 
+        with train_summary_writer.as_default():
+            tf.summary.scalar('Total loss', train_loss.result(), step=iterations)
+            tf.summary.scalar('Loc loss', loc.result(), step=iterations)
+            tf.summary.scalar('Conf loss', conf.result(), step=iterations)
+            tf.summary.scalar('Mask loss', mask.result(), step=iterations)
+
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
             model.set_bn('valid')
             # validation
@@ -169,12 +177,6 @@ def main(argv):
                 v_conf.update_state(valid_conf_loss)
                 v_mask.update_state(valid_mask_loss)
                 valid_iter += 1
-
-            with train_summary_writer.as_default():
-                tf.summary.scalar('Total loss', train_loss.result(), step=iterations)
-                tf.summary.scalar('Loc loss', loc.result(), step=iterations)
-                tf.summary.scalar('Conf loss', conf.result(), step=iterations)
-                tf.summary.scalar('Mask loss', mask.result(), step=iterations)
 
             with test_summary_writer.as_default():
                 tf.summary.scalar('V Total loss', valid_loss.result(), step=iterations)
