@@ -61,6 +61,10 @@ class YOLACTLoss(object):
         pred_offset = tf.gather_nd(pred_offset, pos_indices[:, :-1])
         gt_offset = tf.gather_nd(gt_offset, pos_indices[:, :-1])
 
+        # check if there is nan in pred_offset, gt_offset
+        tf.debugging.check_numerics(pred_offset, message="pred_offset contains invalid value")
+        tf.debugging.check_numerics(gt_offset, message="gt_offset contains invalid value")
+
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
@@ -75,6 +79,10 @@ class YOLACTLoss(object):
         :param num_cls:
         :return:
         """
+        # check if there is nan in pred_cls, gt_cls
+        tf.debugging.check_numerics(pred_cls, message="pred_cls contains invalid value")
+        tf.debugging.check_numerics(gt_cls, message="gt_cls contains invalid value")
+
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(pred_cls, [-1, num_cls])
 
@@ -103,7 +111,7 @@ class YOLACTLoss(object):
 
         # apply softmax on the pred_cls
         neg_softmax = tf.nn.softmax(neg_pred_cls)
-
+        tf.debugging.check_numerics(neg_softmax, message="neg_softmax contains invalid value")
         # -log(softmax class 0)
         neg_minus_log_class0 = -1 * tf.math.log(neg_softmax[:, 0])
 
@@ -126,6 +134,7 @@ class YOLACTLoss(object):
         loss_conf = tf.reduce_sum(
             tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
                         tf.cast(tf.size(pos_indices), tf.float32))
+        tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
         tf.print("conf loss:", loss_conf)
         return loss_conf
 

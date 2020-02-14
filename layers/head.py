@@ -10,18 +10,18 @@ class PredictionModule(tf.keras.layers.Layer):
         self.num_mask = num_mask
 
         self.Conv = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
-                                           kernel_initializer=tf.keras.initializers.he_normal(),
+                                           kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                            activation="relu")
 
         self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
-                                                kernel_initializer=tf.keras.initializers.he_normal())
+                                                kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same",
-                                              kernel_initializer=tf.keras.initializers.he_normal())
+                                              kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         # activation of mask coef is tanh
         self.maskConv = tf.keras.layers.Conv2D(self.num_mask * self.num_anchors, (3, 3), 1, padding="same",
-                                               kernel_initializer=tf.keras.initializers.he_normal(),
+                                               kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                                activation='tanh')
 
     def call(self, p):

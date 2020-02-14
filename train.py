@@ -26,7 +26,7 @@ flags.DEFINE_integer('train_iter', 100,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 2,
                      'batch size')
-flags.DEFINE_float('lr', 1e-3,
+flags.DEFINE_float('lr', 1e-4,
                    'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
@@ -84,14 +84,14 @@ def main(argv):
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
     model = yolact.Yolact(input_size=550,
-                          fpn_channels=256,
+                          fpn_channels=16,
                           feature_map_size=[69, 35, 18, 9, 5],
                           num_class=91,
                           num_mask=4,
                           aspect_ratio=[1, 0.5, 2],
                           scales=[24, 48, 96, 192, 384])
-    model.build(input_shape=(4, 550, 550, 3))
-    model.summary()
+    # model.build(input_shape=(4, 550, 550, 3))
+    # model.summary()
 
     # initialization of the parameters
 

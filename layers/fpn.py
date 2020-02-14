@@ -14,28 +14,28 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
 
         # no Relu for downsample layer
         self.downSample1 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.he_normal())
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         self.downSample2 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.he_normal())
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         self.lateralCov1 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                                   activation="relu")
         self.lateralCov2 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                                   activation="relu")
         self.lateralCov3 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.he_normal(),
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                                   activation="relu")
 
         # predict layer for FPN
         self.predictP5 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 1, padding="same",
-                                                kernel_initializer=tf.keras.initializers.he_normal())
+                                                kernel_initializer=tf.keras.initializers.glorot_uniform())
         self.predictP4 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 1, padding="same",
-                                                kernel_initializer=tf.keras.initializers.he_normal())
+                                                kernel_initializer=tf.keras.initializers.glorot_uniform())
         self.predictP3 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 1, padding="same",
-                                                kernel_initializer=tf.keras.initializers.he_normal())
+                                                kernel_initializer=tf.keras.initializers.glorot_uniform())
 
     def call(self, c3, c4, c5):
 
@@ -66,6 +66,5 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
         offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, 0]
         size = [-1, x2_shape[1], x2_shape[2], -1]
         x1_crop = tf.slice(x1, offsets, size)
-        print(x1_crop.shape)
         return tf.add(x1_crop, x2)
 
