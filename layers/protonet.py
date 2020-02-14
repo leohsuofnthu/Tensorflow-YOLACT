@@ -22,7 +22,7 @@ class ProtoNet(tf.keras.layers.Layer):
         self.upSampling = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
         self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 1, padding="same",
                                                 kernel_initializer=tf.keras.initializers.he_normal(),
-                                                activation="tanh")
+                                                activation="relu")
 
     def call(self, p3):
         # (3,3) convolution * 3
