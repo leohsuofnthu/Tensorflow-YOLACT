@@ -36,10 +36,9 @@ class Yolact(tf.keras.Model):
         self.num_anchor, self.priors = make_priors(input_size, feature_map_size, aspect_ratio, scales)
         print("prior shape:", self.priors.shape)
         print("num anchor per feature map: ", self.num_anchor)
-        self.predictionHead = []
-        for idx, f_size in enumerate(feature_map_size):
-            pred = PredictionModule(256, f_size, len(aspect_ratio), num_class, num_mask)
-            self.predictionHead.append(pred)
+
+        # shared prediction head
+        self.predictionHead = PredictionModule(256, len(aspect_ratio), num_class, num_mask)
 
     def set_bn(self, mode='train'):
         if mode == 'train':
@@ -69,9 +68,9 @@ class Yolact(tf.keras.Model):
         pred_offset = []
         pred_mask_coef = []
 
-        # Todo Share same prediction module and concate the output for each prediction to be [batch, num_anchor, ..]
+        # all output from FPN use same prediction head
         for idx, f_map in enumerate(fpn_out):
-            cls, offset, coef = self.predictionHead[idx](f_map)
+            cls, offset, coef = self.predictionHead(f_map)
             pred_cls.append(cls)
             pred_offset.append(offset)
             pred_mask_coef.append(coef)

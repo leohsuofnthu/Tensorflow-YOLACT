@@ -18,22 +18,19 @@ class PredictionModule(tf.keras.layers.Layer):
                          from parent instead of from this module.
     """
 
-    def __init__(self, out_channels, f_size, num_anchors, num_class, num_mask):
+    def __init__(self, out_channels, num_anchors, num_class, num_mask):
         super(PredictionModule, self).__init__()
         self.num_anchors = num_anchors
         self.num_class = num_class
         self.num_mask = num_mask
 
-        # Todo those module are share for all predictions
-        self.Conv1 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
-                                            kernel_initializer=tf.keras.initializers.he_normal(),
-                                            activation="relu")
-        self.Conv2 = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
-                                            kernel_initializer=tf.keras.initializers.he_normal(),
-                                            activation="relu")
+        self.Conv = tf.keras.layers.Conv2D(out_channels, (3, 3), 1, padding="same",
+                                           kernel_initializer=tf.keras.initializers.he_normal(),
+                                           activation="relu")
 
         self.classConv = tf.keras.layers.Conv2D(self.num_class * self.num_anchors, (3, 3), 1, padding="same",
                                                 kernel_initializer=tf.keras.initializers.he_normal())
+
         self.boxConv = tf.keras.layers.Conv2D(4 * self.num_anchors, (3, 3), 1, padding="same",
                                               kernel_initializer=tf.keras.initializers.he_normal())
 
@@ -43,8 +40,7 @@ class PredictionModule(tf.keras.layers.Layer):
                                                activation='tanh')
 
     def call(self, p):
-        p = self.Conv1(p)
-        # p = self.Conv2(p)
+        p = self.Conv(p)
 
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)
