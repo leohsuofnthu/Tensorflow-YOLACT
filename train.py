@@ -1,3 +1,4 @@
+import time
 import datetime
 
 # it s recommanded to use absl for tf 2.0
@@ -130,6 +131,7 @@ def main(argv):
     iterations = 0
     # Freeze the BN layers in pre-trained backbone
     model.set_bn('train')
+    t0 = time.time()
     for image, labels in train_dataset:
         """
         i = np.squeeze(image.numpy())
@@ -162,7 +164,6 @@ def main(argv):
             tf.summary.scalar('Loc loss', loc.result(), step=iterations)
             tf.summary.scalar('Conf loss', conf.result(), step=iterations)
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
-
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
             model.set_bn('valid')
             # validation
@@ -207,6 +208,9 @@ def main(argv):
             v_conf.reset_states()
             v_mask.reset_states()
             model.set_bn('train')
+            t1 = time.time()
+            logging.info("Training interval: %s second" % (t1 - t0))
+            t0 = time.time()
 
 
 if __name__ == '__main__':

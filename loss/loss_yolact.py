@@ -66,7 +66,7 @@ class YOLACTLoss(object):
         tf.debugging.check_numerics(gt_offset, message="gt_offset contains invalid value")
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
-        smoothl1loss = tf.keras.losses.Huber(delta=0.5, reduction=tf.losses.Reduction.NONE)
+        smoothl1loss = tf.keras.losses.Huber(delta=1, reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
         tf.print("loc loss:", loss_loc)
         return loss_loc
