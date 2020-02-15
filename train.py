@@ -101,8 +101,9 @@ def main(argv):
     # -----------------------------------------------------------------
 
     # Choose the Optimizor, Loss Function, and Metrics
+    lr = tf.Variable(FLAGS.lr)
     logging.info("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
@@ -154,6 +155,13 @@ def main(argv):
             break
 
         iterations += 1
+        if iterations <= 500:
+            lr.assign(1e-4)
+        elif iterations <= 280000:
+            lr.assign(1e-3)
+        else:
+            lr.assign(1e-5)
+
         loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
