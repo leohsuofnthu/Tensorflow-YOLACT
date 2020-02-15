@@ -25,19 +25,19 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 20,
+flags.DEFINE_integer('train_iter', 100000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
-flags.DEFINE_float('lr', 1e-4,
+flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 2,
+flags.DEFINE_float('save_interval', 1000,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 5,
+flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -100,10 +100,14 @@ def main(argv):
 
     # -----------------------------------------------------------------
 
-    # Choose the Optimizor, Loss Function, and Metrics
-    lr = tf.Variable(FLAGS.lr)
+    # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
+    first_decay_steps = 500
+    lr_decayed_fn = (
+        tf.keras.experimental.CosineDecayRestarts(
+            FLAGS.lr,
+            first_decay_steps))
     logging.info("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.SGD(learning_rate=lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_decayed_fn, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
@@ -155,13 +159,6 @@ def main(argv):
             break
 
         iterations += 1
-        if iterations <= 500:
-            lr.assign(1e-4)
-        elif iterations <= 280000:
-            lr.assign(1e-3)
-        else:
-            lr.assign(1e-5)
-
         loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
