@@ -25,7 +25,7 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 100,
+flags.DEFINE_integer('train_iter', 20,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 2,
                      'batch size')
@@ -35,9 +35,9 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 10,
+flags.DEFINE_float('save_interval', 2,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 50,
+flags.DEFINE_float('valid_iter', 5,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -53,7 +53,7 @@ def train_step(model,
     with tf.GradientTape() as tape:
         output = model(image)
         loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
-        # logging.info("Total loss: %s..." % total_loss)
+        logging.info("Total loss: %s..." % total_loss)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)

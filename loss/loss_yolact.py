@@ -66,9 +66,9 @@ class YOLACTLoss(object):
         tf.debugging.check_numerics(gt_offset, message="gt_offset contains invalid value")
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
-        smoothl1loss = tf.keras.losses.Huber(delta=1, reduction=tf.losses.Reduction.NONE)
+        smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
-        # tf.print("loc loss:", loss_loc)
+        tf.print("loc loss:", loss_loc)
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
@@ -135,7 +135,7 @@ class YOLACTLoss(object):
             tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
                         tf.cast(tf.size(pos_indices), tf.float32))
         tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
-        # tf.print("conf loss:", loss_conf)
+        tf.print("conf loss:", loss_conf)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
@@ -184,25 +184,29 @@ class YOLACTLoss(object):
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             loss = 0
             bceloss = tf.keras.losses.BinaryCrossentropy()
-            for num, value in enumerate(pos_max_id):
-                gt = mask_gt[value]
-                bbox = bbox_norm[value]
-                bbox_center = utils.map_to_center_form(bbox)
-                area = bbox_center[-1] * bbox_center[-2]
-                ymin, xmin, ymax, xmax = tf.unstack(bbox)
-                ymin = tf.cast(tf.math.floor(ymin), tf.int64)
-                xmin = tf.cast(tf.math.floor(xmin), tf.int64)
-                ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
-                xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
-                # read the w, h of original bbox and scale it to fit proto size
-                pred = pred_mask[:, :, num]
-                loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
-                # plt.figure()
-                # plt.imshow(gt[ymin:ymax, xmin:xmax])
+
+            # calculating loss for each mask coef correspond to each postitive anchor
+            gt = tf.map_fn(lambda x: mask_gt[x], pos_max_id, dtype=tf.float32)
+            gt = tf.transpose(gt, perm=[1, 2, 0])
+            bbox = tf.map_fn(lambda x: bbox_norm[x], pos_max_id, dtype=tf.float32)
+            area = (bbox[:, 2] - bbox[:, 0]) * (bbox[:, 3] - bbox[:, 1])
+            ymin, xmin, ymax, xmax = tf.unstack(bbox, axis=-1)
+            ymin = tf.cast(tf.math.floor(ymin), tf.int64)
+            xmin = tf.cast(tf.math.floor(xmin), tf.int64)
+            ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
+            xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
+            # read the w, h of original bbox and scale it to fit proto size
+            pred = tf.gather(pred_mask, pos_indices, axis=-1)
+            loss = 0
+            for i in tf.range(pos_indices.shape[0]):
+                loss += ((bceloss(gt[:, :, i][ymin[i]:ymax[i], xmin[i]:xmax[i]],
+                                  pred[:, :, i][ymin[i]:ymax[i], xmin[i]:xmax[i]])) / area[i])
+            # plt.figure()
+            # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
-        # tf.print("mask loss:", loss_mask)
+        tf.print("mask loss:", loss_mask)
         return loss_mask
 
     def _loss_semantic_segmentation(self):
