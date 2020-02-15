@@ -34,6 +34,10 @@ class Yolact(tf.keras.Model):
                                               outputs=[base_model.get_layer(x).output for x in out])
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
         self.protonet = ProtoNet(num_mask)
+
+        # semantic segmentation branch to boost feature richness
+        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class, (1, 1))
+
         self.num_anchor, self.priors = make_priors(input_size, feature_map_size, aspect_ratio, scales)
         print("prior shape:", self.priors.shape)
         print("num anchor per feature map: ", self.num_anchor)
@@ -64,6 +68,9 @@ class Yolact(tf.keras.Model):
         protonet_out = self.protonet(p3)
         # print("protonet: ", protonet_out.shape)
 
+        # semantic segmentation branch
+        seg = self.semantic_segmentation(p3)
+
         # Prediction Head branch
         pred_cls = []
         pred_offset = []
@@ -84,7 +91,8 @@ class Yolact(tf.keras.Model):
             'pred_cls': pred_cls,
             'pred_offset': pred_offset,
             'pred_mask_coef': pred_mask_coef,
-            'proto_out': protonet_out
+            'proto_out': protonet_out,
+            'seg': seg
         }
 
         return pred
