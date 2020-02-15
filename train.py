@@ -53,7 +53,7 @@ def train_step(model,
     with tf.GradientTape() as tape:
         output = model(image)
         loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
-        logging.info("Total loss: %s..." % total_loss)
+        # logging.info("Total loss: %s..." % total_loss)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -87,10 +87,10 @@ def main(argv):
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
     model = yolact.Yolact(input_size=550,
-                          fpn_channels=16,
+                          fpn_channels=256,
                           feature_map_size=[69, 35, 18, 9, 5],
                           num_class=91,
-                          num_mask=4,
+                          num_mask=32,
                           aspect_ratio=[1, 0.5, 2],
                           scales=[24, 48, 96, 192, 384])
     # model.build(input_shape=(4, 550, 550, 3))
