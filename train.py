@@ -165,7 +165,6 @@ def main(argv):
             tf.summary.scalar('Conf loss', conf.result(), step=iterations)
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
-            model.set_bn('valid')
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
@@ -207,7 +206,6 @@ def main(argv):
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
-            model.set_bn('train')
             t1 = time.time()
             logging.info("Training interval: %s second" % (t1 - t0))
             t0 = time.time()
