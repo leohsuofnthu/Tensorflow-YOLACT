@@ -154,10 +154,6 @@ class YOLACTLoss(object):
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
         loss_mask = []
-        p = tf.expand_dims(positiveness, axis=-1)
-        p = tf.reshape(positiveness, [-1, 1])
-        p = tf.where(positiveness > 0)
-        num_pos = tf.size(p[:, 0])
 
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
@@ -207,9 +203,9 @@ class YOLACTLoss(object):
                 # plt.figure()
                 # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
-            loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
-        loss_mask = tf.math.reduce_sum(loss_mask) / tf.cast(num_pos, tf.float32)
+            loss_mask.append(loss / tf.cast(pos_indices.shape[0], tf.float32))
         tf.print("mask loss:", loss_mask)
+        loss_mask = tf.math.reduce_sum(loss_mask)
         return loss_mask
 
     def _loss_semantic_segmentation(self):

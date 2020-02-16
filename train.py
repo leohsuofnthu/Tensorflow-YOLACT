@@ -25,9 +25,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 100000,
+flags.DEFINE_integer('train_iter', 10,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 8,
+flags.DEFINE_integer('batch_size', 2,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -35,9 +35,9 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 1000,
+flags.DEFINE_float('save_interval', 1,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 5000,
+flags.DEFINE_float('valid_iter', 1,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -132,6 +132,7 @@ def main(argv):
     # Freeze the BN layers in pre-trained backbone
     model.set_bn('train')
     t0 = time.time()
+    tf.summary.trace_on(graph=True, profiler=True)
     for image, labels in train_dataset:
         """
         i = np.squeeze(image.numpy())
@@ -209,6 +210,7 @@ def main(argv):
             t1 = time.time()
             logging.info("Training interval: %s second" % (t1 - t0))
             t0 = time.time()
+    tf.summary.trace_off()
 
 
 if __name__ == '__main__':
