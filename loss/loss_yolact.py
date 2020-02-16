@@ -193,6 +193,7 @@ class YOLACTLoss(object):
                 bbox_center = utils.map_to_center_form(bbox)
                 area = bbox_center[-1] * bbox_center[-2]
                 ymin, xmin, ymax, xmax = tf.unstack(bbox)
+                tf.print(ymin, xmin, ymax, xmax)
                 ymin = tf.cast(tf.math.floor(ymin), tf.int64)
                 xmin = tf.cast(tf.math.floor(xmin), tf.int64)
                 ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
@@ -200,14 +201,14 @@ class YOLACTLoss(object):
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
-                # plt.figure()
-                # plt.imshow(gt[ymin:ymax, xmin:xmax])
-            # plt.show()
-            loss_mask.append(loss / tf.cast(tf.size(pos_indices[1]), tf.float32))
+                plt.figure()
+                plt.imshow(gt[ymin:ymax, xmin:xmax])
+            plt.show()
+            loss_mask.append(loss / tf.cast(tf.size(pos_indices[0]), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
         tf.print("mask loss:", loss_mask)
         return loss_mask
 
     def _loss_semantic_segmentation(self):
-        # implemented after training sucessfully
+        # implemented after training sucessfull
         pass

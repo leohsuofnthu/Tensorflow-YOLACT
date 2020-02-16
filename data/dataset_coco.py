@@ -46,7 +46,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
 
 
 """
-train_dataloader = prepare_dataloader("./coco", 8, "train")
+train_dataloader = prepare_dataloader("./coco", 1, "train")
 print(train_dataloader)
 # visualize the training sample
 # Sets up a timestamped log directory.
@@ -59,16 +59,16 @@ for image, labels in train_dataloader:
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()
-    for idx in range(5):
+    for idx in range(2):
         b = bbox[0][idx]
-        cv2.rectangle(image, (b[1], b[0]), (b[3],b[2]), (255,0,0), 2)
-        cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0])-10), cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
+        cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
+        cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_SIMPLEX,
+                    1, (36, 255, 12), 2)
         plt.figure()
         plt.imshow(mask[0][idx])
-
     plt.show()
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
     print(cls)
     break
-"""
+    """

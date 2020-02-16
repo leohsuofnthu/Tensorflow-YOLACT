@@ -137,8 +137,6 @@ class Anchor(object):
 
         match_positiveness = tf.map_fn(lambda x: _map_pos_match(x, threshold_pos, threshold_neg), max_iou_for_anchors)
 
-        # match_positiveness = tf.clip_by_value(max_iou_for_anchors, clip_value_min=threshold_neg, clip_value_max=threshold_pos)
-
         # create class target
         # map idx to label[idx]
         # match_labels = tf.map_fn(lambda x: gt_labels[x], max_id_for_anchors)

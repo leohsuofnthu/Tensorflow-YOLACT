@@ -27,7 +27,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 10,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 1,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -110,8 +110,8 @@ def main(argv):
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     logging.info("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
-    # optimizer = tf.keras.optimizers.SGD(learning_rate=lr_decayed_fn, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
+    # optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
@@ -142,7 +142,6 @@ def main(argv):
     t0 = time.time()
     tf.summary.trace_on(graph=True, profiler=True)
     for image, labels in train_dataset:
-        """
         i = np.squeeze(image.numpy())
         bbox = labels['bbox'].numpy()
         cls = labels['classes'].numpy()
@@ -157,7 +156,6 @@ def main(argv):
             plt.imshow(m[0][idx])
         cv2.imshow("check", i)
         k = cv2.waitKey(0)
-        """
         # check iteration and change the learning rate
         if iterations > FLAGS.train_iter:
             break
