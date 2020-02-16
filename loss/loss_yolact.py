@@ -56,7 +56,7 @@ class YOLACTLoss(object):
         positiveness = tf.expand_dims(positiveness, axis=-1)
 
         # get postive indices
-        pos_indices = tf.where(positiveness > 0)
+        pos_indices = tf.where(positiveness == 1)
 
         pred_offset = tf.gather_nd(pred_offset, pos_indices[:, :-1])
         gt_offset = tf.gather_nd(gt_offset, pos_indices[:, :-1])
@@ -93,7 +93,7 @@ class YOLACTLoss(object):
         # reshape positiveness to [batch*num_anchor, 1]
         positiveness = tf.expand_dims(positiveness, axis=-1)
         positiveness = tf.reshape(positiveness, [-1, 1])
-        pos_indices = tf.where(positiveness > 0)
+        pos_indices = tf.where(positiveness == 1)
         neg_indices = tf.where(positiveness == 0)
 
         # calculate the needed amount of  negative sample
@@ -164,7 +164,7 @@ class YOLACTLoss(object):
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
 
-            pos_indices = tf.squeeze(tf.where(pos > 0))
+            pos_indices = tf.squeeze(tf.where(pos == 1))
             # tf.print("num_pos =", num_pos)
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]

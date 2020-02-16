@@ -126,6 +126,7 @@ class Anchor(object):
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
 
+        """
         # decide the anchors to be positive or negative based on the IoU and given threshold
         def _map_pos_match(x, pos, neg):
             p = 1.
@@ -135,8 +136,10 @@ class Anchor(object):
                 p = 0.
             return p
 
-        match_positiveness = tf.map_fn(lambda x: _map_pos_match(x, threshold_pos, threshold_neg)
-                                       , max_iou_for_anchors)
+        # match_positiveness = tf.map_fn(lambda x: _map_pos_match(x, threshold_pos, threshold_neg), max_iou_for_anchors)
+        """
+
+        match_positiveness = tf.clip_by_value(max_iou_for_anchors, clip_value_min=threshold_neg, clip_value_max=threshold_pos)
 
         # create class target
         # map idx to label[idx]
