@@ -99,15 +99,10 @@ def main(argv):
     # initialization of the parameters
 
     # -----------------------------------------------------------------
-
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    first_decay_steps = 500
-    lr_decayed_fn = (
-        tf.keras.experimental.CosineDecayRestarts(
-            FLAGS.lr,
-            first_decay_steps))
     logging.info("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_decayed_fn, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
+    # optimizer = tf.keras.optimizers.SGD(learning_rate=lr_decayed_fn, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
