@@ -143,7 +143,8 @@ class Anchor(object):
 
         # create class target
         # map idx to label[idx]
-        match_labels = tf.map_fn(lambda x: gt_labels[x], max_id_for_anchors)
+        # match_labels = tf.map_fn(lambda x: gt_labels[x], max_id_for_anchors)
+        match_labels = tf.gather(gt_labels, max_id_for_anchors)
 
         """
         element-wise multiplication of label[idx] and positiveness:
@@ -152,11 +153,11 @@ class Anchor(object):
         3. neural sample will have -1 * label[idx] = -1 * label[idx] 
         it can be useful to distinguish positive sample during loss calculation  
         """
-
         target_cls = tf.multiply(tf.cast(match_labels, tf.float32), match_positiveness)
 
         # create loc target
-        map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
+        # map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
+        map_loc = tf.gather(gt_bbox, max_id_for_anchors)
 
         # convert to center form
 
