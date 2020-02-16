@@ -51,11 +51,20 @@ def train_step(model,
                labels):
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
+        t0 = time.time()
         output = model(image)
+        t1 = time.time()
+        logging.info("Forwarding time: %s secs" %(t1-t0))
+        t0 = time.time()
         loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
+        t1 = time.time()
+        logging.info("Loss Calculating time: %s secs" % (t1 - t0))
         logging.info("Total loss: %s..." % total_loss)
+    t0 = time.time()
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
+    t1 = time.time()
+    logging.info("BackProp time: %s secs" % (t1 - t0))
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss
 
