@@ -93,21 +93,19 @@ class Parser(object):
             false_fn=lambda: tf.ones([image_width, image_height, 3])
         )
 
-        # resize the image
-        image = tf.image.resize(image, [self._output_size, self._output_size])
+        # resize the image when creating tfrecord
+        # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
+        tf.print(tf.shape(image))
         masks = tf.expand_dims(masks, axis=-1)
         masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
         masks = tf.squeeze(tf.cast(masks, tf.float32))
-
-        # resize boxes for resized image
-        scale_x = tf.cast(self._output_size / image_width, tf.float32)
-        scale_y = tf.cast(self._output_size / image_height, tf.float32)
-        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-        boxes = boxes * scales
+        tf.print(tf.shape(masks))
+        # denormalize the boxes
+        boxes = boxes * self._output_size
 
         """
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
@@ -128,10 +126,7 @@ class Parser(object):
         """
 
         # resized boxes for proto output size
-        scale_x = tf.cast(self._proto_output_size / self._output_size, tf.float32)
-        scale_y = tf.cast(self._proto_output_size / self._output_size, tf.float32)
-        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-        boxes_norm = boxes * scales
+        boxes_norm = boxes * self._proto_output_size
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
@@ -205,8 +200,8 @@ class Parser(object):
             false_fn=lambda: tf.ones([image_width, image_height, 3])
         )
 
-        # resize the image
-        image = tf.image.resize(image, [self._output_size, self._output_size])
+        # resize the image when creating tfrecord
+        # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
@@ -217,16 +212,10 @@ class Parser(object):
         masks = tf.squeeze(tf.cast(masks, tf.float32))
 
         # resize boxes for resized image
-        scale_x = tf.cast(self._output_size / image_width, tf.float32)
-        scale_y = tf.cast(self._output_size / image_height, tf.float32)
-        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-        boxes = boxes * scales
+        boxes = boxes * self._output_size
 
         # resized boxes for proto output size
-        scale_x = tf.cast(self._proto_output_size / self._output_size, tf.float32)
-        scale_y = tf.cast(self._proto_output_size / self._output_size, tf.float32)
-        scales = tf.stack([scale_y, scale_x, scale_y, scale_x])
-        boxes_norm = boxes * scales
+        boxes_norm = boxes * self._proto_output_size
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(

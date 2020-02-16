@@ -25,7 +25,7 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 10,
+flags.DEFINE_integer('train_iter', 2,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 2,
                      'batch size')
@@ -125,7 +125,10 @@ def main(argv):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
     # -----------------------------------------------------------------
-
+    tf.summary.trace_on(
+        graph=True,
+        profiler=True
+    )
     # Start the Training and Validation Process
     logging.info("Start the training process...")
     iterations = 0
@@ -210,7 +213,7 @@ def main(argv):
             t1 = time.time()
             logging.info("Training interval: %s second" % (t1 - t0))
             t0 = time.time()
-    tf.summary.trace_off()
+    tf.summary.trace_export(name='test', profiler_outdir='./logs')
 
 
 if __name__ == '__main__':

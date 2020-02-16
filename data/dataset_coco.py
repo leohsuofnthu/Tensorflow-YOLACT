@@ -54,7 +54,7 @@ logdir = "../logs/train_data/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S
 # Creates a file writer for the log directory.
 file_writer = tf.summary.create_file_writer(logdir)
 count = 0
-for image, label in train_dataloader:
+for image, labels in train_dataloader:
     image = np.squeeze(image.numpy())
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()

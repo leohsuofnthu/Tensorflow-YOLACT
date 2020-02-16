@@ -203,9 +203,9 @@ class YOLACTLoss(object):
                 # plt.figure()
                 # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
-            loss_mask.append(loss / tf.cast(tf.size(pos_indices), tf.float32))
-        tf.print("mask loss:", loss_mask)
+            loss_mask.append(loss / tf.cast(tf.size(pos_indices[1]), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
+        tf.print("mask loss:", loss_mask)
         return loss_mask
 
     def _loss_semantic_segmentation(self):

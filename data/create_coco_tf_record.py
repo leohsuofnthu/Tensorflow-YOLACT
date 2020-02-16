@@ -110,6 +110,11 @@ def create_tf_example(image,
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = PIL.Image.open(encoded_jpg_io)
+    r = 550
+    image = image.resize((r, r), PIL.Image.ANTIALIAS)
+    bytes_io = io.BytesIO()
+    image.save(bytes_io, format='JPEG')
+    encoded_jpg = bytes_io.getvalue()
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
     xmin = []
@@ -154,9 +159,9 @@ def create_tf_example(image,
 
     feature_dict = {
         'image/height':
-            dataset_util.int64_feature(image_height),
+            dataset_util.int64_feature(r),
         'image/width':
-            dataset_util.int64_feature(image_width),
+            dataset_util.int64_feature(r),
         'image/filename':
             dataset_util.bytes_feature(filename.encode('utf8')),
         'image/source_id':
