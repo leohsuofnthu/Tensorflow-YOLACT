@@ -25,9 +25,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 2,
+flags.DEFINE_integer('train_iter', 10,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -37,7 +37,7 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('save_interval', 1,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 1,
+flags.DEFINE_float('valid_iter', 5,
                    'number of iteration between saving model')
 
 logging.set_verbosity(logging.INFO)
@@ -125,10 +125,6 @@ def main(argv):
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
     # -----------------------------------------------------------------
-    tf.summary.trace_on(
-        graph=True,
-        profiler=True
-    )
     # Start the Training and Validation Process
     logging.info("Start the training process...")
     iterations = 0
@@ -162,7 +158,6 @@ def main(argv):
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
-
         with train_summary_writer.as_default():
             tf.summary.scalar('Total loss', train_loss.result(), step=iterations)
             tf.summary.scalar('Loc loss', loc.result(), step=iterations)
@@ -213,7 +208,7 @@ def main(argv):
             t1 = time.time()
             logging.info("Training interval: %s second" % (t1 - t0))
             t0 = time.time()
-    tf.summary.trace_export(name='test', profiler_outdir='./logs')
+    tf.summary.trace_export(name='test', profiler_outdir='.')
 
 
 if __name__ == '__main__':

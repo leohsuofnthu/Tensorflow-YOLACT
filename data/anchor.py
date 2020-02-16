@@ -156,10 +156,23 @@ class Anchor(object):
         map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
 
         # convert to center form
-        center_anchors = tf.map_fn(lambda x: map_to_center_form(x), self.anchors)
-        center_gt = tf.map_fn(lambda x: map_to_center_form(x), map_loc)
+
+        # center_anchors = tf.map_fn(lambda x: map_to_center_form(x), self.anchors)
+        w = self.anchors[:, 2] - self.anchors[:, 0]
+        h = self.anchors[:, 3] - self.anchors[:, 1]
+        center_anchors = tf.stack([self.anchors[:, 0] + (w / 2), self.anchors[:, 1] + (h / 2), w, h])
+
+        # center_gt = tf.map_fn(lambda x: map_to_center_form(x), map_loc)
+        w = map_loc[:, 2] - map_loc[:, 0]
+        h = map_loc[:, 3] - map_loc[:, 1]
+        center_gt = tf.stack([map_loc[:, 0] + (w / 2), map_loc[:, 1] + (h / 2), w, h])
 
         # calculate offset
-        target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
+        # target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
+        g_hat_cx = (center_gt[:, 0] - center_anchors[:, 0]) / center_anchors[:, 2]
+        g_hat_cy = (center_gt[:, 1] - center_anchors[:, 1]) / center_anchors[:, 3]
+        g_hat_w = tf.math.log(center_anchors[:, 2] / center_gt[:, 2])
+        g_hat_h = tf.math.log(center_anchors[:, 3] / center_gt[:, 3])
+        target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h])
 
         return target_cls, target_loc, max_id_for_anchors, match_positiveness

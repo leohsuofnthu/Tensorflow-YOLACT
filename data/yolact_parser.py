@@ -97,13 +97,11 @@ class Parser(object):
         # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
-        tf.print(tf.shape(image))
         masks = tf.expand_dims(masks, axis=-1)
         masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
         masks = tf.squeeze(tf.cast(masks, tf.float32))
-        tf.print(tf.shape(masks))
         # denormalize the boxes
         boxes = boxes * self._output_size
 
