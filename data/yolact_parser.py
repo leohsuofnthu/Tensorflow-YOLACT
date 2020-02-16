@@ -213,7 +213,7 @@ class Parser(object):
         boxes = boxes * self._output_size
 
         # resized boxes for proto output size
-        boxes_norm = boxes *g (self._proto_output_size/self._output_size)
+        boxes_norm = boxes * (self._proto_output_size/self._output_size)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
