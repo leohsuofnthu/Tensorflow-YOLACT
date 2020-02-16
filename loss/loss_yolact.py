@@ -186,23 +186,21 @@ class YOLACTLoss(object):
             bceloss = tf.keras.losses.BinaryCrossentropy()
 
             # calculating loss for each mask coef correspond to each postitive anchor
-            gt = tf.map_fn(lambda x: mask_gt[x], pos_max_id, dtype=tf.float32)
-            gt = tf.transpose(gt, perm=[1, 2, 0])
-            bbox = tf.map_fn(lambda x: bbox_norm[x], pos_max_id, dtype=tf.float32)
-            area = (bbox[:, 2] - bbox[:, 0]) * (bbox[:, 3] - bbox[:, 1])
-            ymin, xmin, ymax, xmax = tf.unstack(bbox, axis=-1)
-            ymin = tf.cast(tf.math.floor(ymin), tf.int64)
-            xmin = tf.cast(tf.math.floor(xmin), tf.int64)
-            ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
-            xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
-            # read the w, h of original bbox and scale it to fit proto size
-            pred = tf.gather(pred_mask, pos_indices, axis=-1)
-            loss = 0
-            for i in tf.range(pos_indices.shape[0]):
-                loss += ((bceloss(gt[:, :, i][ymin[i]:ymax[i], xmin[i]:xmax[i]],
-                                  pred[:, :, i][ymin[i]:ymax[i], xmin[i]:xmax[i]])) / area[i])
-            # plt.figure()
-            # plt.imshow(gt[ymin:ymax, xmin:xmax])
+            for num, value in enumerate(pos_max_id):
+                gt = mask_gt[value]
+                bbox = bbox_norm[value]
+                bbox_center = utils.map_to_center_form(bbox)
+                area = bbox_center[-1] * bbox_center[-2]
+                ymin, xmin, ymax, xmax = tf.unstack(bbox)
+                ymin = tf.cast(tf.math.floor(ymin), tf.int64)
+                xmin = tf.cast(tf.math.floor(xmin), tf.int64)
+                ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
+                xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
+                # read the w, h of original bbox and scale it to fit proto size
+                pred = pred_mask[:, :, pos_indices[num]]
+                loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
+                # plt.figure()
+                # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
