@@ -209,5 +209,6 @@ class YOLACTLoss(object):
         return loss_mask
 
     def _loss_semantic_segmentation(self):
-        # implemented after training sucessfull
+        # implemented after training successful
+
         pass

@@ -27,9 +27,9 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 10,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 1,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
-flags.DEFINE_float('lr', 1e-3,
+flags.DEFINE_float('lr', 1e-4,
                    'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
