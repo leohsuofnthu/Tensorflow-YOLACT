@@ -203,7 +203,7 @@ class YOLACTLoss(object):
                 # plt.figure()
                 # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
-            loss_mask.append(loss / tf.cast(pos_indices.shape[0], tf.float32))
+            loss_mask.append(loss / tf.cast(tf.size(pos_indices), tf.float32))
         tf.print("mask loss:", loss_mask)
         loss_mask = tf.math.reduce_sum(loss_mask)
         return loss_mask
