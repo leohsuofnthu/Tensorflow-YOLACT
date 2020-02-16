@@ -142,6 +142,7 @@ def main(argv):
     t0 = time.time()
     tf.summary.trace_on(graph=True, profiler=True)
     for image, labels in train_dataset:
+        """
         i = np.squeeze(image.numpy())
         bbox = labels['bbox'].numpy()
         cls = labels['classes'].numpy()
@@ -156,6 +157,7 @@ def main(argv):
             plt.imshow(m[0][idx])
         cv2.imshow("check", i)
         k = cv2.waitKey(0)
+        """
         # check iteration and change the learning rate
         if iterations > FLAGS.train_iter:
             break
