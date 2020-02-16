@@ -154,6 +154,11 @@ class YOLACTLoss(object):
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
         loss_mask = []
+        positiveness = tf.expand_dims(positiveness, axis=-1)
+        positiveness = tf.reshape(positiveness, [-1, 1])
+        pos_indices = tf.where(positiveness > 0)
+        num_pos = tf.size(pos_indices[:, 0])
+
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -163,7 +168,7 @@ class YOLACTLoss(object):
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
 
-            pos_indices = tf.random.shuffle(tf.squeeze(tf.where(pos > 0)))
+            pos_indices = tf.squeeze(tf.where(pos > 0))
             # tf.print("num_pos =", num_pos)
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
@@ -203,7 +208,7 @@ class YOLACTLoss(object):
                 # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # plt.show()
             loss_mask.append(loss / tf.cast(tf.size(num_batch), tf.float32))
-        loss_mask = tf.math.reduce_sum(loss_mask)
+        loss_mask = tf.math.reduce_sum(loss_mask) / tf.cast(num_pos, tf.float32)
         tf.print("mask loss:", loss_mask)
         return loss_mask
 
