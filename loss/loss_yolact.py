@@ -193,7 +193,6 @@ class YOLACTLoss(object):
                 bbox_center = utils.map_to_center_form(bbox)
                 area = bbox_center[-1] * bbox_center[-2]
                 ymin, xmin, ymax, xmax = tf.unstack(bbox)
-                tf.print(ymin, xmin, ymax, xmax)
                 ymin = tf.cast(tf.math.floor(ymin), tf.int64)
                 xmin = tf.cast(tf.math.floor(xmin), tf.int64)
                 ymax = tf.cast(tf.math.ceil(ymax), tf.int64)
