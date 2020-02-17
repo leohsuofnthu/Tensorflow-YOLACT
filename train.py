@@ -29,7 +29,7 @@ flags.DEFINE_integer('train_iter', 50,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 2,
                      'batch size')
-flags.DEFINE_float('lr', 1e-4,
+flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
