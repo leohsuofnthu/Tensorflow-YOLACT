@@ -83,14 +83,16 @@ def main(argv):
                                                     subset='val')
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
-    print("Creating the model instance of YOLACT")
-    model = yolact.Yolact(input_size=550,
-                          fpn_channels=256,
-                          feature_map_size=[69, 35, 18, 9, 5],
-                          num_class=91,
-                          num_mask=32,
-                          aspect_ratio=[1, 0.5, 2],
-                          scales=[24, 48, 96, 192, 384])
+    strategy = tf.distribute.MirroredStrategy()
+    with strategy.scope():
+        print("Creating the model instance of YOLACT")
+        model = yolact.Yolact(input_size=550,
+                              fpn_channels=256,
+                              feature_map_size=[69, 35, 18, 9, 5],
+                              num_class=91,
+                              num_mask=32,
+                              aspect_ratio=[1, 0.5, 2],
+                              scales=[24, 48, 96, 192, 384])
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
