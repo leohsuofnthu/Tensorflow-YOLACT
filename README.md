@@ -3,7 +3,7 @@ This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance
 
 ## Model
 Here is the illustration of YOLACT from original paper.
-![ad](https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/images/model.png)
+![ad](https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/images/model.png = 432x190)
 
 ## Dataset and Pre-processsing
 
