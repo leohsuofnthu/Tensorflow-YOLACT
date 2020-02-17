@@ -172,10 +172,10 @@ class YOLACTLoss(object):
             pos_max_id = tf.gather(max_id, pos_indices)
 
             if tf.size(pos_indices) == 0:
-                tf.print("detect no positive")
+                # tf.print("detect no positive")
                 continue
             elif tf.size(pos_indices) == 1:
-                tf.print("detect only one dim")
+                # tf.print("detect only one dim")
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
 

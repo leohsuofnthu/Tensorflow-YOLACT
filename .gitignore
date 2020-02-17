@@ -5,3 +5,5 @@
 /data/train2017.zip
 /data/val2017.zip
 /data/coco
+/checkpoints
+/logs
