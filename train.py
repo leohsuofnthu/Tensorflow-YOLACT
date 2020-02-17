@@ -25,9 +25,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 50,
+flags.DEFINE_integer('train_iter', 100000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -35,9 +35,11 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 10,
+flags.DEFINE_float('print_interval', 10,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('valid_iter', 3,
+flags.DEFINE_float('save_interval', 1000,
+                   'number of iteration between saving model(checkpoint)')
+flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving model')
 
 
@@ -152,7 +154,7 @@ def main(argv):
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
 
         if iterations and iterations % 10 == 0:
-            print("Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}".format(
+            logging.info("Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}".format(
                 iterations, train_loss.result(), loc.result(), conf.result(), mask.result()
             ))
 
