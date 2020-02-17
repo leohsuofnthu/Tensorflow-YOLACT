@@ -25,9 +25,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 10,
+flags.DEFINE_integer('train_iter', 50,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 8,
+flags.DEFINE_integer('batch_size', 2,
                      'batch size')
 flags.DEFINE_float('lr', 1e-4,
                    'learning rate')
@@ -35,12 +35,10 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('save_interval', 1,
+flags.DEFINE_float('save_interval', 10,
+                   'number of iteration between saving model(checkpoint)')
+flags.DEFINE_float('valid_iter', 3,
                    'number of iteration between saving model')
-flags.DEFINE_float('valid_iter', 5,
-                   'number of iteration between saving model')
-
-logging.set_verbosity(logging.INFO)
 
 
 def train_step(model,
@@ -51,20 +49,10 @@ def train_step(model,
                labels):
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
-        t0 = time.time()
         output = model(image)
-        t1 = time.time()
-        logging.info("Forwarding time: %s secs" %(t1-t0))
-        t0 = time.time()
         loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
-        t1 = time.time()
-        logging.info("Loss Calculating time: %s secs" % (t1 - t0))
-        logging.info("Total loss: %s..." % total_loss)
-    t0 = time.time()
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
-    t1 = time.time()
-    logging.info("BackProp time: %s secs" % (t1 - t0))
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss
 
@@ -76,7 +64,6 @@ def valid_step(model,
                labels):
     output = model(image)
     loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
-    logging.info("Total loss: %s..." % total_loss)
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss
 
@@ -84,7 +71,7 @@ def valid_step(model,
 def main(argv):
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
-    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
+    print("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
     train_dataset = dataset_coco.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=FLAGS.batch_size,
                                                     subset='train')
@@ -94,7 +81,7 @@ def main(argv):
                                                     subset='val')
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
-    logging.info("Creating the model instance of YOLACT")
+    print("Creating the model instance of YOLACT")
     model = yolact.Yolact(input_size=550,
                           fpn_channels=256,
                           feature_map_size=[69, 35, 18, 9, 5],
@@ -102,16 +89,12 @@ def main(argv):
                           num_mask=32,
                           aspect_ratio=[1, 0.5, 2],
                           scales=[24, 48, 96, 192, 384])
-    # model.build(input_shape=(4, 550, 550, 3))
-    # model.summary()
-
-    # initialization of the parameters
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    logging.info("Initiate the Optimizer and Loss function...")
-    # optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
-    optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
+    print("Initiate the Optimizer and Loss function...")
+    optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
+    # optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
@@ -126,7 +109,7 @@ def main(argv):
 
     # Setup the TensorBoard for better visualization
     # Ref: https://www.tensorflow.org/tensorboard/get_started
-    logging.info("Setup the TensorBoard...")
+    print("Setup the TensorBoard...")
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
     test_log_dir = 'logs/gradient_tape/' + current_time + '/test'
@@ -135,33 +118,28 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Start the Training and Validation Process
-    logging.info("Start the training process...")
-    iterations = 0
-    # Freeze the BN layers in pre-trained backbone
-    model.set_bn('train')
-    t0 = time.time()
-    tf.summary.trace_on(graph=True, profiler=True)
+    print("Start the training process...")
+
+    # setup checkpoints manager
+    checkpoint = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, model=model)
+    manager = tf.train.CheckpointManager(
+        checkpoint, directory="./checkpoints", max_to_keep=5
+    )
+    # restore from latest checkpoint and iteration
+    status = checkpoint.restore(manager.latest_checkpoint)
+    if manager.latest_checkpoint:
+        print("Restored from {}".format(manager.latest_checkpoint))
+    else:
+        print("Initializing from scratch.")
+
+    best_val = 1e10
+    iterations = checkpoint.step.numpy()
     for image, labels in train_dataset:
-        """
-        i = np.squeeze(image.numpy())
-        bbox = labels['bbox'].numpy()
-        cls = labels['classes'].numpy()
-        m = labels['mask_target'].numpy()
-        for idx in range(2):
-            b = bbox[0][idx]
-            print(b)
-            cv2.rectangle(i, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
-            cv2.putText(i, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (36, 255, 12), 2)
-            plt.figure()
-            plt.imshow(m[0][idx])
-        cv2.imshow("check", i)
-        k = cv2.waitKey(0)
-        """
         # check iteration and change the learning rate
         if iterations > FLAGS.train_iter:
             break
 
+        checkpoint.step.assign_add(1)
         iterations += 1
         loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
@@ -172,15 +150,27 @@ def main(argv):
             tf.summary.scalar('Loc loss', loc.result(), step=iterations)
             tf.summary.scalar('Conf loss', conf.result(), step=iterations)
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
+
+        if iterations and iterations % 10 == 0:
+            print("Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}".format(
+                iterations, train_loss.result(), loc.result(), conf.result(), mask.result()
+            ))
+
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
+            # save checkpoint
+            save_path = manager.save()
+            print("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
                 if valid_iter > FLAGS.valid_iter:
                     break
                 # calculate validation loss
-                valid_loc_loss, valid_conf_loss, valid_mask_loss = valid_step(model, criterion, valid_loss,
-                                                                              valid_image, valid_labels)
+                valid_loc_loss, valid_conf_loss, valid_mask_loss = valid_step(model,
+                                                                              criterion,
+                                                                              valid_loss,
+                                                                              valid_image,
+                                                                              valid_labels)
                 v_loc.update_state(valid_loc_loss)
                 v_conf.update_state(valid_conf_loss)
                 v_mask.update_state(valid_mask_loss)
@@ -194,16 +184,20 @@ def main(argv):
 
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}'
             valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}'
-            logging.info(train_template.format(iterations + 1,
-                                               train_loss.result(),
-                                               loc.result(),
-                                               conf.result(),
-                                               mask.result()))
-            logging.info(valid_template.format(iterations + 1,
-                                               valid_loss.result(),
-                                               v_loc.result(),
-                                               v_conf.result(),
-                                               v_mask.result()))
+            print(train_template.format(iterations + 1,
+                                        train_loss.result(),
+                                        loc.result(),
+                                        conf.result(),
+                                        mask.result()))
+            print(valid_template.format(iterations + 1,
+                                        valid_loss.result(),
+                                        v_loc.result(),
+                                        v_conf.result(),
+                                        v_mask.result()))
+            if valid_loss.result() < best_val:
+                # Saving the weights:
+                model.save_weights(model, './weights/weights_' + str(valid_loss.result() + '.h5'))
+
             # reset the metrics
             train_loss.reset_states()
             loc.reset_states()
@@ -214,10 +208,6 @@ def main(argv):
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
-            t1 = time.time()
-            logging.info("Training interval: %s second" % (t1 - t0))
-            t0 = time.time()
-    tf.summary.trace_export(name='test', profiler_outdir='.')
 
 
 if __name__ == '__main__':

@@ -68,7 +68,7 @@ class YOLACTLoss(object):
         # calculate the smoothL1(positive_pred, positive_gt) and return
         smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
-        tf.print("loc loss:", loss_loc)
+        # tf.print("loc loss:", loss_loc)
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
@@ -135,7 +135,7 @@ class YOLACTLoss(object):
             tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
                         tf.cast(tf.size(pos_indices), tf.float32))
         tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
-        tf.print("conf loss:", loss_conf)
+        # tf.print("conf loss:", loss_conf)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
@@ -203,9 +203,9 @@ class YOLACTLoss(object):
                 # plt.figure()
                 # plt.imshow(gt[ymin:ymax, xmin:xmax])
             # gplt.show()
-            loss_mask.append(loss / tf.cast(tf.size(pos_indices[0]), tf.float32))
+            loss_mask.append(loss / tf.cast(num_batch, tf.float32))
         loss_mask = tf.math.reduce_sum(loss_mask)
-        tf.print("mask loss:", loss_mask)
+        # tf.print("mask loss:", loss_mask)
         return loss_mask
 
     def _loss_semantic_segmentation(self):
