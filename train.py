@@ -196,7 +196,8 @@ def main(argv):
                                         v_mask.result()))
             if valid_loss.result() < best_val:
                 # Saving the weights:
-                model.save_weights(model, './weights/weights_' + str(valid_loss.result() + '.h5'))
+                best_val = valid_loss.result()
+                model.save_weights(model, './weights/weights_' + str(valid_loss.result()) + '.h5')
 
             # reset the metrics
             train_loss.reset_states()
