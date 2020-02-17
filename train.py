@@ -94,8 +94,14 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+        FLAGS.lr,
+        decay_steps=10000,
+        decay_rate=0.96,
+        staircase=True)
+
     print("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.Adam(learning_rate=FLAGS.lr)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
     # optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
