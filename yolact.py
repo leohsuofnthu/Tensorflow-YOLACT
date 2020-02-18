@@ -36,7 +36,7 @@ class Yolact(tf.keras.Model):
         self.protonet = ProtoNet(num_mask)
 
         # semantic segmentation branch to boost feature richness
-        # elf.semantic_segmentation = tf.keras.layers.Conv2D(num_class, (1, 1))
+        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class, (1, 1))
 
         self.num_anchor, self.priors = make_priors(input_size, feature_map_size, aspect_ratio, scales)
         print("prior shape:", self.priors.shape)
@@ -69,7 +69,7 @@ class Yolact(tf.keras.Model):
         # print("protonet: ", protonet_out.shape)
 
         # semantic segmentation branch
-        #seg = self.semantic_segmentation(p3)
+        seg = self.semantic_segmentation(p3)
 
         # Prediction Head branch
         pred_cls = []
@@ -92,7 +92,7 @@ class Yolact(tf.keras.Model):
             'pred_offset': pred_offset,
             'pred_mask_coef': pred_mask_coef,
             'proto_out': protonet_out,
-            #'seg': seg
+            'seg': seg
         }
 
         return pred
