@@ -164,7 +164,7 @@ def main(argv):
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
         if iterations and iterations % 10 == 0:
-            logging.info("Iteration {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
+            logging.info("Iteration {}, Total Loss: {.3f}, B: {.3f},  C: {.3f}, M: {.3f}, S:{.3f} ".format(
                 iterations, train_loss.result(), loc.result(), conf.result(), mask.result(), seg.result()
             ))
 
@@ -196,8 +196,8 @@ def main(argv):
                 tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
                 tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
 
-            train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}'
+            train_template = 'Iteration {.3f}, Train Loss: {.3f}, Loc Loss: {.3f},  Conf Loss: {.3f}, Mask Loss: {.3f}'
+            valid_template = 'Iteration {.3f}, Valid Loss: {.3f}, V Loc Loss: {.3f},  V Conf Loss: {.3f}, V Mask Loss: {.3f}'
             print(train_template.format(iterations + 1,
                                         train_loss.result(),
                                         loc.result(),
