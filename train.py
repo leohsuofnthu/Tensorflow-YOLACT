@@ -52,11 +52,11 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image)
-        loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
-    return loc_loss, conf_loss, mask_loss
+    return loc_loss, conf_loss, mask_loss, seg_loss
 
 
 def valid_step(model,
@@ -65,9 +65,9 @@ def valid_step(model,
                image,
                labels):
     output = model(image)
-    loc_loss, conf_loss, mask_loss, total_loss = loss_fn(output, labels, 91)
+    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     metrics.update_state(total_loss)
-    return loc_loss, conf_loss, mask_loss
+    return loc_loss, conf_loss, mask_loss, seg_loss
 
 
 def main(argv):
@@ -111,9 +111,11 @@ def main(argv):
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
     mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
+    seg = tf.keras.metrics.Mean('seg_loss', dtype=tf.float32)
     v_loc = tf.keras.metrics.Mean('vloc_loss', dtype=tf.float32)
     v_conf = tf.keras.metrics.Mean('vconf_loss', dtype=tf.float32)
     v_mask = tf.keras.metrics.Mean('vmask_loss', dtype=tf.float32)
+    v_seg = tf.keras.metrics.Mean('vseg_loss', dtype=tf.float32)
 
     # -----------------------------------------------------------------
 
@@ -151,19 +153,21 @@ def main(argv):
 
         checkpoint.step.assign_add(1)
         iterations += 1
-        loc_loss, conf_loss, mask_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
+        loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
+        seg.update_state(seg_loss)
         with train_summary_writer.as_default():
             tf.summary.scalar('Total loss', train_loss.result(), step=iterations)
             tf.summary.scalar('Loc loss', loc.result(), step=iterations)
             tf.summary.scalar('Conf loss', conf.result(), step=iterations)
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
+            tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
         if iterations and iterations % 10 == 0:
-            logging.info("Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}".format(
-                iterations, train_loss.result(), loc.result(), conf.result(), mask.result()
+            logging.info("Iteration {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
+                iterations, train_loss.result(), loc.result(), conf.result(), mask.result(), seg.result()
             ))
 
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
@@ -176,14 +180,15 @@ def main(argv):
                 if valid_iter > FLAGS.valid_iter:
                     break
                 # calculate validation loss
-                valid_loc_loss, valid_conf_loss, valid_mask_loss = valid_step(model,
-                                                                              criterion,
-                                                                              valid_loss,
-                                                                              valid_image,
-                                                                              valid_labels)
+                valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
+                                                                                              criterion,
+                                                                                              valid_loss,
+                                                                                              valid_image,
+                                                                                              valid_labels)
                 v_loc.update_state(valid_loc_loss)
                 v_conf.update_state(valid_conf_loss)
                 v_mask.update_state(valid_mask_loss)
+                v_seg.update_state(valid_seg_loss)
                 valid_iter += 1
 
             with test_summary_writer.as_default():
@@ -191,6 +196,7 @@ def main(argv):
                 tf.summary.scalar('V Loc loss', v_loc.result(), step=iterations)
                 tf.summary.scalar('V Conf loss', v_conf.result(), step=iterations)
                 tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
+                tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
 
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}'
             valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}'
@@ -198,12 +204,14 @@ def main(argv):
                                         train_loss.result(),
                                         loc.result(),
                                         conf.result(),
-                                        mask.result()))
+                                        mask.result(),
+                                        seg.result()))
             print(valid_template.format(iterations + 1,
                                         valid_loss.result(),
                                         v_loc.result(),
                                         v_conf.result(),
-                                        v_mask.result()))
+                                        v_mask.result(),
+                                        v_seg.result()))
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
@@ -214,11 +222,13 @@ def main(argv):
             loc.reset_states()
             conf.reset_states()
             mask.reset_states()
+            seg.reset_states()
 
             valid_loss.reset_states()
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
+            v_seg.reset_states()
 
 
 if __name__ == '__main__':

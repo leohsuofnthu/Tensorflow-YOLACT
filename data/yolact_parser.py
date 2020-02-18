@@ -122,9 +122,11 @@ class Parser(object):
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
         """
+        # number of object in training sample
+        num_obj = tf.size(classes)
 
         # resized boxes for proto output size
-        boxes_norm = boxes * (self._proto_output_size/self._output_size)
+        boxes_norm = boxes * (self._proto_output_size / self._output_size)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
@@ -151,6 +153,7 @@ class Parser(object):
             'bbox_for_norm': boxes_norm,
             'positiveness': match_positiveness,
             'classes': classes,
+            'num_obj': num_obj,
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors
         }
@@ -212,8 +215,11 @@ class Parser(object):
         # resize boxes for resized image
         boxes = boxes * self._output_size
 
+        # number of object in training sample
+        num_obj = tf.size(classes)
+
         # resized boxes for proto output size
-        boxes_norm = boxes * (self._proto_output_size/self._output_size)
+        boxes_norm = boxes * (self._proto_output_size / self._output_size)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
@@ -240,6 +246,7 @@ class Parser(object):
             'bbox_for_norm': boxes_norm,
             'positiveness': match_positiveness,
             'classes': classes,
+            'num_obj': num_obj,
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors
         }
