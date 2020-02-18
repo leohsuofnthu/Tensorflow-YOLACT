@@ -235,7 +235,7 @@ class YOLACTLoss(object):
             # obj_mask shape (objects, 138, 138)
             obj_mask = masks[:objects]
             obj_cls = tf.expand_dims(cls[:objects], axis=-1)
-            tf.print("obj_cls:", tf.shape(obj_cls))
+            # tf.print("obj_cls:", tf.shape(obj_cls))
 
             # create empty ground truth (138, 138, num_cls)
             seg_gt = tf.zeros_like(seg)
