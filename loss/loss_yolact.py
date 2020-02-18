@@ -8,7 +8,7 @@ class YOLACTLoss(object):
     def __init__(self, loss_weight_cls=1,
                  loss_weight_box=1.5,
                  loss_weight_mask=6.125,
-                 loss_seg = 1,
+                 loss_seg=1,
                  neg_pos_ratio=3,
                  max_masks_for_train=100):
         self._loss_weight_cls = loss_weight_cls
@@ -43,11 +43,11 @@ class YOLACTLoss(object):
         classes = label['classes']
         num_obj = label['num_obj']
 
-        loc_loss = self._loss_location(pred_offset, box_targets, positiveness)*self._loss_weight_box
-        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness)*self._loss_weight_cls
+        loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
+        conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
         mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
-                                    max_masks_for_train=100)*self._loss_weight_mask
-        seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj)*self._loss_weight_seg
+                                    max_masks_for_train=100) * self._loss_weight_mask
+        seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
 
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
@@ -225,10 +225,20 @@ class YOLACTLoss(object):
             cls = classes[idx]
             objects = num_obj[idx]
 
-            # create seg ground truth
+            # seg shape (138, 138, num_cls)
+
+            # masks shape (100, 138, 138)
+
+            # obj_mask shape (objects, 138, 138)
+            obj_mask = masks[:objects]
+            obj_cls = tf.expand_dims(cls[:objects], axis=-1)
+            tf.print("obj_cls:", tf.shape(obj_cls))
+
+            # create empty ground truth (138, 138, num_cls)
             seg_gt = tf.zeros_like(seg)
-            for i in tf.range(objects):
-                seg_gt[:, :, cls[i]] = masks[i]
-                loss_seg.append(tf.keras.losses.binary_crossentropy(seg_gt, seg, from_logits=True))
-            loss_seg = tf.math.reduce_sum(loss_seg)
+            seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
+            seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
+            seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
+            loss_seg.append(tf.keras.losses.binary_crossentropy(seg_gt, seg, from_logits=True))
+        loss_seg = tf.reduce_sum(loss_seg)
         return loss_seg
