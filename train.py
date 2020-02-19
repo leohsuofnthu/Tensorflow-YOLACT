@@ -8,6 +8,7 @@ from absl import logging
 
 import tensorflow as tf
 
+from utils import learning_rate_schedule
 from data import dataset_coco
 from loss import loss_yolact
 import yolact
@@ -94,12 +95,7 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
-        FLAGS.lr,
-        decay_steps=10000,
-        decay_rate=0.96,
-        staircase=True)
-
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4, initial_lr=1e-3)
     print("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
     # optimizer = tf.keras.optimizers.SGD(learning_rate=FLAGS.lr, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
@@ -164,8 +160,8 @@ def main(argv):
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
         if iterations and iterations % 10 == 0:
-            logging.info("Iteration {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
-                iterations, train_loss.result(), loc.result(), conf.result(), mask.result(), seg.result()
+            logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
+                iterations, model.optimizer.learning_rate, train_loss.result(), loc.result(), conf.result(), mask.result(), seg.result()
             ))
 
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
