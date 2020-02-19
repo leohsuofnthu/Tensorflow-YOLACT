@@ -20,12 +20,13 @@ class ProtoNet(tf.keras.layers.Layer):
                                             kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                             activation="relu")
         self.upSampling = tf.keras.layers.UpSampling2D(size=(2, 2), interpolation='bilinear')
-        self.Conv4 = tf.keras.layers.Conv2D(256, (3,3), 1, padding="same",
+        self.Conv4 = tf.keras.layers.Conv2D(256, (3, 3), 1, padding="same",
                                             kernel_initializer=tf.keras.initializers.glorot_uniform(),
                                             activation="relu")
+
         self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 1, padding="same",
                                                 kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                activation="relu")
+                                                activation="sigmoid")
 
     def call(self, p3):
         # (3,3) convolution * 3
