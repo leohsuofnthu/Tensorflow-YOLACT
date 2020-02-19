@@ -28,6 +28,8 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
         if step <= warmup_steps:
             # warm up stage
             learning_rate = (lr - self.warmup_lr) * (step / self.warmup_step) + self.warmup_lr
+        elif step > warmup_steps:
+            learning_rate = lr
         elif step == 280000:
             learning_rate *= decay_rate
         elif step == 600000:
