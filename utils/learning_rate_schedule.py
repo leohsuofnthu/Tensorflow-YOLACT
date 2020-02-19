@@ -36,9 +36,10 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
             learning_rate *= decay_rate
         elif step == 750000:
             learning_rate *= decay_rate
-        else:
+        elif step > 750000:
             learning_rate *= decay_rate
-
+        else:
+            learning_rate *= 1
         return learning_rate
 
     def get_config(self):
