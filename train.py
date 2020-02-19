@@ -161,8 +161,13 @@ def main(argv):
 
         if iterations and iterations % 10 == 0:
             logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
-                iterations, model.optimizer.learning_rate, train_loss.result(), loc.result(), conf.result(), mask.result(), seg.result()
-            ))
+                                                                            iterations,
+                                                                            optimizer._decayed_lr(var_dtype=tf.float32),
+                                                                            train_loss.result(), loc.result(),
+                                                                            conf.result(),
+                                                                            mask.result(),
+                                                                            seg.result()
+                                                                        ))
 
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
             # save checkpoint
