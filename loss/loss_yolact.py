@@ -189,7 +189,7 @@ class YOLACTLoss(object):
 
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             loss = 0
-            bceloss = tf.keras.losses.BinaryCrossentropy()
+            bceloss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
 
             # calculating loss for each mask coef correspond to each postitive anchor
             for num, value in enumerate(pos_max_id):
