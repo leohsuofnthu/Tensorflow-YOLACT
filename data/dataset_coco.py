@@ -41,9 +41,12 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+    """
+    dataset = dataset.map(map_func=parser)
+    dataset = dataset.batch(batch_size)
+    """
 
     return dataset
-
 
 """
 train_dataloader = prepare_dataloader("./coco", 1, "train")
@@ -57,18 +60,22 @@ count = 0
 for image, labels in train_dataloader:
     image = np.squeeze(image.numpy())
     bbox = labels['bbox'].numpy()
+    print(bbox)
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()
-    for idx in range(2):
+    num_obj = labels['num_obj'].numpy()
+    plt.figure()
+    plt.imshow(image)
+    for idx in range(num_obj[0]):
         b = bbox[0][idx]
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
         cv2.putText(image, label_map.category_map[cls[0][idx]], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_SIMPLEX,
                     1, (36, 255, 12), 2)
         plt.figure()
         plt.imshow(mask[0][idx])
-    plt.show()
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
+    plt.show()
     print(cls)
     break
-    """
+"""

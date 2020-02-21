@@ -14,15 +14,13 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
         bounding_boxes=tf.expand_dims(bboxes, 0),
         min_object_covered=0.25,
         aspect_ratio_range=(0.6, 1.67),
-        area_range=(0.1, 1.0),
+        area_range=(0.3, 1.0),
         max_attempts=200)
     # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
     distort_bbox = distort_bbox[0, 0]
-
     # cropped the image
     cropped_image = tf.slice(img, bbox_begin, bbox_size)
     cropped_image.set_shape([None, None, 3])
-
     # cropped the mask
     bbox_begin = tf.concat([[0], bbox_begin], axis=0)
     bbox_size = tf.concat([[-1], bbox_size], axis=0)
@@ -43,6 +41,10 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bool_mask = scores > 0.5
     classes = tf.boolean_mask(classes, bool_mask)
     bboxes = tf.boolean_mask(bboxes, bool_mask)
+
+    # deal with negative value of bbox
+    bboxes = tf.clip_by_value(bboxes, clip_value_min=0, clip_value_max=1)
+
     cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
     # resize cropped to output size
     cropped_image = tf.image.resize(cropped_image, [output_size, output_size], method=tf.image.ResizeMethod.BILINEAR)
@@ -101,8 +103,6 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     :param proto_output_size:
     :return:
     """
-    # normalize the bboxes
-    bboxes = bboxes / output_size
 
     # generate random
     FLAGS = np.random.randint(2, size=3)
@@ -126,8 +126,5 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(masks)
     masks = tf.cast(masks, tf.float32)
-
-    # rescale to ResNet input (0~255) and use preprocess input function from tf keras ResNet 50
-    img = img * 255
 
     return img, bboxes, masks, classes

@@ -28,7 +28,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 100000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 8,
+flags.DEFINE_integer('batch_size', 2,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -159,7 +159,7 @@ def main(argv):
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
-        if iterations and iterations % 10 == 0:
+        if iterations and iterations % 1 == 0:
             logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
                                                                             iterations,
                                                                             optimizer._decayed_lr(var_dtype=tf.float32),

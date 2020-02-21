@@ -54,8 +54,10 @@ class YOLACTLoss(object):
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
         """
+
         :param pred_offset: [batch, num_anchor, 4]
-        :param gt_offset (box_target): [batch, num_anchor, 4]
+        :param gt_offset: [batch, num_anchor, 4]
+        :param positiveness: [batch, num_anchor]
         :return:
         """
         positiveness = tf.expand_dims(positiveness, axis=-1)
@@ -71,9 +73,9 @@ class YOLACTLoss(object):
         tf.debugging.check_numerics(gt_offset, message="gt_offset contains invalid value")
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
+        num_pos = gt_offset.shape[0]
         smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
-        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(tf.size(pos_indices), tf.float32)
-        # tf.print("loc loss:", loss_loc)
+        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(num_pos, tf.float32)
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
@@ -101,15 +103,13 @@ class YOLACTLoss(object):
         pos_indices = tf.where(positiveness == 1)
         neg_indices = tf.where(positiveness == 0)
 
-        # calculate the needed amount of  negative sample
-        num_pos = tf.size(pos_indices[:, 0])
-        # tf.print("num_pos = ", num_pos)
-        num_neg_needed = num_pos * self._neg_pos_ratio
-        # tf.print("num_neg = ", num_neg_needed)
-
         # gather pos data, neg data separately
         pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
         pos_gt = tf.gather(gt_cls, pos_indices[:, 0])
+        # calculate the needed amount of  negative sample
+        num_pos = pos_gt.shape[0]
+        num_neg_needed = num_pos * self._neg_pos_ratio
+        # tf.print("num_neg = ", num_neg_needed)
 
         neg_pred_cls = tf.gather(pred_cls, neg_indices[:, 0])
         neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
@@ -138,9 +138,8 @@ class YOLACTLoss(object):
 
         loss_conf = tf.reduce_sum(
             tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
-                        tf.cast(tf.size(pos_indices), tf.float32))
+                        tf.cast(num_pos, tf.float32))
         tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
-        # tf.print("conf loss:", loss_conf)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
@@ -159,7 +158,8 @@ class YOLACTLoss(object):
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
         loss_mask = []
-
+        proto_size = shape_proto[1]
+        total_pos = 0
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -170,27 +170,27 @@ class YOLACTLoss(object):
             max_id = max_id_for_anchors[idx]
 
             pos_indices = tf.squeeze(tf.where(pos == 1))
-            # tf.print("num_pos =", num_pos)
+            total_pos += tf.size(pos_indices)
+            if tf.size(pos_indices) == 0:
+                tf.print("detect no positive")
+                continue
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
+            # tf.print("pos coef shape", tf.shape(pos_mask_coef))
 
-            if tf.size(pos_indices) == 0:
-                # tf.print("detect no positive")
-                continue
-            elif tf.size(pos_indices) == 1:
+            if tf.size(pos_indices) == 1:
                 # tf.print("detect only one dim")
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
 
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-
+            tf.debugging.check_numerics(pred_mask, 'pre mask nan')
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
             loss = 0
-            bceloss = tf.keras.losses.BinaryCrossentropy(from_logits=True)
-
+            bceloss = tf.keras.losses.BinaryCrossentropy()
             # calculating loss for each mask coef correspond to each postitive anchor
             for num, value in enumerate(pos_max_id):
                 gt = mask_gt[value]
@@ -204,11 +204,12 @@ class YOLACTLoss(object):
                 xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
+                pred = tf.keras.activations.sigmoid(pred)
                 loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
                 # plt.figure()
-                # plt.imshow(gt[ymin:ymax, xmin:xmax])
-            # gplt.show()
-            loss_mask.append(loss / tf.cast(num_batch, tf.float32))
+                # plt.imshow(pred[ymin:ymax, xmin:xmax])
+            # plt.show()
+            loss_mask.append(loss)
         loss_mask = tf.math.reduce_sum(loss_mask)
         # tf.print("mask loss:", loss_mask)
         return loss_mask
@@ -242,6 +243,9 @@ class YOLACTLoss(object):
             seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
             seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
             seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
-            loss_seg.append(tf.keras.losses.binary_crossentropy(seg_gt, seg, from_logits=True))
+            tf.debugging.check_numerics(seg_gt, "seg_gt")
+            tf.debugging.check_numerics(seg, "seg")
+            loss_seg.append(
+                tf.keras.losses.binary_crossentropy(seg_gt, seg, from_logits=True) / seg.shape[0] / seg.shape[0])
         loss_seg = tf.reduce_sum(loss_seg)
         return loss_seg

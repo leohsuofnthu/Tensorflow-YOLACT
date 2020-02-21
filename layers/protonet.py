@@ -25,7 +25,7 @@ class ProtoNet(tf.keras.layers.Layer):
                                             activation="relu")
 
         self.finalConv = tf.keras.layers.Conv2D(num_prototype, (3, 3), 1, padding="same",
-                                                kernel_initializer=tf.keras.initializers.glorot_uniform())
+                                                kernel_initializer=tf.keras.initializers.glorot_uniform(), activation='relu')
 
     def call(self, p3):
         # (3,3) convolution * 3

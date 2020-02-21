@@ -84,7 +84,7 @@ class Parser(object):
         image = data['image']
 
         # convert image to range [0, 1], faciliate augmentation
-        image = tf.image.convert_image_dtype(image, tf.float32)
+        image = normalize_image(image)
 
         # ignore grayscale image, set it zero
         image = tf.cond(
@@ -98,19 +98,14 @@ class Parser(object):
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
+        masks = tf.image.resize(masks, [self._output_size, self._output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
-        masks = tf.squeeze(tf.cast(masks, tf.float32))
-        # denormalize the boxes
-        boxes = boxes * self._output_size
 
-        """
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
                                                                         self._proto_output_size, classes)
-        
 
         # There might be no label after augmentation
         if tf.size(classes) == 0:
@@ -121,7 +116,7 @@ class Parser(object):
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
-        """
+
         # number of object in training sample
         num_obj = tf.size(classes)
 
