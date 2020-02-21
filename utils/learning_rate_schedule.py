@@ -25,10 +25,10 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
         lr = tf.cast(self.initial_lr, dtype)
         decay_rate = 0.1
 
-        if step <= warmup_steps:
+        if step < warmup_steps:
             # warm up stage
             learning_rate = (lr - self.warmup_lr) * (step / self.warmup_step) + self.warmup_lr
-        elif step > warmup_steps:
+        elif step == warmup_steps:
             learning_rate = lr
         elif step == 280000:
             learning_rate *= decay_rate
