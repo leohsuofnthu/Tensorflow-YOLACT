@@ -32,7 +32,6 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                               feature_map_size=[69, 35, 18, 9, 5],
                               aspect_ratio=[1, 0.5, 2],
                               scale=[24, 48, 96, 192, 384])
-    print(anchorobj.get_anchors()[:20])
     parser = yolact_parser.Parser(output_size=550,
                                   anchor_instance=anchorobj,
                                   match_threshold=0.5,
@@ -49,7 +48,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
 
     return dataset
 
-
+"""
 train_dataloader = prepare_dataloader("./coco", 1, "train")
 print(train_dataloader)
 # visualize the training sample
@@ -80,4 +79,4 @@ for image, labels in train_dataloader:
     plt.show()
     print(cls)
     break
-
+"""
