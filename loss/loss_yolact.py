@@ -115,7 +115,7 @@ class YOLACTLoss(object):
         neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
 
         # apply softmax on the pred_cls
-        neg_softmax = tf.nn.softmax(neg_pred_cls)
+        neg_softmax = neg_pred_cls
         tf.debugging.check_numerics(neg_softmax, message="neg_softmax contains invalid value")
         # -log(softmax class 0)
         neg_minus_log_class0 = -1 * tf.math.log(neg_softmax[:, 0])
@@ -136,9 +136,10 @@ class YOLACTLoss(object):
         target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
-        loss_conf = tf.reduce_sum(
-            tf.nn.softmax_cross_entropy_with_logits(labels=target_labels, logits=target_logits)) / (
-                        tf.cast(num_pos, tf.float32))
+        # loss
+        cce = tf.keras.losses.CategoricalCrossentropy()
+        loss_conf = cce(target_labels, target_logits)
+
         tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
         return loss_conf
 

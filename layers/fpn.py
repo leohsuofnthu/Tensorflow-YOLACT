@@ -14,22 +14,17 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
 
         # no Relu for downsample layer
         self.downSample1 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                  activation="relu")
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         self.downSample2 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 2, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                  activation="relu")
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         self.lateralCov1 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                  activation="relu")
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
         self.lateralCov2 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                  activation="relu")
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
         self.lateralCov3 = tf.keras.layers.Conv2D(num_fpn_filters, (1, 1), 1, padding="same",
-                                                  kernel_initializer=tf.keras.initializers.glorot_uniform(),
-                                                  activation="relu")
+                                                  kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         # predict layer for FPN
         self.predictP5 = tf.keras.layers.Conv2D(num_fpn_filters, (3, 3), 1, padding="same",

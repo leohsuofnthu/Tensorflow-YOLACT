@@ -30,20 +30,21 @@ class Anchor(object):
             # print("Create priors for f_size:%s", f_size)
             count_anchor = 0
             for j, i in product(range(f_size), range(f_size)):
-                f_k = img_size / (f_size + 1)
-                x = f_k * (i + 1)
-                y = f_k * (j + 1)
+                x = (i + 0.5) / f_size
+                y = (j + 0.5) / f_size
                 for ars in aspect_ratio:
                     a = sqrt(ars)
-                    w = scale[idx] * a
-                    h = scale[idx] / a
+                    w = scale[idx] * a / img_size
+                    h = scale[idx] / a / img_size
+                    # the author od original paper accidetly use square anchor all the time
+                    h = w
                     # directly use point form here => [ymin, xmin, ymax, xmax]
-                    ymin = max(0, y - (h / 2))
-                    xmin = max(0, x - (w / 2))
-                    ymax = min(img_size, y + (h / 2))
-                    xmax = min(img_size, x + (w / 2))
-                    prior_boxes += [ymin, xmin, ymax, xmax]
-                    count_anchor += 1
+                    ymin = y - (h / 2)
+                    xmin = x - (w / 2)
+                    ymax = y + (h / 2)
+                    xmax = x + (w / 2)
+                    prior_boxes += [ymin * img_size, xmin * img_size, ymax * img_size, xmax * img_size]
+                count_anchor += 1
             num_anchors += count_anchor
             # print(f_size, count_anchor)
         output = tf.reshape(tf.convert_to_tensor(prior_boxes), [-1, 4])
@@ -156,17 +157,16 @@ class Anchor(object):
         map_loc = tf.gather(gt_bbox, max_id_for_anchors)
 
         # convert to center form
-
         # center_anchors = tf.map_fn(lambda x: map_to_center_form(x), self.anchors)
         w = self.anchors[:, 2] - self.anchors[:, 0]
         h = self.anchors[:, 3] - self.anchors[:, 1]
-        center_anchors = tf.stack([self.anchors[:, 0] + (w / 2), self.anchors[:, 1] + (h / 2), w, h])
+        center_anchors = tf.stack([self.anchors[:, 0] + (w / 2), self.anchors[:, 1] + (h / 2), w, h], axis=-1)
 
         # center_gt = tf.map_fn(lambda x: map_to_center_form(x), map_loc)
         w = map_loc[:, 2] - map_loc[:, 0]
         h = map_loc[:, 3] - map_loc[:, 1]
-        center_gt = tf.stack([map_loc[:, 0] + (w / 2), map_loc[:, 1] + (h / 2), w, h])
-
+        center_gt = tf.stack([map_loc[:, 0] + (w / 2), map_loc[:, 1] + (h / 2), w, h], axis=-1)
+        print(center_gt)
         variances = [0.1, 0.2]
         # calculate offset
         # target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
@@ -174,8 +174,8 @@ class Anchor(object):
         g_hat_cy = (center_gt[:, 1] - center_anchors[:, 1]) / center_anchors[:, 3] / variances[0]
         tf.debugging.assert_non_negative(center_anchors[:, 2] / center_gt[:, 2])
         tf.debugging.assert_non_negative(center_anchors[:, 3] / center_gt[:, 3])
-        g_hat_w = tf.math.log(center_anchors[:, 2] / center_gt[:, 2]) / variances[1]
-        g_hat_h = tf.math.log(center_anchors[:, 3] / center_gt[:, 3]) / variances[1]
-        target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h])
+        g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2]) / variances[1]
+        g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3]) / variances[1]
+        target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
 
         return target_cls, target_loc, max_id_for_anchors, match_positiveness
