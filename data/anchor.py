@@ -166,7 +166,6 @@ class Anchor(object):
         w = map_loc[:, 2] - map_loc[:, 0]
         h = map_loc[:, 3] - map_loc[:, 1]
         center_gt = tf.stack([map_loc[:, 0] + (w / 2), map_loc[:, 1] + (h / 2), w, h], axis=-1)
-        print(center_gt)
         variances = [0.1, 0.2]
         # calculate offset
         # target_loc = tf.map_fn(lambda x: map_to_offset(x), tf.stack([center_gt, center_anchors], axis=-1))
