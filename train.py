@@ -19,7 +19,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 100000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -86,7 +86,7 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-5 ,
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
                                                                      initial_lr=FLAGS.lr)
     print("Initiate the Optimizer and Loss function...")
     # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
