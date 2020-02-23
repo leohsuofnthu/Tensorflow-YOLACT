@@ -36,7 +36,6 @@ class PredictionModule(tf.keras.layers.Layer):
         pred_mask = tf.reshape(pred_mask, [pred_mask.shape[0], -1, self.num_mask])
 
         # add activation for conf and mask coef
-        pred_class = tf.keras.activations.softmax(pred_class, axis=-1)
         pred_mask = tf.keras.activations.tanh(pred_mask)
 
         return pred_class, pred_box, pred_mask
