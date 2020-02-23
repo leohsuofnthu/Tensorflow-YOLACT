@@ -86,7 +86,7 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-5 ,
                                                                      initial_lr=FLAGS.lr)
     print("Initiate the Optimizer and Loss function...")
     # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
@@ -151,7 +151,7 @@ def main(argv):
             tf.summary.scalar('Mask loss', mask.result(), step=iterations)
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
-        if iterations and iterations % 1 == 0:
+        if iterations >= 0:
             logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
                 iterations,
                 optimizer._decayed_lr(var_dtype=tf.float32),
