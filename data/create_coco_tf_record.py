@@ -31,18 +31,17 @@ import hashlib
 import io
 import json
 import os
+
+import PIL.Image
 import contextlib2
 import numpy as np
-import PIL.Image
-
-from pycocotools import mask
-
+import tensorflow as tf
 # use absl for tf 2.0
 from absl import app
 from absl import flags
 from absl import logging
+from pycocotools import mask
 
-import tensorflow as tf
 from data import dataset_util
 
 FLAGS = flags.FLAGS

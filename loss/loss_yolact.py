@@ -1,6 +1,6 @@
 import tensorflow as tf
+
 from utils import utils
-import matplotlib.pyplot as plt
 
 
 class YOLACTLoss(object):
@@ -43,6 +43,8 @@ class YOLACTLoss(object):
         classes = label['classes']
         num_obj = label['num_obj']
 
+        # calculate num_pos
+
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
         mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
@@ -53,42 +55,22 @@ class YOLACTLoss(object):
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
 
     def _loss_location(self, pred_offset, gt_offset, positiveness):
-        """
 
-        :param pred_offset: [batch, num_anchor, 4]
-        :param gt_offset: [batch, num_anchor, 4]
-        :param positiveness: [batch, num_anchor]
-        :return:
-        """
         positiveness = tf.expand_dims(positiveness, axis=-1)
 
         # get postive indices
         pos_indices = tf.where(positiveness == 1)
-
         pred_offset = tf.gather_nd(pred_offset, pos_indices[:, :-1])
         gt_offset = tf.gather_nd(gt_offset, pos_indices[:, :-1])
-
-        # check if there is nan in pred_offset, gt_offset
-        tf.debugging.check_numerics(pred_offset, message="pred_offset contains invalid value")
-        tf.debugging.check_numerics(gt_offset, message="gt_offset contains invalid value")
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
         num_pos = gt_offset.shape[0]
         smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
         loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / tf.cast(num_pos, tf.float32)
+
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
-        """
-
-        :param pred_cls: [batch, num_anchor, num_cls]
-        :param gt_cls: [batch, num_anchor, 1]
-        :param num_cls:
-        :return:
-        """
-        # check if there is nan in pred_cls, gt_cls
-        tf.debugging.check_numerics(pred_cls, message="pred_cls contains invalid value")
-        tf.debugging.check_numerics(gt_cls, message="gt_cls contains invalid value")
 
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(pred_cls, [-1, num_cls])
@@ -106,17 +88,17 @@ class YOLACTLoss(object):
         # gather pos data, neg data separately
         pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
         pos_gt = tf.gather(gt_cls, pos_indices[:, 0])
+
         # calculate the needed amount of  negative sample
         num_pos = pos_gt.shape[0]
         num_neg_needed = num_pos * self._neg_pos_ratio
-        # tf.print("num_neg = ", num_neg_needed)
 
         neg_pred_cls = tf.gather(pred_cls, neg_indices[:, 0])
         neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
 
         # apply softmax on the pred_cls
         neg_softmax = neg_pred_cls
-        tf.debugging.check_numerics(neg_softmax, message="neg_softmax contains invalid value")
+
         # -log(softmax class 0)
         neg_minus_log_class0 = -1 * tf.math.log(neg_softmax[:, 0])
 
@@ -137,10 +119,9 @@ class YOLACTLoss(object):
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
         # loss
-        cce = tf.keras.losses.CategoricalCrossentropy()
-        loss_conf = cce(target_labels, target_logits)
+        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(target_labels, target_logits)) / tf.cast(
+            num_pos, tf.float32)
 
-        tf.debugging.check_numerics(loss_conf, message="loss_conf contains invalid value")
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
@@ -158,7 +139,7 @@ class YOLACTLoss(object):
         """
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
-        loss_mask = []
+        loss_mask = 0
         proto_size = shape_proto[1]
         total_pos = 0
         for idx in tf.range(num_batch):
@@ -171,7 +152,6 @@ class YOLACTLoss(object):
             max_id = max_id_for_anchors[idx]
 
             pos_indices = tf.squeeze(tf.where(pos == 1))
-            total_pos += tf.size(pos_indices)
             if tf.size(pos_indices) == 0:
                 tf.print("detect no positive")
                 continue
@@ -179,19 +159,14 @@ class YOLACTLoss(object):
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
-            # tf.print("pos coef shape", tf.shape(pos_mask_coef))
-
             if tf.size(pos_indices) == 1:
                 # tf.print("detect only one dim")
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
-
+            total_pos += tf.size(pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            tf.debugging.check_numerics(pred_mask, 'pre mask nan')
             # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
-            loss = 0
-            bceloss = tf.keras.losses.BinaryCrossentropy()
             # calculating loss for each mask coef correspond to each postitive anchor
             for num, value in enumerate(pos_max_id):
                 gt = mask_gt[value]
@@ -205,21 +180,20 @@ class YOLACTLoss(object):
                 xmax = tf.cast(tf.math.ceil(xmax), tf.int64)
                 # read the w, h of original bbox and scale it to fit proto size
                 pred = pred_mask[:, :, num]
-                pred = tf.keras.activations.sigmoid(pred)
-                loss = loss + ((bceloss(gt[ymin:ymax, xmin:xmax], pred[ymin:ymax, xmin:xmax])) / area)
+                loss_mask += (tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(gt[ymin:ymax, xmin:xmax],
+                                                                                    pred[ymin:ymax, xmin:xmax])) / area)
                 # plt.figure()
                 # plt.imshow(pred[ymin:ymax, xmin:xmax])
             # plt.show()
-            loss_mask.append(loss)
-        loss_mask = tf.math.reduce_sum(loss_mask)
-        # tf.print("mask loss:", loss_mask)
+        loss_mask /= tf.cast(total_pos, tf.float32)
         return loss_mask
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
         shape_mask = tf.shape(mask_gt)
         num_batch = shape_mask[0]
-        loss_seg = []
+        seg_shape = tf.shape(pred_seg)[1]
+        loss_seg = 0
 
         for idx in tf.range(num_batch):
             seg = pred_seg[idx]
@@ -230,23 +204,20 @@ class YOLACTLoss(object):
             # seg shape (69, 69, num_cls)
             # resize masks from (100, 138, 138) to (100, 69, 69)
             masks = tf.expand_dims(masks, axis=-1)
-            masks = tf.image.resize(masks, [seg.shape[0], seg.shape[0]], method=tf.image.ResizeMethod.BILINEAR)
+            masks = tf.image.resize(masks, [seg_shape, seg_shape], method=tf.image.ResizeMethod.BILINEAR)
             masks = tf.cast(masks + 0.5, tf.int64)
             masks = tf.squeeze(tf.cast(masks, tf.float32))
 
             # obj_mask shape (objects, 138, 138)
             obj_mask = masks[:objects]
             obj_cls = tf.expand_dims(cls[:objects], axis=-1)
-            # tf.print("obj_cls:", tf.shape(obj_cls))
 
             # create empty ground truth (138, 138, num_cls)
             seg_gt = tf.zeros_like(seg)
             seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
             seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
             seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
-            tf.debugging.check_numerics(seg_gt, "seg_gt")
-            tf.debugging.check_numerics(seg, "seg")
-            loss_seg.append(
-                tf.keras.losses.binary_crossentropy(seg_gt, seg, from_logits=True) / seg.shape[0] / seg.shape[0])
-        loss_seg = tf.reduce_sum(loss_seg)
+            loss_seg += tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(seg_gt, seg))
+        loss_seg = loss_seg / tf.cast(seg_shape, tf.float32) ** 2
+
         return loss_seg

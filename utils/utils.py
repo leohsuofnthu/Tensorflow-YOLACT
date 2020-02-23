@@ -27,8 +27,8 @@ def bboxes_intersection(bbox_ref, bboxes):
     bboxes_vol = (bboxes[2] - bboxes[0]) * (bboxes[3] - bboxes[1])
 
     return tf.where(
-            tf.equal(bboxes_vol, 0.0),
-            tf.zeros_like(inter_vol), inter_vol/bboxes_vol)
+        tf.equal(bboxes_vol, 0.0),
+        tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
 
 
 def normalize_image(image,
@@ -48,10 +48,6 @@ def normalize_image(image,
     scale = tf.expand_dims(scale, axis=0)
     image /= scale
     return image
-
-
-def area_of_box(x):
-    pass
 
 
 def map_to_center_form(x):
@@ -84,12 +80,5 @@ def map_to_bbox(x):
     pass
 
 
-def single_pair_iou(pred, target):
-    # IOU of single pair of bbox, for the purpose in NMS, pairwise IOU is implemented within "Anchor" class
-    """
-    :param pred:
-    :param target:
-    :return:
-    """
-
+def crop():
     pass

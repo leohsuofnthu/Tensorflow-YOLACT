@@ -1,7 +1,8 @@
+import tensorflow as tf
+
 from data import tfrecord_decoder
 from utils import augmentation
 from utils.utils import normalize_image
-import tensorflow as tf
 
 
 class Parser(object):

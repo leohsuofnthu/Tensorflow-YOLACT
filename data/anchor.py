@@ -1,6 +1,6 @@
 from itertools import product
 from math import sqrt
-from utils.utils import map_to_center_form, map_to_offset
+
 import tensorflow as tf
 
 
@@ -95,9 +95,7 @@ class Anchor(object):
         pairwise_union = pairwise_area - pairwise_inter
 
         # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
-        return tf.where(
-            tf.equal(pairwise_union, 0.0),
-            tf.zeros_like(pairwise_union), pairwise_inter / pairwise_union)
+        return pairwise_inter / pairwise_union
 
     def get_anchors(self):
         return self.anchors
@@ -114,7 +112,6 @@ class Anchor(object):
         # tf.print("num gt", num_gt)
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox)
-        # tf.print("iou", pairwise_iou)
 
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
@@ -122,7 +119,9 @@ class Anchor(object):
 
         # force the anchors which is the best matched of each gt to predict the correspond gt
         forced_update_id = tf.cast(tf.range(0, num_gt), tf.int64)
-        forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
+
+        # force the iou over threshold for not wasting any training data
+        forced_update_iou = tf.reduce_max(pairwise_iou, axis=0) + 2
         forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
@@ -156,16 +155,16 @@ class Anchor(object):
         # map_loc = tf.map_fn(lambda x: gt_bbox[x], max_id_for_anchors, dtype=tf.float32)
         map_loc = tf.gather(gt_bbox, max_id_for_anchors)
 
-        # convert to center form
+        # convert to center form [cx, cy, w, h]
         # center_anchors = tf.map_fn(lambda x: map_to_center_form(x), self.anchors)
-        w = self.anchors[:, 2] - self.anchors[:, 0]
-        h = self.anchors[:, 3] - self.anchors[:, 1]
-        center_anchors = tf.stack([self.anchors[:, 0] + (w / 2), self.anchors[:, 1] + (h / 2), w, h], axis=-1)
+        h = self.anchors[:, 2] - self.anchors[:, 0]
+        w = self.anchors[:, 3] - self.anchors[:, 1]
+        center_anchors = tf.stack([self.anchors[:, 1] + (w / 2), self.anchors[:, 0] + (h / 2), w, h], axis=-1)
 
         # center_gt = tf.map_fn(lambda x: map_to_center_form(x), map_loc)
-        w = map_loc[:, 2] - map_loc[:, 0]
-        h = map_loc[:, 3] - map_loc[:, 1]
-        center_gt = tf.stack([map_loc[:, 0] + (w / 2), map_loc[:, 1] + (h / 2), w, h], axis=-1)
+        h = map_loc[:, 2] - map_loc[:, 0]
+        w = map_loc[:, 3] - map_loc[:, 1]
+        center_gt = tf.stack([map_loc[:, 1] + (w / 2), map_loc[:, 0] + (h / 2), w, h], axis=-1)
         variances = [0.1, 0.2]
 
         # calculate offset
@@ -176,6 +175,7 @@ class Anchor(object):
         tf.debugging.assert_non_negative(center_anchors[:, 3] / center_gt[:, 3])
         g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2]) / variances[1]
         g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3]) / variances[1]
+        # target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
         target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
 
         return target_cls, target_loc, max_id_for_anchors, match_positiveness

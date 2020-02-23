@@ -1,24 +1,15 @@
-import time
 import datetime
 
+import tensorflow as tf
 # it s recommanded to use absl for tf 2.0
 from absl import app
 from absl import flags
 from absl import logging
 
-import tensorflow as tf
-
-from utils import learning_rate_schedule
+import yolact
 from data import dataset_coco
 from loss import loss_yolact
-import yolact
-
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
-
-import numpy as np
-import matplotlib.pyplot as plt
-import cv2
-from utils import label_map
+from utils import learning_rate_schedule
 
 FLAGS = flags.FLAGS
 
@@ -95,7 +86,8 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4, initial_lr=FLAGS.lr)
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
+                                                                     initial_lr=FLAGS.lr)
     print("Initiate the Optimizer and Loss function...")
     # optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum, decay=FLAGS.weight_decay)
@@ -161,13 +153,13 @@ def main(argv):
 
         if iterations and iterations % 1 == 0:
             logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
-                                                                            iterations,
-                                                                            optimizer._decayed_lr(var_dtype=tf.float32),
-                                                                            train_loss.result(), loc.result(),
-                                                                            conf.result(),
-                                                                            mask.result(),
-                                                                            seg.result()
-                                                                        ))
+                iterations,
+                optimizer._decayed_lr(var_dtype=tf.float32),
+                train_loss.result(), loc.result(),
+                conf.result(),
+                mask.result(),
+                seg.result()
+            ))
 
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
             # save checkpoint

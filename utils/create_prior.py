@@ -1,5 +1,6 @@
 from itertools import product
 from math import sqrt
+
 import tensorflow as tf
 
 
@@ -25,7 +26,7 @@ def make_priors(img_size, feature_map_size, aspect_ratio, scale):
                 a = sqrt(ars)
                 w = scale[idx] * a
                 h = scale[idx] / a
-                prior_boxes += [x-(w/2), y-(h/2), x+(w/2), y+(h/2)]
+                prior_boxes += [x - (w / 2), y - (h / 2), x + (w / 2), y + (h / 2)]
                 count_anchor += 1
         num_anchors.append(count_anchor)
         # print(f_size, count_anchor)

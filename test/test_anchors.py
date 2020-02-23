@@ -1,6 +1,7 @@
-import tensorflow as tf
-from data import anchor
 import numpy as np
+import tensorflow as tf
+
+from data import anchor
 
 test_bbox = tf.convert_to_tensor((np.array([[204.044, 253.8351, 487.8226, 427.06363],
                                             [0, 140.01741, 550, 290.21936],

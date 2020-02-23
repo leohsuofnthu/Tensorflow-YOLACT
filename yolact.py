@@ -4,11 +4,12 @@ Ref: https://arxiv.org/abs/1904.02689
 
 Arthor: HSU, CHIHCHAO
 """
-from layers.fpn import FeaturePyramidNeck
-from layers.protonet import ProtoNet
-from layers.head import PredictionModule
-from utils.create_prior import make_priors
 import tensorflow as tf
+
+from layers.fpn import FeaturePyramidNeck
+from layers.head import PredictionModule
+from layers.protonet import ProtoNet
+from utils.create_prior import make_priors
 
 assert tf.__version__.startswith('2')
 
