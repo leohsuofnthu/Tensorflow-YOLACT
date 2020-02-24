@@ -36,6 +36,10 @@ The default hyperparameters in train.py follows the original setting from the pa
 * SGD optimizer with learning rate 1e-3 and divided by 10 at iterations 280K, 600K, 700K and 750K, using a momentum 0.9, a weight decay 5* 1e-4. In the original implementation of paper, a warm up learning rate 1e-4 and warm up iterations 500 are used, I put all those setting in a learning schedule object in *utils/learning_rate_schedule.py*.
 * Random photometrics distortion, horizontal flip(mirroring) and crop are used here for data augmentation.
 
+### Multi-GPU & TPU support
+In Tensorflow 2.0, distibuted training with multiple GPU and TPU are straighforward to use by adding different strategy scopes, the info can be find here [Distributed training with TensorFlow](https://www.tensorflow.org/guide/distributed_training)
+
+
 ## Inference (To Be Updated)
 ## mAP evaluation (To Be Updated)
 
