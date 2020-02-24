@@ -52,3 +52,4 @@ In Tensorflow 2.0, distibuted training with multiple GPU and TPU are straighforw
 * https://github.com/dbolya/yolact
 * https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/data/create_coco_tfrecord.py
 * https://github.com/tensorflow/models/blob/master/official/vision/detection/dataloader/retinanet_parser.py
+* https://github.com/balancap/SSD-Tensorflow
