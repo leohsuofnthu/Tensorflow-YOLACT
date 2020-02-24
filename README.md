@@ -33,7 +33,7 @@ python train.py -tfrecord_dir 'path of TFRecord files'
 ```
 The default hyperparameters in train.py follows the original setting from the paper:
 * Batch size = 8, which is recommanded by paper
-* SGD optimizer with learning rate 1e-3 and divided by 10 at iterations 280K, 600K, 700K and 750K, using momentum 0.9 weight decay 5* 1e-4. In the original implementation of paper, a warm up learning rate 1e-4 and warm up iterations 500 are used, I put all the setting in *utils/learning_rate_schedule.py*
+* SGD optimizer with learning rate 1e-3 and divided by 10 at iterations 280K, 600K, 700K and 750K, using a momentum 0.9, a weight decay 5* 1e-4. In the original implementation of paper, a warm up learning rate 1e-4 and warm up iterations 500 are used, I put all those setting in a learning schedule object in *utils/learning_rate_schedule.py*.
 * Random photometrics distortion, horizontal flip(mirroring) and crop are used here for data augmentation.
 
 ## Inference (To Be Updated)
