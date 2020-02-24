@@ -9,7 +9,7 @@ Here is the illustration of YOLACT from original paper.
 [COCO Dataset](http://cocodataset.org/#download) is used for reproducing the experiment here.
 
 ### (1) Download the COCO 2017 Dataset
-[2017 Train images](http://images.cocodataset.org/zips/train2017.zip) /[2017 Val images](http://images.cocodataset.org/zips/val2017.zip)/[2017 Train/Val annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip)
+[2017 Train images](http://images.cocodataset.org/zips/train2017.zip)  / [2017 Val images](http://images.cocodataset.org/zips/val2017.zip) / [2017 Annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip)
 
 ### (2) Create TFRecord for training 
 In this repo, we convert images and annotations into TFRecord through the *./data/create_coco_tfrecord.py.* In this script, I directly resize the image to 550 * 550 and ignore the images with only crowd annotations. Using the following command to create TFRecod.
