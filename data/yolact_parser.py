@@ -99,18 +99,17 @@ class Parser(object):
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
+        masks = tf.image.resize(masks, [self._output_size, self._output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
-        masks = tf.squeeze(masks)
-        masks = tf.cast(masks, tf.float32)
+        # masks = tf.squeeze(masks)
+        # masks = tf.cast(masks, tf.float32)
 
-        """
         # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
         # data augmentation randomly
         image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
                                                                         self._proto_output_size, classes)
-        """
+
         # There might be no label after augmentation
         if tf.size(classes) == 0:
             tf.print("Detect image without any labels after aug")

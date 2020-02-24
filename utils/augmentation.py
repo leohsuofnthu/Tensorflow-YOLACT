@@ -13,10 +13,10 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
         tf.shape(img),
         bounding_boxes=tf.expand_dims(bboxes, 0),
-        min_object_covered=0.25,
-        aspect_ratio_range=(0.6, 1.67),
-        area_range=(0.3, 1.0),
-        max_attempts=200)
+        min_object_covered=1,
+        aspect_ratio_range=(0.5, 2),
+        area_range=(0.1, 1.0),
+        max_attempts=100)
     # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
     distort_bbox = distort_bbox[0, 0]
     # cropped the image
@@ -54,35 +54,33 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
 
 
 def photometric_distortion(image):
-    color_ordering = np.random.randint(4, size=1)[0]
-    if color_ordering == 0:
-        # tf.print("order 0")
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+    color_ordering = tf.random.uniform([1], minval=0, maxval=4)[0]
+
+    if color_ordering < 1 and color_ordering > 0:
+        image = tf.image.random_brightness(image, max_delta=32.)
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-    elif color_ordering == 1:
-        # tf.print("order 1")
+
+    elif color_ordering < 2 and color_ordering > 1:
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_brightness(image, max_delta=32.)
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
-    elif color_ordering == 2:
-        # tf.print("order 2")
+
+    elif color_ordering < 3 and color_ordering > 2:
         image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
         image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+        image = tf.image.random_brightness(image, max_delta=32.)
         image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-    elif color_ordering == 3:
-        # tf.print("order 3")
-        image = tf.image.random_hue(image, max_delta=0.2)
-        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
-        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
-        image = tf.image.random_brightness(image, max_delta=32. / 255.)
+
     else:
-        raise ValueError('color_ordering must be in [0, 3]')
-        # The random_* ops do not necessarily clamp.
-    return tf.clip_by_value(image, 0.0, 1.0)
+        image = tf.image.random_hue(image, max_delta=0.2)
+        image = tf.image.random_saturation(image, lower=0.5, upper=1.5)
+        image = tf.image.random_contrast(image, lower=0.5, upper=1.5)
+        image = tf.image.random_brightness(image, max_delta=32.)
+
+    return tf.clip_by_value(image, 0.0, 255.0)
 
 
 def horizontal_flip(image, bboxes, masks):
@@ -95,31 +93,22 @@ def horizontal_flip(image, bboxes, masks):
 
 
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
-    """
-
-    :param img:
-    :param bbox:
-    :param mask:
-    :param output_size:
-    :param proto_output_size:
-    :return:
-    """
-
     # generate random
-    FLAGS = np.random.randint(2, size=3)
-    FLAG_GEO_DISTORTION = 1
-    FLAG_PHOTO_DISTORTION = 1
-    FLAG_HOR_FLIP = 1
+    FLAGS = tf.random.uniform([3], minval=0, maxval=1)
+    FLAG_GEO_DISTORTION = FLAGS[0]
+    FLAG_PHOTO_DISTORTION = FLAGS[1]
+    FLAG_HOR_FLIP = FLAGS[2]
 
     # Random Geometric Distortion (img, bboxes, masks)
-    img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
+    if FLAG_GEO_DISTORTION > 0.5:
+        img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
+
     # Random Photometric Distortions (img)
-    if FLAG_PHOTO_DISTORTION:
+    if FLAG_PHOTO_DISTORTION > 0.5:
         img = photometric_distortion(img)
 
-    if FLAG_HOR_FLIP:
-        if tf.size(bboxes) > 0:
-            img, bboxes, masks = horizontal_flip(img, bboxes, masks)
+    if FLAG_HOR_FLIP > 0.5:
+        img, bboxes, masks = horizontal_flip(img, bboxes, masks)
 
     # resize masks to protosize
     masks = tf.image.resize(masks, [proto_output_size, proto_output_size],
@@ -127,5 +116,4 @@ def random_augmentation(img, bboxes, masks, output_size, proto_output_size, clas
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(masks)
     masks = tf.cast(masks, tf.float32)
-
     return img, bboxes, masks, classes

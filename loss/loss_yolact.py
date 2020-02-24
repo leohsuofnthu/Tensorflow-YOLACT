@@ -218,6 +218,6 @@ class YOLACTLoss(object):
             seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
             seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
             loss_seg += tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(seg_gt, seg))
-        loss_seg = loss_seg / tf.cast(seg_shape, tf.float32) ** 2
+        loss_seg = loss_seg / tf.cast(seg_shape, tf.float32) ** 2 / tf.cast(num_batch, tf.float32)
 
         return loss_seg
