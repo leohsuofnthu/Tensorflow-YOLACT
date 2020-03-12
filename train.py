@@ -43,7 +43,7 @@ def train_step(model,
                labels):
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
-        output = model(image)
+        output = model(image, training=True)
         loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -56,7 +56,7 @@ def valid_step(model,
                metrics,
                image,
                labels):
-    output = model(image)
+    output = model(image, training=False)
     loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss, seg_loss
