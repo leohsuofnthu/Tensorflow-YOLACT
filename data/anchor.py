@@ -72,7 +72,7 @@ class Anchor(object):
         return intersect_heights * intersect_widths
 
     def _pairwise_iou(self, gt_bbox):
-        """ˇ
+        """
          ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
         :param gt_bbox: [num_obj, 4]
         :return:
