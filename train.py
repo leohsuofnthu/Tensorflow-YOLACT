@@ -13,11 +13,11 @@ from utils import learning_rate_schedule
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('tfrecord_dir', './data/coco',
+flags.DEFINE_string('tfrecord_dir', 'gs://yolact_colab/coco',
                     'directory of tfrecord')
-flags.DEFINE_string('weights', './weights',
+flags.DEFINE_string('weights', 'gs://yolact_colab/weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 100000,
+flags.DEFINE_integer('train_iter', 800000,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 8,
                      'batch size')
@@ -109,8 +109,8 @@ def main(argv):
     # Ref: https://www.tensorflow.org/tensorboard/get_started
     print("Setup the TensorBoard...")
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
-    train_log_dir = 'logs/gradient_tape/' + current_time + '/train'
-    test_log_dir = 'logs/gradient_tape/' + current_time + '/test'
+    train_log_dir = 'gs://yolact_colab/logs/gradient_tape/' + current_time + '/train'
+    test_log_dir = 'gs://yolact_colab/logs/gradient_tape/' + current_time + '/test'
     train_summary_writer = tf.summary.create_file_writer(train_log_dir)
     test_summary_writer = tf.summary.create_file_writer(test_log_dir)
 
@@ -121,7 +121,7 @@ def main(argv):
     # setup checkpoints manager
     checkpoint = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, model=model)
     manager = tf.train.CheckpointManager(
-        checkpoint, directory="./checkpoints", max_to_keep=5
+        checkpoint, directory="gs://yolact_colab/checkpoints", max_to_keep=5
     )
     # restore from latest checkpoint and iteration
     status = checkpoint.restore(manager.latest_checkpoint)
@@ -206,7 +206,7 @@ def main(argv):
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
-                model.save_weights('./weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
+                model.save_weights('gs://yolact_colab/weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
 
             # reset the metrics
             train_loss.reset_states()
