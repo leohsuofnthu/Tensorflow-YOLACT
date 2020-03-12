@@ -14,39 +14,38 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
         :param initial_lr:
         """
         super(Yolact_LearningRateSchedule, self).__init__()
-        self.warmup_step = warmup_steps
-        self.warmup_lr = warmup_lr
         self.initial_lr = initial_lr
+        self.warmup_lr = warmup_lr
+
+        self.learning_rate = tf.convert_to_tensor(warmup_lr)
+        dtype = self.learning_rate.dtype
+        self.warmup_steps = tf.cast(warmup_steps, dtype)
+        self.lr = tf.cast(initial_lr, dtype)
+        self.decay_rate = 0.1
 
     def __call__(self, step):
-        learning_rate = tf.convert_to_tensor(self.warmup_lr)
-        dtype = learning_rate.dtype
-        warmup_steps = tf.cast(self.warmup_step, dtype)
-        lr = tf.cast(self.initial_lr, dtype)
-        decay_rate = 0.1
 
-        if step < warmup_steps:
+        if step <= self.warmup_steps:
             # warm up stage
-            learning_rate = (lr - self.warmup_lr) * (step / self.warmup_step) + self.warmup_lr
-        elif step == warmup_steps:
-            learning_rate = lr
+            self.learning_rate = (self.lr - self.warmup_lr) * (step / self.warmup_steps) + self.warmup_lr
         elif step == 280000:
-            learning_rate *= decay_rate
+            self.learning_rate *= self.decay_rate
         elif step == 600000:
-            learning_rate *= decay_rate
+            self.learning_rate *= self.decay_rate
         elif step == 700000:
-            learning_rate *= decay_rate
+            self.learning_rate *= self.decay_rate
         elif step == 750000:
-            learning_rate *= decay_rate
+            self.learning_rate *= self.decay_rate
         elif step > 750000:
-            learning_rate *= decay_rate
+            self.learning_rate *= self.decay_rate
         else:
-            learning_rate *= 1
-        return learning_rate
+            self.learning_rate *= 1
+        return self.learning_rate
 
     def get_config(self):
         return {
             "warm up learning rate": self.warmup_lr,
-            "warm up steps": self.warmup_step,
+            "warm up steps": self.warmup_steps,
             "initial learning rate": self.initial_lr
         }
+
