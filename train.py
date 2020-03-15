@@ -1,8 +1,8 @@
 import datetime
 
 import tensorflow as tf
-# import tensorflow_addons as tfa
-# from tensorflow_addons.optimizers.weight_decay_optimizers import extend_with_decoupled_weight_decay
+import tensorflow_addons as tfa
+from tensorflow_addons.optimizers.weight_decay_optimizers import extend_with_decoupled_weight_decay
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
@@ -94,8 +94,8 @@ def main(argv):
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
                                                                      initial_lr=FLAGS.lr)
     print("Initiate the Optimizer and Loss function...")
-    # optimizer = tfa.optimizers.SGDW(learning_rate=lr_schedule, weight_decay=FLAGS.weight_decay, momentum=FLAGS.momentum)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+    optimizer = tfa.optimizers.SGDW(learning_rate=lr_schedule, weight_decay=FLAGS.weight_decay, momentum=FLAGS.momentum)
+    # optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
