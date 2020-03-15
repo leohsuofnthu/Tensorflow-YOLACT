@@ -86,17 +86,17 @@ def crop(pred, boxes):
     ymax = tf.broadcast_to(tf.reshape(boxes[:, 2], [-1, 1, 1]), pred_shape)
     xmax = tf.broadcast_to(tf.reshape(boxes[:, 3], [-1, 1, 1]), pred_shape)
 
-    mask_left = (rows >= xmin)
-    mask_right = (rows < xmax)
-    mask_bottom = (cols >= ymin)
-    mask_top = (cols < ymax)
+    mask_left = (cols >= xmin)
+    mask_right = (cols <= xmax)
+    mask_bottom = (rows >= ymin)
+    mask_top = (rows <= ymax)
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
     crop_mask = tf.cast(crop_mask, tf.float32)
     # tf.print('crop', tf.shape(crop_mask))
 
-    return tf.math.multiply(pred, crop_mask)
+    return pred * crop_mask
 
 
 # decode the offset back to center form bounding box when evaluation and prediction

@@ -14,6 +14,8 @@ from data import dataset_coco
 from loss import loss_yolact
 from utils import learning_rate_schedule
 
+tf.random.set_seed(1234)
+
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('tfrecord_dir', './data/coco',

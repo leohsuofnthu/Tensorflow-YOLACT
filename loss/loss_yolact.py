@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import matplotlib.pyplot as plt
 from utils import utils
 
 
@@ -177,11 +177,20 @@ class YOLACTLoss(object):
             # tf.print(area[0:5])
 
             # crop the pred (not real crop, zero out the area outside the gt box)
-            pred = utils.crop(pred_mask, bbox)
-            loss_mask += tf.reduce_sum(tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(gt, pred), axis=[1, 2]) / area)
-            # plt.figure()
-            # plt.imshow(pred[ymin:ymax, xmin:xmax])
-            # plt.show()
+            #tf.print('gt:', gt)
+            # tf.print('pred:', pred_mask)
+            s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
+            s = utils.crop(s, bbox)
+            # tf.print(s)
+            loss = tf.reduce_sum(s, axis=[1, 2]) / area
+            loss_mask += tf.reduce_sum(loss)
+            """
+            plt.figure()
+            plt.imshow(pred[1])
+            plt.figure()
+            plt.imshow(gt[1])
+            plt.show()
+            """
         loss_mask /= tf.cast(total_pos, tf.float32)
         return loss_mask
 
