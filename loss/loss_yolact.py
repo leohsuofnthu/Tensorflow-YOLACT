@@ -139,7 +139,7 @@ class YOLACTLoss(object):
 
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
-        loss_mask = 0
+        loss_mask = 0.
         total_pos = 0
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
@@ -190,7 +190,7 @@ class YOLACTLoss(object):
         shape_mask = tf.shape(mask_gt)
         num_batch = shape_mask[0]
         seg_shape = tf.shape(pred_seg)[1]
-        loss_seg = 0
+        loss_seg = 0.
 
         for idx in tf.range(num_batch):
             seg = pred_seg[idx]

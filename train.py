@@ -1,8 +1,6 @@
 import datetime
 
 import tensorflow as tf
-import tensorflow_addons as tfa
-from tensorflow_addons.optimizers.weight_decay_optimizers import extend_with_decoupled_weight_decay
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
@@ -89,13 +87,19 @@ def main(argv):
                           aspect_ratio=[1, 0.5, 2],
                           scales=[24, 48, 96, 192, 384])
 
+    # add weight decay
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
+            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
+        if hasattr(layer, 'bias_regularizer') and layer.use_bias:
+            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
+
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
                                                                      initial_lr=FLAGS.lr)
     print("Initiate the Optimizer and Loss function...")
-    optimizer = tfa.optimizers.SGDW(learning_rate=lr_schedule, weight_decay=FLAGS.weight_decay, momentum=FLAGS.momentum)
-    # optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
