@@ -159,38 +159,19 @@ class YOLACTLoss(object):
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
-            # tf.print("pred_mask", tf.shape(pred_mask))
-            # iterate the each pair of pred_mask and gt_mask, calculate loss with cropped box
+
             # calculating loss for each mask coef correspond to each postitive anchor
-            # tf.print(pos_max_id)
-            # tf.print(tf.shape(mask_gt))
             gt = tf.gather(mask_gt, pos_max_id)
-            # tf.print(tf.shape(gt))
             bbox = tf.gather(bbox_norm, pos_max_id)
-            # tf.print(tf.shape(bbox))
-            # tf.print(bbox[0:5])
             bbox_center = utils.map_to_center_form(bbox)
-            # tf.print(tf.shape(bbox_center))
-            # tf.print(bbox_center[0:5])
             area = bbox_center[:, -1] * bbox_center[:, -2]
-            # tf.print("area", tf.shape(area))
-            # tf.print(area[0:5])
 
             # crop the pred (not real crop, zero out the area outside the gt box)
-            #tf.print('gt:', gt)
-            # tf.print('pred:', pred_mask)
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
             s = utils.crop(s, bbox)
-            # tf.print(s)
             loss = tf.reduce_sum(s, axis=[1, 2]) / area
             loss_mask += tf.reduce_sum(loss)
-            """
-            plt.figure()
-            plt.imshow(pred[1])
-            plt.figure()
-            plt.imshow(gt[1])
-            plt.show()
-            """
+
         loss_mask /= tf.cast(total_pos, tf.float32)
         return loss_mask
 
