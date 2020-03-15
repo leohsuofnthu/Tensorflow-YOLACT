@@ -1,5 +1,5 @@
 import tensorflow as tf
-import matplotlib.pyplot as plt
+import time
 from utils import utils
 
 
@@ -44,13 +44,23 @@ class YOLACTLoss(object):
         num_obj = label['num_obj']
 
         # calculate num_pos
-
+        t0 = time.time()
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
+        t1 = time.time()
+        tf.print("loc: %s", (t1-t0))
+        t0 = time.time()
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
+        t1 = time.time()
+        tf.print("conf: %s", (t1 - t0))
+        t0 = time.time()
         mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
                                     max_masks_for_train=100) * self._loss_weight_mask
+        t1 = time.time()
+        tf.print("mask: %s", (t1 - t0))
+        t0 = time.time()
         seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
-
+        t1 = time.time()
+        tf.print("seg: %s", (t1 - t0))
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
 
