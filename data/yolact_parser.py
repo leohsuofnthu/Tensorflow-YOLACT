@@ -53,13 +53,12 @@ class Parser(object):
             data = self._example_decoder.decode(value)
             return self._parse_fn(data)
 
+    @tf.function
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
-        image_height = data['height']
-        image_width = data['width']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
