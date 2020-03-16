@@ -165,13 +165,6 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # There might be some samples only have crowd annotation
-        if tf.size(classes) == 0:
-            tf.print("Detect image with only crowd")
-            classes = tf.zeros(1, tf.int64)
-            boxes = tf.zeros([1, 4], tf.float32)
-            masks = tf.zeros([1, image_height, image_width], tf.float32)
-
         # read and normalize the image
         image = data['image']
 
@@ -185,7 +178,7 @@ class Parser(object):
             false_fn=lambda: tf.ones([image_width, image_height, 3])
         )
 
-        # resize the image when creating tfrecord
+        # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
