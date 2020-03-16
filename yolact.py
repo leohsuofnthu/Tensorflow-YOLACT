@@ -57,6 +57,7 @@ class Yolact(tf.keras.Model):
                 if isinstance(layer, tf.keras.layers.BatchNormalization):
                     layer.trainable = True
 
+    @tf.function
     def call(self, inputs):
         # backbone(ResNet + FPN)
         c3, c4, c5 = self.backbone_resnet(inputs)
@@ -79,7 +80,7 @@ class Yolact(tf.keras.Model):
         pred_mask_coef = []
 
         # all output from FPN use same prediction head
-        for idx, f_map in enumerate(fpn_out):
+        for f_map in fpn_out:
             cls, offset, coef = self.predictionHead(f_map)
             pred_cls.append(cls)
             pred_offset.append(offset)
