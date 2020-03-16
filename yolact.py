@@ -57,7 +57,6 @@ class Yolact(tf.keras.Model):
                 if isinstance(layer, tf.keras.layers.BatchNormalization):
                     layer.trainable = True
 
-    @tf.function
     def call(self, inputs):
         # backbone(ResNet + FPN)
         c3, c4, c5 = self.backbone_resnet(inputs)
