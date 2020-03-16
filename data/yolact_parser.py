@@ -80,13 +80,6 @@ class Parser(object):
         # convert image to range [0, 1], faciliate augmentation
         image = normalize_image(image)
 
-        # ignore grayscale image, set it zero
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
-
         # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
 
@@ -170,13 +163,6 @@ class Parser(object):
 
         # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
-
-        # ignore grayscale image, set it zero
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
 
         # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
