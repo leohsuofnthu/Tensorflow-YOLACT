@@ -11,6 +11,7 @@ from loss import loss_yolact
 from utils import label_map
 from yolact import Yolact
 
+"""
 model = Yolact(input_size=550, fpn_channels=256, feature_map_size=[69, 35, 18, 9, 5], num_class=91, num_mask=32,
                aspect_ratio=[1, 0.5, 2], scales=[24, 48, 96, 192, 384])
 model.build(input_shape=(8, 550, 550, 3))
@@ -58,3 +59,16 @@ for image, labels in train_dataloader:
     plt.show()
     print(cls)
     break
+"""
+import time
+
+train_dataloader = prepare_dataloader("../data/coco", 8, "train")
+
+count = 1
+t0 = time.time()
+for img, label in train_dataloader:
+    count += 1
+    if count > 10:
+        break
+t1 = time.time()
+print("10 fetch: %s" % (t1 - t0))

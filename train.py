@@ -1,5 +1,5 @@
 import datetime
-
+import time
 import tensorflow as tf
 
 # it s recommanded to use absl for tf 2.0
@@ -141,14 +141,20 @@ def main(argv):
 
     best_val = 1e10
     iterations = checkpoint.step.numpy()
+
+    old = time.time()
     for image, labels in train_dataset:
         # check iteration and change the learning rate
+        t0 = time.time()
+        print("Fetch: %s s" % (t0 - old))
         if iterations > FLAGS.train_iter:
             break
 
         checkpoint.step.assign_add(1)
         iterations += 1
         loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
+        t1 = time.time()
+        print("iteration: %s s" % (t1 - t0))
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
@@ -229,6 +235,7 @@ def main(argv):
             v_conf.reset_states()
             v_mask.reset_states()
             v_seg.reset_states()
+        old = time.time()
 
 
 if __name__ == '__main__':

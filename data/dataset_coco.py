@@ -15,13 +15,7 @@ from data import yolact_parser
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
 def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
-    files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
-    # print(tf.shape(files))
-    shards = tf.data.Dataset.from_tensor_slices(files)
-    shards = shards.shuffle(tf.cast(tf.shape(files)[0], tf.int64))  # wtf?
-    shards = shards.repeat()
-    dataset = shards.interleave(tf.data.TFRecordDataset, cycle_length=4)
-    dataset = dataset.shuffle(buffer_size=1024)
+
     anchorobj = anchor.Anchor(img_size=550,
                               feature_map_size=[69, 35, 18, 9, 5],
                               aspect_ratio=[1, 0.5, 2],
@@ -33,6 +27,12 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                                   unmatched_threshold=0.5,
                                   mode=subset)
 
+    dataset = tf.data.Dataset.list_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
+    dataset = dataset.interleave(tf.data.TFRecordDataset,
+                                 cycle_length=tf.data.experimental.AUTOTUNE,
+                                 num_parallel_calls=tf.data.experimental.AUTOTUNE)
+
+    dataset = dataset.shuffle(buffer_size=2048)
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)

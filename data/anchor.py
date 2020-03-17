@@ -127,15 +127,14 @@ class Anchor(object):
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
 
         # decide the anchors to be positive or negative based on the IoU and given threshold
-        def _map_pos_match(x, pos, neg):
-            p = 1.
-            if x < pos:
-                p = -1.
-            if x < neg:
-                p = 0.
-            return p
-
-        match_positiveness = tf.map_fn(lambda x: _map_pos_match(x, threshold_pos, threshold_neg), max_iou_for_anchors)
+        pos_iou = tf.where(max_iou_for_anchors > threshold_pos)
+        max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, pos_iou, tf.ones(tf.size(pos_iou)))
+        neg_iou = tf.where(max_iou_for_anchors < threshold_neg)
+        max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, neg_iou, tf.zeros(tf.size(neg_iou)))
+        neu_iou = tf.where(
+            tf.math.logical_and((max_iou_for_anchors <= threshold_pos), max_iou_for_anchors >= threshold_neg))
+        max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, neu_iou, -1 * tf.ones(tf.size(neu_iou)))
+        match_positiveness = max_iou_for_anchors
 
         # create class target
         # map idx to label[idx]
@@ -177,5 +176,4 @@ class Anchor(object):
         g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3]) / variances[1]
         # target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
         target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
-
         return target_cls, target_loc, max_id_for_anchors, match_positiveness

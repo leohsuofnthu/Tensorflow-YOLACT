@@ -58,8 +58,6 @@ class Parser(object):
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
-        image_height = data['height']
-        image_width = data['width']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
@@ -74,27 +72,13 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # There might be some samples only have crowd annotation
-        if tf.size(classes) == 0:
-            tf.print("Detect image with only crowd")
-            classes = tf.zeros(1, tf.int64)
-            boxes = tf.zeros([1, 4], tf.float32)
-            masks = tf.zeros([1, image_height, image_width], tf.float32)
-
         # read and normalize the image
         image = data['image']
 
         # convert image to range [0, 1], faciliate augmentation
         image = normalize_image(image)
 
-        # ignore grayscale image, set it zero
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
-
-        # resize the image when creating tfrecord
+        # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
@@ -109,13 +93,6 @@ class Parser(object):
         # data augmentation randomly
         image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
                                                                         self._proto_output_size, classes)
-
-        # There might be no label after augmentation
-        if tf.size(classes) == 0:
-            tf.print("Detect image without any labels after aug")
-            classes = tf.zeros(1, tf.int64)
-            boxes = tf.zeros([1, 4], tf.float32)
-            masks = tf.zeros([self._proto_output_size, self._proto_output_size], tf.float32)
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
@@ -155,7 +132,6 @@ class Parser(object):
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors
         }
-
         return image, labels
 
     def _parse_eval_data(self, data):
@@ -179,27 +155,13 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # There might be some samples only have crowd annotation
-        if tf.size(classes) == 0:
-            tf.print("Detect image with only crowd")
-            classes = tf.zeros(1, tf.int64)
-            boxes = tf.zeros([1, 4], tf.float32)
-            masks = tf.zeros([1, image_height, image_width], tf.float32)
-
         # read and normalize the image
         image = data['image']
 
         # convert image to range [0, 1], faciliate augmentation
         image = tf.image.convert_image_dtype(image, tf.float32)
 
-        # ignore grayscale image, set it zero
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
-
-        # resize the image when creating tfrecord
+        # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
