@@ -53,7 +53,6 @@ class Parser(object):
             data = self._example_decoder.decode(value)
             return self._parse_fn(data)
 
-
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
         classes = data['gt_classes']
@@ -133,7 +132,6 @@ class Parser(object):
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors
         }
-
         return image, labels
 
     def _parse_eval_data(self, data):
