@@ -7,16 +7,16 @@ import tensorflow as tf
 class TfExampleDecoder(object):
     def __init__(self):
         self._keys_to_features = {
-            'image/height': tf.io.FixedLenFeature((), dtype=tf.int64),
-            'image/width': tf.io.FixedLenFeature((), dtype=tf.int64),
-            'image/encoded': tf.io.FixedLenFeature((), dtype=tf.string),
-            'image/object/bbox/xmin': tf.io.FixedLenSequenceFeature((), tf.float32, allow_missing=True),
-            'image/object/bbox/xmax': tf.io.FixedLenSequenceFeature((), tf.float32, allow_missing=True),
-            'image/object/bbox/ymin': tf.io.FixedLenSequenceFeature((), tf.float32, allow_missing=True),
-            'image/object/bbox/ymax': tf.io.FixedLenSequenceFeature((), tf.float32, allow_missing=True),
-            'image/object/class/label_id': tf.io.FixedLenSequenceFeature((), tf.int64, allow_missing=True),
-            'image/object/is_crowd': tf.io.FixedLenSequenceFeature((), tf.int64, allow_missing=True),
-            'image/object/mask': tf.io.FixedLenSequenceFeature((), tf.string, allow_missing=True)
+            'image/height': tf.io.FixedLenFeature([], dtype=tf.int64),
+            'image/width': tf.io.FixedLenFeature([], dtype=tf.int64),
+            'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string),
+            'image/object/bbox/xmin': tf.io.VarLenFeature(dtype=tf.float32),
+            'image/object/bbox/xmax': tf.io.VarLenFeature(dtype=tf.float32),
+            'image/object/bbox/ymin': tf.io.VarLenFeature(dtype=tf.float32),
+            'image/object/bbox/ymax': tf.io.VarLenFeature(dtype=tf.float32),
+            'image/object/class/label_id': tf.io.VarLenFeature(dtype=tf.int64),
+            'image/object/is_crowd': tf.io.VarLenFeature(dtype=tf.int64),
+            'image/object/mask': tf.io.VarLenFeature(dtype=tf.string),
         }
 
     def _decode_image(self, parsed_tensors):
