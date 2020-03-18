@@ -32,7 +32,7 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('save_interval', 10000,
+flags.DEFINE_float('save_interval', 1,
                    'number of iteration between saving model(checkpoint)')
 flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving model')
@@ -178,6 +178,7 @@ def main(argv):
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
+                print(valid_iter)
                 if valid_iter > FLAGS.valid_iter:
                     break
                 # calculate validation loss
@@ -199,8 +200,8 @@ def main(argv):
                 tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
                 tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
 
-            train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}'
+            train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
+            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, Seg Loss: {}'
             print(train_template.format(iterations + 1,
                                         train_loss.result(),
                                         loc.result(),

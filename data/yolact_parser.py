@@ -58,6 +58,8 @@ class Parser(object):
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
+        image_height = data['height']
+        image_width = data['width']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
@@ -80,6 +82,13 @@ class Parser(object):
 
         # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
+
+        # Ignore the gray image
+        image = tf.cond(
+            tf.equal(tf.shape(image)[-1], tf.constant(3)),
+            true_fn=lambda: image,
+            false_fn=lambda: tf.ones([image_width, image_height, 3])
+        )
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
@@ -163,6 +172,13 @@ class Parser(object):
 
         # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
+
+        # Ignore the gray image
+        image = tf.cond(
+            tf.equal(tf.shape(image)[-1], tf.constant(3)),
+            true_fn=lambda: image,
+            false_fn=lambda: tf.ones([image_width, image_height, 3])
+        )
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
