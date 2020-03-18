@@ -178,7 +178,6 @@ def main(argv):
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
-                print(valid_iter)
                 if valid_iter > FLAGS.valid_iter:
                     break
                 # calculate validation loss
