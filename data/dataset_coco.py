@@ -27,14 +27,13 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                                   unmatched_threshold=0.5,
                                   mode=subset)
 
-    dataset = tf.data.Dataset.list_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
+    dataset = tf.data.Dataset.list_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset)).shuffle(100)
     dataset = dataset.interleave(tf.data.TFRecordDataset,
                                  cycle_length=tf.data.experimental.AUTOTUNE,
                                  num_parallel_calls=tf.data.experimental.AUTOTUNE)
-
     dataset = dataset.shuffle(buffer_size=2048)
-    dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.repeat()
+    dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
