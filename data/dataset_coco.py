@@ -31,9 +31,9 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
     dataset = dataset.interleave(tf.data.TFRecordDataset,
                                  cycle_length=tf.data.experimental.AUTOTUNE,
                                  num_parallel_calls=tf.data.experimental.AUTOTUNE)
-    if subset == "train":
-        dataset = dataset.shuffle(buffer_size=2048)
-        dataset = dataset.repeat()
+
+    dataset = dataset.shuffle(buffer_size=2048)
+    dataset = dataset.repeat()
     dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
