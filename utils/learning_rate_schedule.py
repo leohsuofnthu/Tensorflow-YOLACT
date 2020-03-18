@@ -24,19 +24,20 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
         warmup_steps = tf.cast(self.warmup_step, dtype)
         lr = tf.cast(self.initial_lr, dtype)
 
-        if step <= warmup_steps:
-            # warm up stage
-            learning_rate = (lr - self.warmup_lr) * (step / self.warmup_step) + self.warmup_lr
-        elif warmup_steps < step <= 280000:
-            learning_rate = tf.convert_to_tensor(1e-3)
-        elif 280000 < step <= 600000:
-            learning_rate = tf.convert_to_tensor(1e-4)
-        elif 600000 < step <= 700000:
-            learning_rate = tf.convert_to_tensor(1e-5)
-        elif 700000 < step <= 750000:
-            learning_rate = tf.convert_to_tensor(1e-6)
-        elif step > 750000:
-            learning_rate = tf.convert_to_tensor(1e-7)
+        def f0():return (lr - self.warmup_lr) * (step / self.warmup_step) + self.warmup_lr
+        def f1():return 1e-3
+        def f2():return 1e-4
+        def f3():return 1e-5
+        def f4():return 1e-6
+        def f5():return 1e-7
+
+        learning_rate = tf.case([(tf.math.logical_and(tf.math.less(warmup_steps, step), tf.less_equal(step, 280000.)), f1),
+                                 (tf.math.logical_and(tf.math.less(280000., step), tf.less_equal(step, 600000.)), f2),
+                                 (tf.math.logical_and(tf.math.less(600000., step), tf.less_equal(step, 700000.)), f3),
+                                 (tf.math.logical_and(tf.math.less(700000., step), tf.less_equal(step, 750000.)), f4),
+                                 (tf.math.greater(step, 750000.), f5)],
+                                default=f0,
+                                exclusive=True)
 
         return learning_rate
 

@@ -22,7 +22,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 800000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 8,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -32,12 +32,13 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('save_interval', 1,
+flags.DEFINE_float('save_interval', 10000,
                    'number of iteration between saving model(checkpoint)')
 flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving model')
 
 
+@tf.function
 def train_step(model,
                loss_fn,
                metrics,
@@ -54,6 +55,7 @@ def train_step(model,
     return loc_loss, conf_loss, mask_loss, seg_loss
 
 
+@tf.function
 def valid_step(model,
                loss_fn,
                metrics,
