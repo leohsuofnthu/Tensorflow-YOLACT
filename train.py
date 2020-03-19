@@ -1,5 +1,5 @@
 import datetime
-import time
+import contextlib
 import tensorflow as tf
 
 # it s recommanded to use absl for tf 2.0
@@ -31,8 +31,8 @@ flags.DEFINE_float('momentum', 0.9,
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
-                   'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('save_interval', 1,
+                   'number of iteration between print real time loss')
+flags.DEFINE_float('save_interval', 10000,
                    'number of iteration between saving model(checkpoint)')
 flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving model')
@@ -66,6 +66,16 @@ def valid_step(model,
 
 
 def main(argv):
+    # Set up Grappler for graph optimization
+    # Ref: https://www.tensorflow.org/guide/graph_optimization
+    @contextlib.contextmanager
+    def options(options):
+        old_opts = tf.config.optimizer.get_experimental_options()
+        tf.config.optimizer.set_experimental_options(options)
+        try:
+            yield
+        finally:
+            tf.config.optimizer.set_experimental_options(old_opts)
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
     print("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
@@ -149,7 +159,12 @@ def main(argv):
 
         checkpoint.step.assign_add(1)
         iterations += 1
-        loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
+        with options({'constant_folding': True,
+                      'layout_optimize': True,
+                      'loop_optimization': True,
+                      'arithmetic_optimization': True,
+                      'remapping': True}):
+            loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image, labels)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
@@ -181,11 +196,16 @@ def main(argv):
                 if valid_iter > FLAGS.valid_iter:
                     break
                 # calculate validation loss
-                valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
-                                                                                              criterion,
-                                                                                              valid_loss,
-                                                                                              valid_image,
-                                                                                              valid_labels)
+                with options({'constant_folding': True,
+                              'layout_optimize': True,
+                              'loop_optimization': True,
+                              'arithmetic_optimization': True,
+                              'remapping': True}):
+                    valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
+                                                                                                  criterion,
+                                                                                                  valid_loss,
+                                                                                                  valid_image,
+                                                                                                  valid_labels)
                 v_loc.update_state(valid_loc_loss)
                 v_conf.update_state(valid_conf_loss)
                 v_mask.update_state(valid_mask_loss)
