@@ -22,7 +22,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 800000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 8,
+flags.DEFINE_integer('batch_size', 2,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -30,11 +30,11 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('print_interval', 10,
+flags.DEFINE_float('print_interval', 1,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('save_interval', 10000,
+flags.DEFINE_float('save_interval', 10,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('valid_iter', 5000,
+flags.DEFINE_float('valid_iter', 5,
                    'number of iteration between saving model')
 
 
@@ -81,7 +81,7 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
-    print("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
+    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
     train_dataset = dataset_coco.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=FLAGS.batch_size,
                                                     subset='train')
@@ -91,7 +91,7 @@ def main(argv):
                                                     subset='val')
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
-    print("Creating the model instance of YOLACT")
+    logging.info("Creating the model instance of YOLACT")
     model = yolact.Yolact(input_size=550,
                           fpn_channels=256,
                           feature_map_size=[69, 35, 18, 9, 5],
@@ -111,7 +111,7 @@ def main(argv):
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
                                                                      initial_lr=FLAGS.lr)
-    print("Initiate the Optimizer and Loss function...")
+    logging.info("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
@@ -129,7 +129,7 @@ def main(argv):
 
     # Setup the TensorBoard for better visualization
     # Ref: https://www.tensorflow.org/tensorboard/get_started
-    print("Setup the TensorBoard...")
+    logging.info("Setup the TensorBoard...")
     current_time = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
     train_log_dir = './logs/gradient_tape/' + current_time + '/train'
     test_log_dir = './logs/gradient_tape/' + current_time + '/test'
@@ -138,7 +138,7 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Start the Training and Validation Process
-    print("Start the training process...")
+    logging.info("Start the training process...")
 
     # setup checkpoints manager
     checkpoint = tf.train.Checkpoint(step=tf.Variable(1), optimizer=optimizer, model=model)
@@ -148,9 +148,9 @@ def main(argv):
     # restore from latest checkpoint and iteration
     status = checkpoint.restore(manager.latest_checkpoint)
     if manager.latest_checkpoint:
-        print("Restored from {}".format(manager.latest_checkpoint))
+        logging.info("Restored from {}".format(manager.latest_checkpoint))
     else:
-        print("Initializing from scratch.")
+        logging.info("Initializing from scratch.")
 
     best_val = 1e10
     iterations = checkpoint.step.numpy()
@@ -193,7 +193,7 @@ def main(argv):
         if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
             # save checkpoint
             save_path = manager.save()
-            print("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
+            logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
@@ -225,13 +225,13 @@ def main(argv):
 
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
             valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, Seg Loss: {}'
-            print(train_template.format(iterations + 1,
+            logging.info(train_template.format(iterations + 1,
                                         train_loss.result(),
                                         loc.result(),
                                         conf.result(),
                                         mask.result(),
                                         seg.result()))
-            print(valid_template.format(iterations + 1,
+            logging.info(valid_template.format(iterations + 1,
                                         valid_loss.result(),
                                         v_loc.result(),
                                         v_conf.result(),
