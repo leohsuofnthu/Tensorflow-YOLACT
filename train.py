@@ -87,7 +87,7 @@ def main(argv):
                                                     subset='train')
 
     valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
-                                                    batch_size=FLAGS.batch_size,
+                                                    batch_size=1,
                                                     subset='val')
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
