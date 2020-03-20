@@ -168,7 +168,7 @@ class Parser(object):
         image = data['image']
 
         # convert image to range [0, 1], faciliate augmentation
-        image = tf.image.convert_image_dtype(image, tf.float32)
+        image = normalize_image(image)
 
         # we already resize the image when creating tfrecord
         # image = tf.image.resize(image, [self._output_size, self._output_size])
