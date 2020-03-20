@@ -190,7 +190,7 @@ def main(argv):
                 seg.result()
             ))
 
-        if iterations < FLAGS.train_iter and iterations % FLAGS.save_interval == 0:
+        if iterations and iterations % FLAGS.save_interval == 0:
             # save checkpoint
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
