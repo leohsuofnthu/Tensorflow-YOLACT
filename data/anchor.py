@@ -174,6 +174,5 @@ class Anchor(object):
         tf.debugging.assert_non_negative(center_anchors[:, 3] / center_gt[:, 3])
         g_hat_w = tf.math.log(center_gt[:, 2] / center_anchors[:, 2]) / variances[1]
         g_hat_h = tf.math.log(center_gt[:, 3] / center_anchors[:, 3]) / variances[1]
-        # target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
         target_loc = tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h], axis=-1)
         return target_cls, target_loc, max_id_for_anchors, match_positiveness

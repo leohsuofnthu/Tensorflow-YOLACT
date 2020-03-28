@@ -31,9 +31,7 @@ def bboxes_intersection(bbox_ref, bboxes):
         tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
 
 
-def normalize_image(image,
-                    offset=(0.485, 0.456, 0.406),
-                    scale=(0.229, 0.224, 0.225)):
+def normalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
     """Normalizes the image to zero mean and unit variance.
      ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
   """
@@ -97,5 +95,32 @@ def crop(pred, boxes):
 
 
 # decode the offset back to center form bounding box when evaluation and prediction
-def map_to_bbox(x):
-    pass
+def map_to_bbox(anchors, loc_pred):
+    # we use this variance also when we encode the offset
+    variances = [0.1, 0.2]
+
+    # convert anchor to center_form
+    anchor_h = anchors[:, 2] - anchors[:, 0]
+    anchor_w = anchors[:, 3] - anchors[:, 1]
+    anchor_cx = anchors[:, 1] + (anchor_w / 2)
+    anchor_cy = anchors[:, 0] + (anchor_h / 2)
+    tf.print("cx", tf.shape(anchor_cx))
+
+    pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
+
+    new_cx = pred_cx * (anchor_w * variances[0]) + anchor_cx
+    new_cy = pred_cy * (anchor_h * variances[0]) + anchor_cy
+    new_w = tf.math.exp(pred_w * variances[1]) * anchor_w
+    new_h = tf.math.exp(pred_h * variances[1]) * anchor_h
+
+    ymin = new_cy - (new_h / 2)
+    xmin = new_cx - (new_w / 2)
+    ymax = new_cy + (new_h / 2)
+    xmax = new_cx + (new_w / 2)
+
+    decoded_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+    tf.print(tf.shape(decoded_boxes))
+
+    tf.print("anchor", tf.shape(anchors))
+    tf.print("pred", tf.shape(loc_pred))
+    return decoded_boxes
