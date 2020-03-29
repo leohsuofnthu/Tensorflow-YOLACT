@@ -105,7 +105,7 @@ class Detect(object):
 
         tf.print("idx det", tf.shape(idx_det))
         tf.print(idx_det)
-        # Todo: second threshold, when to use
+
         classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max))
         tf.print("classes", classes)
         classes = tf.gather_nd(classes, idx_det)
@@ -118,11 +118,22 @@ class Detect(object):
         tf.print("new_scores", tf.shape(scores))
         tf.print(scores)
 
+        max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
         # number of max detection = 100 (u can choose whatever u want)
-        scores, idx = tf.math.top_k(scores, k=100)
+        scores, idx = tf.math.top_k(scores, k=max_num_detection)
         classes = tf.gather(classes, idx)
         boxes = tf.gather(boxes, idx)
         masks = tf.gather(masks, idx)
         scores = tf.gather(scores, idx)
+
+        # second threshold
+        positive_det = tf.where(scores > self.conf_threshold)
+        classes = tf.gather(classes, positive_det)
+        boxes = tf.gather(boxes, positive_det)
+        masks = tf.gather(masks, positive_det)
+        scores = tf.gather(scores, positive_det)
+
+        tf.print("final score")
+        tf.print("num_final_detection", tf.size(scores))
 
         return boxes, masks, classes, scores
