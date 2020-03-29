@@ -47,7 +47,8 @@ detection_layer = Detect(91, 0, 200, 0.5, 0.5, anchors)
 # iteration for detection (5000 val images)
 for image, labels in valid_dataset:
     output = model(image, training=False)
-    detection_layer(output)
+    detection = detection_layer(output)
+    print(len(detection))
     # postprocessing
     # visualize the detection
     break

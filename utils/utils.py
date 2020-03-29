@@ -172,3 +172,13 @@ def jaccard(box_a, box_b):
 
     # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
     return pairwise_inter / pairwise_union
+
+
+# post process after detection layer
+# Todo: Use tensorflows intepolation mode option
+def postprocess(detection, w, h, batch_idx, intepolation_mode, crop_mask=True, score_threshold=0):
+
+    dets = detection[batch_idx]
+
+
+    pass

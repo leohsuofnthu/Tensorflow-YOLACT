@@ -36,10 +36,13 @@ class Detect(object):
         for batch_idx in tf.range(num_batch):
             # add offset to anchors
             decoded_boxes = utils.map_to_bbox(self.anchors, loc_pred[batch_idx])
-            # tf.print(decoded_boxes)
             # do detection
-            self._detection(batch_idx, cls_pred, decoded_boxes, mask_pred)
-            pass
+            result = self._detection(batch_idx, cls_pred, decoded_boxes, mask_pred)
+            if not result and not proto_pred:
+                result['proto'] = proto_pred[batch_idx]
+            out.append({'detection': result})
+
+        return out
 
     def _detection(self, batch_idx, cls_pred, decoded_boxes, mask_pred):
         # we don't need to deal with background label
@@ -133,7 +136,7 @@ class Detect(object):
         masks = tf.gather(masks, positive_det)
         scores = tf.gather(scores, positive_det)
 
-        tf.print("final score")
+        tf.print("final score", scores)
         tf.print("num_final_detection", tf.size(scores))
 
         return boxes, masks, classes, scores
