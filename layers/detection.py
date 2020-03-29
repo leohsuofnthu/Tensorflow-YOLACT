@@ -63,9 +63,66 @@ class Detect(object):
         tf.print("masks", tf.shape(masks))
 
         # apply fast nms for final detection
-        boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_thresh, self.top_k)
+        top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
+        boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
-        classes = 0
+        scores, idx = tf.math.top_k(scores, k=top_k)
+        tf.print("top k scores:", tf.shape(scores))
+        tf.print("top k indices", tf.shape(idx))
+        tf.print(idx[:20])
+
+        num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
+        tf.print("num_classes:", num_classes)
+        tf.print("num dets:", num_dets)
+
+        tf.print("old boxes", tf.shape(boxes))
+
+        boxes = tf.gather(boxes, idx)
+        tf.print("new boxes", tf.shape(boxes))
+
+        masks = tf.gather(masks, idx)
+        tf.print("new masks", tf.shape(masks))
+
+        iou = utils.jaccard(boxes, boxes)
+        tf.print("iou", tf.shape(iou))
+
+        # upper trangular matrix - diagnoal
+        upper_triangular = tf.linalg.band_part(iou, 0, -1)
+        diag = tf.linalg.band_part(iou, 0, 0)
+        tf.print("upper tri", upper_triangular[0])
+        iou = upper_triangular - diag
+        tf.print("iou", tf.shape(iou))
+        tf.print("iou", iou[0])
+
+        # fitler out the unwanted ROI
+        iou_max = tf.reduce_max(iou, axis=1)
+        tf.print("iou max", tf.shape(iou_max))
+        tf.print("iou max", iou_max)
+
+        idx_det = tf.where(iou_max <= iou_threshold)
+
+        tf.print("idx det", tf.shape(idx_det))
+        tf.print(idx_det)
+        # Todo: second threshold, when to use
+        classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max))
+        tf.print("classes", classes)
+        classes = tf.gather_nd(classes, idx_det)
+        tf.print("new_classes", tf.shape(classes))
+        boxes = tf.gather_nd(boxes, idx_det)
+        tf.print("new_boxes", tf.shape(boxes))
+        masks = tf.gather_nd(masks, idx_det)
+        tf.print("new_masks", tf.shape(masks))
+        scores = tf.gather_nd(scores, idx_det)
+        tf.print("new_scores", tf.shape(scores))
+        tf.print(scores)
+
+        # number of max detection = 100 (u can choose whatever u want)
+        scores, idx = tf.math.top_k(scores, k=100)
+        classes = tf.gather(classes, idx)
+        boxes = tf.gather(boxes, idx)
+        masks = tf.gather(masks, idx)
+        scores = tf.gather(scores, idx)
+
         return boxes, masks, classes, scores

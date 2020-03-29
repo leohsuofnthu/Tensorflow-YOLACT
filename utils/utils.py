@@ -124,3 +124,51 @@ def map_to_bbox(anchors, loc_pred):
     tf.print("anchor", tf.shape(anchors))
     tf.print("pred", tf.shape(loc_pred))
     return decoded_boxes
+
+
+def intersection(box_a, box_b):
+    """
+        ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
+        :param gt_bbox: [num_obj, 4]
+        :return:
+        """
+
+    # unstack the ymin, xmin, ymax, xmax
+    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
+    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+
+    # calculate intersection
+    all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=1))
+    all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=1))
+    all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=1))
+    all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=1))
+    intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
+    intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
+    return intersect_heights * intersect_widths
+
+
+def jaccard(box_a, box_b):
+    """
+         ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
+        :param gt_bbox: [num_obj, 4]
+        :return:
+        """
+    # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
+    # calculate A ∩ B (pairwise)
+    pairwise_inter = intersection(box_a, box_b)
+
+    # calculate areaA, areaB
+    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
+    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+
+    area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
+    area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+
+    # create same shape of matrix as intersection
+    pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=1)
+
+    # calculate A ∪ B
+    pairwise_union = pairwise_area - pairwise_inter
+
+    # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
+    return pairwise_inter / pairwise_union

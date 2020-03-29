@@ -35,6 +35,7 @@ anchorobj = anchor.Anchor(img_size=550,
                           scale=[24, 48, 96, 192, 384])
 
 # images for detection, new dataloader without repeating
+# Todo: Figure out why batch size = 1 cause memory issue
 valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir="../data/coco",
                                                 batch_size=2,
                                                 subset='val')
@@ -47,9 +48,9 @@ detection_layer = Detect(91, 0, 200, 0.5, 0.5, anchors)
 for image, labels in valid_dataset:
     output = model(image, training=False)
     detection_layer(output)
+    # postprocessing
     # visualize the detection
-
     break
 
-# Visualize Detection Results
+# Visualize Detection Results and calculate mAP / image with boxes, masks, scores, and class name
 # -----------------------------------------------------------------------------------------------
