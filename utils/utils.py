@@ -49,6 +49,24 @@ def normalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.
     return image
 
 
+def denormalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
+    """Normalizes the image to zero mean and unit variance.
+     ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
+  """
+    image /= 255
+
+    scale = tf.constant(scale)
+    scale = tf.expand_dims(scale, axis=0)
+    scale = tf.expand_dims(scale, axis=0)
+    image *= scale
+
+    offset = tf.constant(offset)
+    offset = tf.expand_dims(offset, axis=0)
+    offset = tf.expand_dims(offset, axis=0)
+    image += offset
+    return image
+
+
 # mapping from [ymin, xmin, ymax, xmax] to [cx, cy, w, h]
 def map_to_center_form(x):
     h = x[:, 2] - x[:, 0]
@@ -176,9 +194,43 @@ def jaccard(box_a, box_b):
 
 # post process after detection layer
 # Todo: Use tensorflows intepolation mode option
-def postprocess(detection, w, h, batch_idx, intepolation_mode, crop_mask=True, score_threshold=0):
-
+def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
     dets = detection[batch_idx]
+    dets = dets['detection']
 
+    # Todo: If dets is None
+    # Todo: If scorethreshold is not zero
+    """
+    Ref:
+    if dets is None:
+        return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
 
-    pass
+    if score_threshold > 0:
+        keep = dets['score'] > score_threshold
+
+        for k in dets:
+            if k != 'proto':
+                dets[k] = dets[k][keep]
+        
+        if dets['score'].size(0) == 0:
+            return [torch.Tensor()] * 4
+    """
+    classes = dets['class']
+    boxes = dets['box']
+    scores = dets['score']
+    masks = dets['mask']
+    proto_pred = dets['proto']
+    tf.print(tf.shape(masks))
+    pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
+    pred_mask = tf.nn.sigmoid(pred_mask)
+    pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
+    tf.print("pred mask", tf.shape(pred_mask))
+    masks = crop(pred_mask, boxes)
+
+    # intepolate to original size (test 550*550 here)
+    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
+                            method=intepolation_mode)
+    masks = tf.cast(masks + 0.5, tf.int64)
+    masks = tf.squeeze(tf.cast(masks, tf.float32))
+
+    return classes, scores, boxes, masks

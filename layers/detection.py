@@ -38,7 +38,7 @@ class Detect(object):
             decoded_boxes = utils.map_to_bbox(self.anchors, loc_pred[batch_idx])
             # do detection
             result = self._detection(batch_idx, cls_pred, decoded_boxes, mask_pred)
-            if not result and not proto_pred:
+            if result is not None and proto_pred is not None:
                 result['proto'] = proto_pred[batch_idx]
             out.append({'detection': result})
 
@@ -49,6 +49,7 @@ class Detect(object):
         cur_score = cls_pred[batch_idx, 1:, :]
         tf.print("cur score:", tf.shape(cur_score))
         conf_score = tf.math.reduce_max(cur_score, axis=0)
+        conf_score_id = tf.argmax(cur_score, axis=0)
         tf.print("conf_score:", tf.shape(conf_score))
 
         # filter out the ROI that have conf score > confidence threshold
@@ -58,16 +59,26 @@ class Detect(object):
         if tf.size(candidate_ROI_idx) == 0:
             return None
 
-        scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
+        # scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
+        scores = tf.gather(conf_score, candidate_ROI_idx)
+        classes = tf.gather(conf_score_id, candidate_ROI_idx)
         tf.print("scores", tf.shape(scores))
         boxes = tf.gather(decoded_boxes, candidate_ROI_idx)
         tf.print("boxes", tf.shape(boxes))
         masks = tf.gather(mask_pred[batch_idx], candidate_ROI_idx)
         tf.print("masks", tf.shape(masks))
 
+        selected_indices = tf.image.non_max_suppression(boxes, scores, 100, 0.1)
+
+        boxes = tf.gather(boxes, selected_indices)
+        scores = tf.gather(scores, selected_indices)
+        masks = tf.gather(masks, selected_indices)
+        classes = tf.gather(classes, selected_indices)
         # apply fast nms for final detection
+        """
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
         boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
+        """
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
@@ -104,7 +115,7 @@ class Detect(object):
         tf.print("iou max", tf.shape(iou_max))
         tf.print("iou max", iou_max)
 
-        idx_det = tf.where(iou_max <= iou_threshold)
+        idx_det = tf.where(iou_max < iou_threshold)
 
         tf.print("idx det", tf.shape(idx_det))
         tf.print(idx_det)
@@ -113,6 +124,7 @@ class Detect(object):
         tf.print("classes", classes)
         classes = tf.gather_nd(classes, idx_det)
         tf.print("new_classes", tf.shape(classes))
+        tf.print(classes)
         boxes = tf.gather_nd(boxes, idx_det)
         tf.print("new_boxes", tf.shape(boxes))
         masks = tf.gather_nd(masks, idx_det)
@@ -124,17 +136,21 @@ class Detect(object):
         max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
         # number of max detection = 100 (u can choose whatever u want)
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
+        tf.print("max num score", scores)
         classes = tf.gather(classes, idx)
+        tf.print("max num classes", classes)
         boxes = tf.gather(boxes, idx)
         masks = tf.gather(masks, idx)
         scores = tf.gather(scores, idx)
 
+        # Todo Handle the situation that only 1 or 0 detection
         # second threshold
-        positive_det = tf.where(scores > self.conf_threshold)
-        classes = tf.gather(classes, positive_det)
-        boxes = tf.gather(boxes, positive_det)
-        masks = tf.gather(masks, positive_det)
+        positive_det = tf.squeeze(tf.where(scores > self.conf_threshold))
         scores = tf.gather(scores, positive_det)
+        classes = classes[:tf.size(scores)]
+        tf.print("final classes", classes)
+        boxes = boxes[:tf.size(scores)]
+        masks = masks[:tf.size(scores)]
 
         tf.print("final score", scores)
         tf.print("num_final_detection", tf.size(scores))
