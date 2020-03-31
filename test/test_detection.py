@@ -41,11 +41,17 @@ anchorobj = anchor.Anchor(img_size=550,
 # Todo: Figure out why batch size = 1 cause memory issue
 valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir="../data/coco",
                                                 batch_size=1,
-                                                subset='val')
+                                                subset='train')
 anchors = anchorobj.get_anchors()
 tf.print(tf.shape(anchors))
 
-detection_layer = Detect(91, 0, 200, 0.5, 0.5, anchors)
+# Add detection Layer after model
+detection_layer = Detect(num_cls=91,
+                         label_background=0,
+                         top_k=200,
+                         conf_threshold=0.8,
+                         nms_threshold=0.5,
+                         anchors=anchors)
 
 # iteration for detection (5000 val images)
 for image, labels in valid_dataset.take(1):
@@ -68,17 +74,18 @@ for image, labels in valid_dataset.take(1):
     gt_cls = labels['classes'].numpy()
     num_obj = labels['num_obj'].numpy()
     print(image.shape)
+    # show the prediction box
     for idx in range(bbox.shape[0]):
         b = bbox[idx]
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
-        cv2.putText(image, label_map.category_map[cls[idx]+1], (int(b[1]), int(b[0]) + 10), cv2.FONT_HERSHEY_SIMPLEX,
-                    1, (36, 255, 12), 2)
-
+        cv2.putText(image, label_map.category_map[cls[idx]+1], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_DUPLEX,
+                    0.5, (255, 0, 0), 1)
+    # show the label
     for idx in range(num_obj[0]):
         b = gt_bbox[0][idx]
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (0, 0, 255), 2)
-        cv2.putText(image, label_map.category_map[gt_cls[0][idx]], (int(b[1]), int(b[0]) + 10), cv2.FONT_HERSHEY_SIMPLEX,
-                    1, (36, 18, 12), 2)
+        cv2.putText(image, label_map.category_map[gt_cls[0][idx]], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_DUPLEX,
+                    0.5, (0, 0, 255), 1)
 
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
