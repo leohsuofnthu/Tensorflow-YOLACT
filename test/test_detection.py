@@ -41,7 +41,7 @@ anchorobj = anchor.Anchor(img_size=550,
 # Todo: Figure out why batch size = 1 cause memory issue
 valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir="../data/coco",
                                                 batch_size=1,
-                                                subset='train')
+                                                subset='val')
 anchors = anchorobj.get_anchors()
 tf.print(tf.shape(anchors))
 
