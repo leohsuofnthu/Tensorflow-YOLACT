@@ -55,6 +55,7 @@ class Parser(object):
 
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
+        # Todo: Classes Remapping to 80 classes
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
@@ -76,6 +77,7 @@ class Parser(object):
 
         # read and normalize the image
         image = data['image']
+        original_img = tf.identity(image)
 
         # convert image to range [0, 1], faciliate augmentation
         image = normalize_image(image)
@@ -139,7 +141,8 @@ class Parser(object):
             'classes': classes,
             'num_obj': num_obj,
             'mask_target': masks,
-            'max_id_for_anchors': max_id_for_anchors
+            'max_id_for_anchors': max_id_for_anchors,
+            'ori': original_img
         }
         return image, labels
 

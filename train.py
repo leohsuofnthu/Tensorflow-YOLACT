@@ -48,7 +48,7 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -62,7 +62,7 @@ def valid_step(model,
                image,
                labels):
     output = model(image, training=False)
-    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss, seg_loss
 
@@ -224,19 +224,20 @@ def main(argv):
                 tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
 
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, Seg Loss: {}'
+            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, ' \
+                             'Seg Loss: {} '
             logging.info(train_template.format(iterations + 1,
-                                        train_loss.result(),
-                                        loc.result(),
-                                        conf.result(),
-                                        mask.result(),
-                                        seg.result()))
+                                               train_loss.result(),
+                                               loc.result(),
+                                               conf.result(),
+                                               mask.result(),
+                                               seg.result()))
             logging.info(valid_template.format(iterations + 1,
-                                        valid_loss.result(),
-                                        v_loc.result(),
-                                        v_conf.result(),
-                                        v_mask.result(),
-                                        v_seg.result()))
+                                               valid_loss.result(),
+                                               v_loc.result(),
+                                               v_conf.result(),
+                                               v_mask.result(),
+                                               v_seg.result()))
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
