@@ -7,6 +7,7 @@ from utils import learning_rate_schedule, label_map
 from yolact import Yolact
 from layers.detection import Detect
 from utils.utils import postprocess, denormalize_image
+from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
 import cv2
 # Restore CheckPoints
@@ -74,18 +75,37 @@ for image, labels in valid_dataset.take(1):
     gt_cls = labels['classes'].numpy()
     num_obj = labels['num_obj'].numpy()
     print(image.shape)
+
     # show the prediction box
+    """
     for idx in range(bbox.shape[0]):
         b = bbox[idx]
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (255, 0, 0), 2)
         cv2.putText(image, label_map.category_map[cls[idx]+1], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_DUPLEX,
                     0.5, (255, 0, 0), 1)
+    """
+
     # show the label
     for idx in range(num_obj[0]):
         b = gt_bbox[0][idx]
-        cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (0, 0, 255), 2)
-        cv2.putText(image, label_map.category_map[gt_cls[0][idx]], (int(b[1]), int(b[0]) - 10), cv2.FONT_HERSHEY_DUPLEX,
-                    0.5, (0, 0, 255), 1)
+        class_id = COCO_LABEL_MAP.get(gt_cls[0][idx]) - 1
+        color_idx = (class_id * 5) % len(COLORS)
+        print(f"{class_id}, {COCO_CLASSES[class_id]}")
+
+        # prepare the class text to display
+        text_str = f"{COCO_CLASSES[class_id]}"
+        font_face = cv2.FONT_HERSHEY_DUPLEX
+        font_scale = 0.6
+        font_thickness = 1
+        text_w, text_h = cv2.getTextSize(text_str, font_face, font_scale, font_thickness)[0]
+        text_pt = (int(b[1]), int(b[0] - 3))
+        text_color = [255, 255, 255]
+        print(f"color {COLORS[color_idx]}")
+
+        # draw the bbox, text, and bbox around text
+        cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), COLORS[color_idx], 1)
+        cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), COLORS[color_idx], -1)
+        cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
