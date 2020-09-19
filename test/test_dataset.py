@@ -6,7 +6,6 @@ from data.dataset_coco import prepare_dataloader
 from utils.utils import denormalize_image
 from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
-
 train_dataloader = prepare_dataloader("../data/coco", 1, "train")
 print(train_dataloader)
 # visualize the training sample
@@ -22,17 +21,12 @@ for image, labels in train_dataloader.take(1):
     original_img = np.squeeze(labels['ori'].numpy().astype(np.uint8))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     final_m = np.zeros_like(mask[0][0][:, :, None])
-    print(image.dtype)
-    print(final_m.dtype)
     for idx in range(num_obj[0]):
         # get the bbox, class_name, and random color
         b = bbox[0][idx]
         m = mask[0][idx][:, :, None]
-        print("image shape:", image.shape)
-        print("mask shape:", m.shape)
         class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
         color_idx = (class_id * 5) % len(COLORS)
-        print(f"{class_id}, {COCO_CLASSES[class_id]}")
 
         # prepare the class text to display
         text_str = f"{COCO_CLASSES[class_id]}"
@@ -43,7 +37,6 @@ for image, labels in train_dataloader.take(1):
         text_pt = (int(b[1]), int(b[0] - 3))
         text_color = [255, 255, 255]
         color = COLORS[color_idx]
-        print(f"color {COLORS[color_idx]}")
 
         # draw the bbox, text, and bbox around text
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), color, 1)
@@ -53,11 +46,9 @@ for image, labels in train_dataloader.take(1):
         # create mask
         final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
 
-    print(final_m[np.nonzero(final_m)])
     final_m = final_m.astype('uint8')
     dst = np.zeros_like(image).astype('uint8')
     final_m = cv2.resize(final_m, dsize=(image.shape[0], image.shape[1]), interpolation=cv2.INTER_NEAREST)
-    cv2.addWeighted(final_m, 0.5, image, 0.5, 0, dst)
+    cv2.addWeighted(final_m, 0.3, image, 0.7, 0, dst)
     cv2.imshow("check", dst)
     k = cv2.waitKey(0)
-    print(cls)
