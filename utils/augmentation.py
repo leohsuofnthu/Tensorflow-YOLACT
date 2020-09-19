@@ -97,10 +97,14 @@ def horizontal_flip(image, bboxes, masks):
 
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
     # generate random
-    FLAGS = tf.random.uniform([3], minval=0, maxval=1)
-    FLAG_GEO_DISTORTION = FLAGS[0]
-    FLAG_PHOTO_DISTORTION = FLAGS[1]
-    FLAG_HOR_FLIP = FLAGS[2]
+    # FLAGS = tf.random.uniform([3], minval=0, maxval=1)
+    # FLAG_GEO_DISTORTION = FLAGS[0]
+    # FLAG_PHOTO_DISTORTION = FLAGS[1]
+    # FLAG_HOR_FLIP = FLAGS[2]
+
+    FLAG_GEO_DISTORTION = 0
+    FLAG_PHOTO_DISTORTION = 0
+    FLAG_HOR_FLIP = 0
 
     # Random Geometric Distortion (img, bboxes, masks)
     if FLAG_GEO_DISTORTION > 0.5:

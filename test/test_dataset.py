@@ -20,13 +20,16 @@ for image, labels in train_dataloader.take(1):
     mask = labels['mask_target'].numpy()
     num_obj = labels['num_obj'].numpy()
     original_img = np.squeeze(labels['ori'].numpy().astype(np.uint8))
-    plt.figure()
-    plt.imshow(original_img)
-    plt.show()
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    final_m = np.zeros_like(mask[0][0][:, :, None])
+    print(image.dtype)
+    print(final_m.dtype)
     for idx in range(num_obj[0]):
         # get the bbox, class_name, and random color
         b = bbox[0][idx]
+        m = mask[0][idx][:, :, None]
+        print("image shape:", image.shape)
+        print("mask shape:", m.shape)
         class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
         color_idx = (class_id * 5) % len(COLORS)
         print(f"{class_id}, {COCO_CLASSES[class_id]}")
@@ -39,13 +42,22 @@ for image, labels in train_dataloader.take(1):
         text_w, text_h = cv2.getTextSize(text_str, font_face, font_scale, font_thickness)[0]
         text_pt = (int(b[1]), int(b[0] - 3))
         text_color = [255, 255, 255]
+        color = COLORS[color_idx]
         print(f"color {COLORS[color_idx]}")
 
         # draw the bbox, text, and bbox around text
-        cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), COLORS[color_idx], 1)
-        cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), COLORS[color_idx], -1)
+        cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), color, 1)
+        cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), color, -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
 
-    cv2.imshow("check", image)
+        # create mask
+        final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
+
+    print(final_m[np.nonzero(final_m)])
+    final_m = final_m.astype('uint8')
+    dst = np.zeros_like(image).astype('uint8')
+    final_m = cv2.resize(final_m, dsize=(image.shape[0], image.shape[1]), interpolation=cv2.INTER_NEAREST)
+    cv2.addWeighted(final_m, 0.5, image, 0.5, 0, dst)
+    cv2.imshow("check", dst)
     k = cv2.waitKey(0)
     print(cls)
