@@ -94,11 +94,8 @@ class YOLACTLoss(object):
         neg_pred_cls = tf.gather(pred_cls, neg_indices[:, 0])
         neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
 
-        # apply softmax on the pred_cls
-        neg_softmax = neg_pred_cls
-
         # -log(softmax class 0)
-        neg_minus_log_class0 = -1 * tf.math.log(neg_softmax[:, 0])
+        neg_minus_log_class0 = -1 * tf.nn.log_softmax(neg_pred_cls)[:, 0]
 
         # sort of -log(softmax class 0)
         neg_minus_log_class0_sort = tf.argsort(neg_minus_log_class0, direction="DESCENDING")
