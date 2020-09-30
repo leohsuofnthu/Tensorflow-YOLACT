@@ -61,6 +61,7 @@ def valid_step(model,
                metrics,
                image,
                labels):
+    # Todo Calculate mAP here for evaluation
     output = model(image, training=False)
     loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
     metrics.update_state(total_loss)
@@ -194,7 +195,7 @@ def main(argv):
             # save checkpoint
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
-            # validation
+            # validation and print mAP table
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
                 if valid_iter > FLAGS.valid_iter:
@@ -205,6 +206,7 @@ def main(argv):
                               'loop_optimization': True,
                               'arithmetic_optimization': True,
                               'remapping': True}):
+                    # Todo accumulate mAP calculation
                     valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
                                                                                                   criterion,
                                                                                                   valid_loss,

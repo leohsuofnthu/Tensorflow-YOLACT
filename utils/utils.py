@@ -192,6 +192,10 @@ def jaccard(box_a, box_b):
     return pairwise_inter / pairwise_union
 
 
+def mask_iou(mask1, mask2):
+    ...
+
+
 # post process after detection layer
 # Todo: Use tensorflows intepolation mode option
 def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
