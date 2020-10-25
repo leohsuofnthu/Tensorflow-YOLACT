@@ -128,7 +128,7 @@ class Detect(object):
         tf.print("iou max", tf.shape(iou_max))
         tf.print("iou max", iou_max[0])
 
-        idx_det = tf.where(iou_max < 0.5)
+        idx_det = tf.where(iou_max > 0.5)
 
         tf.print("idx det", tf.shape(idx_det))
         tf.print(idx_det)

@@ -52,7 +52,7 @@ detection_layer = Detect(num_cls=91,
                          label_background=0,
                          top_k=200,
                          conf_threshold=0.05,
-                         nms_threshold=0.8,
+                         nms_threshold=0.5,
                          anchors=anchors)
 
 # iteration for detection (5000 val images)
@@ -108,7 +108,7 @@ for image, labels in valid_dataset.take(1):
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), COLORS[color_idx], 1)
         cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), COLORS[color_idx], -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
-
+    """
     # show the label
     for idx in range(num_obj[0]):
         b = gt_bbox[0][idx]
@@ -130,7 +130,7 @@ for image, labels in valid_dataset.take(1):
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (0, 0, 0), 1)
         cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), (0, 0, 0), -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
-
+        """
     cv2.imshow("check", image)
     k = cv2.waitKey(0)
 
