@@ -1,10 +1,14 @@
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
-
+import tensorflow as tf
 from data.dataset_coco import prepare_dataloader
 from utils.utils import denormalize_image
 from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
+
+# set manual seed for easy debug
+# -----------------------------------------------------------------------------------------------
+tf.random.set_seed(1235)
 
 train_dataloader = prepare_dataloader("../data/coco", 1, "train")
 print(train_dataloader)
@@ -18,7 +22,7 @@ for image, labels in train_dataloader.take(1):
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()
     num_obj = labels['num_obj'].numpy()
-    original_img = np.squeeze(labels['ori'].numpy().astype(np.uint8))
+    # original_img = np.squeeze(labels['ori'].numpy().astype(np.uint8))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     final_m = np.zeros_like(mask[0][0][:, :, None])
     for idx in range(num_obj[0]):

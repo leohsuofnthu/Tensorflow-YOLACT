@@ -11,6 +11,11 @@ from utils.utils import postprocess, denormalize_image
 from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
 import cv2
+# set manual seed for easy debug
+# -----------------------------------------------------------------------------------------------
+tf.random.set_seed(1795)
+
+
 # Restore CheckPoints
 # -----------------------------------------------------------------------------------------------
 lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4, initial_lr=1e-3)
@@ -76,15 +81,15 @@ for image, labels in valid_dataset.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy()) * 255
     image = image.astype(np.uint8)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     gt_bbox = labels['bbox'].numpy()
     gt_cls = labels['classes'].numpy()
     num_obj = labels['num_obj'].numpy()
-    print(image.shape)
-
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    final_m = np.zeros_like(masks[0][:, :, None])
     # show the prediction box
     for idx in range(bbox.shape[0]):
         b = bbox[idx]
+        m = masks[idx][:, :, None]
         print(cls[idx])
         print(COCO_LABEL_MAP.get(cls[idx]))
         if COCO_LABEL_MAP.get(cls[idx])-1 is None:
@@ -93,21 +98,25 @@ for image, labels in valid_dataset.take(1):
         print(class_id)
         color_idx = (class_id) % len(COLORS)
         print(f"{class_id}, {COCO_CLASSES[class_id]}")
-
+        score = '%.2f' % round(scores[idx], 2)
         # prepare the class text to display
-        text_str = f"{COCO_CLASSES[class_id]}"
+        text_str = f"{COCO_CLASSES[class_id]} {score}"
         font_face = cv2.FONT_HERSHEY_DUPLEX
         font_scale = 0.5
         font_thickness = 1
         text_w, text_h = cv2.getTextSize(text_str, font_face, font_scale, font_thickness)[0]
         text_pt = (int(b[1]), int(b[0] - 3))
         text_color = [255, 255, 255]
-        print(f"color {COLORS[color_idx]}")
+        color = COLORS[color_idx]
 
+        print(f"box:{b}")
         # draw the bbox, text, and bbox around text
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), COLORS[color_idx], 1)
         cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), COLORS[color_idx], -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
+
+        # create mask
+        final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
     """
     # show the label
     for idx in range(num_obj[0]):
@@ -126,12 +135,21 @@ for image, labels in valid_dataset.take(1):
         text_color = [255, 255, 255]
         print(f"color {COLORS[color_idx]}")
 
+        print(f"gt_b:{b}")
         # draw the bbox, text, and bbox around text
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (0, 0, 0), 1)
         cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), (0, 0, 0), -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
-        """
-    cv2.imshow("check", image)
+    """
+    final_m = final_m.astype('uint8')
+    """
+    plt.imshow(final_m)
+    plt.show()
+    """
+    dst = np.zeros_like(image).astype('uint8')
+    final_m = cv2.resize(final_m, dsize=(image.shape[0], image.shape[1]), interpolation=cv2.INTER_NEAREST)
+    cv2.addWeighted(final_m, 0.3, image, 0.7, 0, dst)
+    cv2.imshow("check", dst)
     k = cv2.waitKey(0)
 
 

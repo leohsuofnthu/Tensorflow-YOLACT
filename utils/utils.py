@@ -224,17 +224,31 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     scores = dets['score']
     masks = dets['mask']
     proto_pred = dets['proto']
+    tf.print(tf.shape(proto_pred))
     tf.print(tf.shape(masks))
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
     tf.print("pred mask", tf.shape(pred_mask))
-    masks = crop(pred_mask, boxes)
 
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.imshow(pred_mask[0])
+    print(boxes)
+    masks = crop(pred_mask, boxes * float(138.0/550.0))
+    # masks = pred_mask
+    plt.figure()
+    plt.imshow(masks[0])
     # intepolate to original size (test 550*550 here)
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
                             method=intepolation_mode)
+    plt.figure()
+    plt.imshow(masks[0])
     masks = tf.cast(masks + 0.5, tf.int64)
+    plt.figure()
+    plt.imshow(masks[0])
     masks = tf.squeeze(tf.cast(masks, tf.float32))
-
+    plt.figure()
+    plt.imshow(masks[0])
+    plt.show()
     return classes, scores, boxes, masks

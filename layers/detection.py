@@ -98,7 +98,7 @@ class Detect(object):
         tf.print(idx[:5])
         tf.print(scores[:5])
         tf.print(idx[0][0])
-        tf.print(boxes[idx[0][0],:])
+        tf.print(boxes[idx[0][0], :])
         num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
         tf.print("num_classes:", num_classes)
         tf.print("num dets:", num_dets)
@@ -128,7 +128,7 @@ class Detect(object):
         tf.print("iou max", tf.shape(iou_max))
         tf.print("iou max", iou_max[0])
 
-        idx_det = tf.where(iou_max > 0.5)
+        idx_det = tf.where(iou_max <= iou_threshold)
 
         tf.print("idx det", tf.shape(idx_det))
         tf.print(idx_det)
@@ -157,7 +157,6 @@ class Detect(object):
 
         # Todo Handle the situation that only 1 or 0 detection
         # second threshold
-        tf.print("test", tf.where(scores > iou_threshold))
         positive_det = tf.squeeze(tf.where(scores > iou_threshold))
         tf.print("positive det", positive_det)
         scores = tf.gather(scores, positive_det)
