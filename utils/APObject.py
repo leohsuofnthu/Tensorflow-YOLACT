@@ -22,14 +22,14 @@ class Detections:
 
     def to_json(self):
         """
-        dump to json file for benchmark use, like coco-test result
+        dump to json file for benchmark use, for coco-test dev benchmark
         """
         ...
 
 
 class APObject:
     """
-    Object to store mAP related information for 1 IOU threshhold and 1 class
+    Object to store mAP related information for 1 IOU threshhold (0.5 ~ 0.95) and 1 class (80)
     Ex: class "cat" 's mAP at threshold 0.5 is stored into a APObject
     """
 

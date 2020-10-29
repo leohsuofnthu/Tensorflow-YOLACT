@@ -11,9 +11,11 @@ from utils.utils import postprocess, denormalize_image
 from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
 import cv2
+
+from eval import prep_metrics
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
-tf.random.set_seed(1795)
+tf.random.set_seed(1198)
 
 
 # Restore CheckPoints
@@ -117,7 +119,7 @@ for image, labels in valid_dataset.take(1):
 
         # create mask
         final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
-    """
+
     # show the label
     for idx in range(num_obj[0]):
         b = gt_bbox[0][idx]
@@ -140,7 +142,7 @@ for image, labels in valid_dataset.take(1):
         cv2.rectangle(image, (b[1], b[0]), (b[3], b[2]), (0, 0, 0), 1)
         cv2.rectangle(image, (b[1], b[0]), (int(b[1] + text_w), int(b[0] - text_h - 4)), (0, 0, 0), -1)
         cv2.putText(image, text_str, text_pt, font_face, font_scale, text_color, font_thickness, cv2.LINE_AA)
-    """
+
     final_m = final_m.astype('uint8')
     """
     plt.imshow(final_m)
