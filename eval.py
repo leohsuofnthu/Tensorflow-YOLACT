@@ -116,6 +116,8 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     boxes = boxes.cuda()
     """
 
+    # if output json, add things to detections objects
+
     # else
     num_pred = len(classes)
     num_gt = len(gt_classes)
@@ -124,8 +126,11 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     mask_iou_cache = _mask_iou(masks, gt_masks)
     bbox_iou_cache = _bbox_iou(boxes, gt_bbox)
 
+    tf.print(f"mask_iou_cache:{mask_iou_cache.shape}")
+    tf.print(f"bbox_iou_cache:{bbox_iou_cache.shape}")
+
     """
-    If crowd label included
+    # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
         crowd_mask_iou_cache = _mask_iou(masks, crowd_masks, iscrowd=True)
         crowd_bbox_iou_cache = _bbox_iou(boxes.float(), crowd_boxes.float(), iscrowd=True)
@@ -134,7 +139,30 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
         crowd_bbox_iou_cache = None
     """
 
-    ...
+    """
+    # Do sth for indice ? what for ?
+    box_indices = sorted(range(num_pred), key=lambda i: -box_scores[i])
+        mask_indices = sorted(box_indices, key=lambda i: -mask_scores[i])
+
+        iou_types = [
+            ('box',  lambda i,j: bbox_iou_cache[i, j].item(),
+                     lambda i,j: crowd_bbox_iou_cache[i,j].item(),
+                     lambda i: box_scores[i], box_indices),
+            ('mask', lambda i,j: mask_iou_cache[i, j].item(),
+                     lambda i,j: crowd_mask_iou_cache[i,j].item(),
+                     lambda i: mask_scores[i], mask_indices)]
+    """
+
+    # starting to update the ap_data from this batch
+    for _class in set(classes + gt_classes):
+        ap_per_iou = []
+        num_gt_class = sum([1 for x in gt_classes if x == _class])
+
+        for iouIdx in range(len(iou_thresholds)):
+            iou_thresholds = iou_thresholds[iouIdx]
+
+
+
 
 
 def prep_benchmarks():
@@ -176,9 +204,10 @@ def evaluate(model, dataset):
     detections = Detections()
 
     # iterate the whole dataset to save TP, FP, FN
-    for idx, data in enumerate(dataset):
+    for image, labels in dataset:
         preds = model(...)
-        prep_metrics(ap_data, preds, img, gt, gt_masks, w, h, detections)
+        # update ap_data or detection depends if u want to save it to json or just for validation table
+        prep_metrics(ap_data, preds, image, labels, w, h, detections)
 
     # if to json
     # save detection to json
