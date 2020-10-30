@@ -206,7 +206,7 @@ def main(argv):
                               'loop_optimization': True,
                               'arithmetic_optimization': True,
                               'remapping': True}):
-                    # Todo accumulate mAP calculation
+                    # Todo accumulate mAP calculation, call evaluate(model, dataset) directly and print the mAP
                     # get the detections, saving in objects
                     valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
                                                                                                   criterion,

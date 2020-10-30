@@ -1,3 +1,6 @@
+"""
+Mostly adapted from:
+"""
 import os
 from collections import OrderedDict
 
@@ -71,31 +74,47 @@ def calc_map(ap_data):
         return all_maps
 
 
-def print_maps():
-    ...
+def print_maps(all_maps):
+    # Warning: hacky
+    make_row = lambda vals: (' %5s |' * len(vals)) % tuple(vals)
+    make_sep = lambda n: ('-------+' * n)
+
+    print()
+    print(make_row([''] + [('.%d ' % x if isinstance(x, int) else x + ' ') for x in all_maps['box'].keys()]))
+    print(make_sep(len(all_maps['box']) + 1))
+    for iou_type in ('box', 'mask'):
+        print(make_row([iou_type] + ['%.2f' % x if x < 100 else '%.1f' % x for x in all_maps[iou_type].values()]))
+    print(make_sep(len(all_maps['box']) + 1))
+    print()
 
 
-def prep_metrics(ap_data, dets, img, gt, gt_masks, ..., detections):
+def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=None):
+    """Mainly update the ap_data for validation table"""
+
     # postprocess the prediction
-    classes, scores, boxes, masks = postprocess(...)
+    # Todo 550 to constant
+    classes, scores, boxes, masks = postprocess(dets, 550, 550, 0, "bilinear")
+    classes, scores = classes.numpy(), scores.numpy()
 
     # if no detections
-    if classes.size(0) == 0:
+    if classes.shape[0] == 0:
         return
+
+    # prepare gt
+    gt_bbox = labels['bbox']
+    gt_classes = labels['classes']
+    gt_masks = labels['mask_target']
+
+    # prepare data
+    classes = list(classes)
+    scores = list(scores)
+    box_scores = scores
+    mask_scores = scores
     """
-    classes = list(classes.cpu().numpy().astype(int))
-    if isinstance(scores, list):
-        box_scores = list(scores[0].cpu().numpy().astype(float))
-        mask_scores = list(scores[1].cpu().numpy().astype(float))
-    else:
-        scores = list(scores.cpu().numpy().astype(float))
-        box_scores = scores
-        mask_scores = scores
+    why cuda tensor? for iou fast calculation?
     masks = masks.view(-1, h * w).cuda()
     boxes = boxes.cuda()
     """
-
-    # if out to json
 
     # else
     num_pred = len(classes)
@@ -114,9 +133,6 @@ def prep_metrics(ap_data, dets, img, gt, gt_masks, ..., detections):
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
     """
-
-
-
 
     ...
 
@@ -153,14 +169,14 @@ def evaluate(model, dataset):
     # For mAP evaluation, creating AP_Object for every class per iou_threshold
     ap_data = {
         # Todo add item in config.py
-        'box': [[APObject() for _ in cfg.dataset.class_names] for _ in iou_thresholds],
-        'mask': [[APObject() for _ in cfg.dataset.class_names] for _ in iou_thresholds]}
+        'box': [[APObject() for _ in cfg.NUM_CLASS] for _ in iou_thresholds],
+        'mask': [[APObject() for _ in cfg.NUM_CLASS] for _ in iou_thresholds]}
 
     # detection object made from prediction output
     detections = Detections()
 
-    # start to iterate dataset
-    for ... in ...:
+    # iterate the whole dataset to save TP, FP, FN
+    for idx, data in enumerate(dataset):
         preds = model(...)
         prep_metrics(ap_data, preds, img, gt, gt_masks, w, h, detections)
 
