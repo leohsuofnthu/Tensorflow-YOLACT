@@ -59,7 +59,7 @@ def calc_map(ap_data):
                 if not ap_obj.is_empty():
                     aps[iou_idx][iou_type].append(ap_obj.get_ap())
 
-    all_maps = {'box': OrderedDict(), 'mask': OrderedDict}
+    all_maps = {'box': OrderedDict(), 'mask': OrderedDict()}
 
     for iou_type in ('box', 'mask'):
         all_maps[iou_type]['all'] = 0
@@ -68,11 +68,11 @@ def calc_map(ap_data):
             all_maps[iou_type][int(threshold * 100)] = mAP
         all_maps[iou_type]['all'] = (sum(all_maps[iou_type].values()) / (len(all_maps[iou_type].values()) - 1))
 
-        print_maps(all_maps)
+    print_maps(all_maps)
 
-        # Put in a prettier format so we can serialize it to json during training
-        all_maps = {k: {j: round(u, 2) for j, u in v.items()} for k, v in all_maps.items()}
-        return all_maps
+    # Put in a prettier format so we can serialize it to json during training
+    all_maps = {k: {j: round(u, 2) for j, u in v.items()} for k, v in all_maps.items()}
+    return all_maps
 
 
 def print_maps(all_maps):
@@ -128,7 +128,7 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
 
     # resize gt mask
     masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [550, 550],
-                    method='bilinear'), axis=-1)
+                                          method='bilinear'), axis=-1)
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
@@ -136,7 +136,6 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
 
     tf.print(mask_iou_cache)
     tf.print(bbox_iou_cache)
-
 
     """
     # If crowd label included, split it and calculate iou separately from non-crowd label
@@ -242,18 +241,18 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
     # detection object made from prediction output
     detections = Detections()
 
-    pb = Progbar(1000)
+    # pb = Progbar(1000)
     # iterate the whole dataset to save TP, FP, FN
     i = 0
     for image, labels in dataset:
         tf.print(i)
-        i+=1
+        i += 1
         output = model(image, training=False)
         detection = detection_layer(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
         # Todo 550 to variable
         prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
-        pb.add(batch_size)
+        # pb.add(batch_size)
         if i == 10:
             break
 

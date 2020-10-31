@@ -58,7 +58,6 @@ detection_layer = Detect(num_cls=91,
 
 # call evaluation(model, dataset)
 # return calculated mAP
-allmap = evaluate(model, detection_layer, valid_dataset, batch_size=1)
+evaluate(model, detection_layer, valid_dataset, batch_size=1)
 
-# print the mAP in nice table
-print_maps(allmap)
+
