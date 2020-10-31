@@ -192,8 +192,26 @@ def jaccard(box_a, box_b):
     return pairwise_inter / pairwise_union
 
 
-def mask_iou(mask1, mask2):
-    ...
+def mask_iou(masks_a, masks_b, iscrowd=False):
+    """
+       Computes the pariwise mask IoU between two sets of masks of size [a, h, w] and [b, h, w].
+       The output is of size [a, b].
+       Wait I thought this was "box_utils", why am I putting this in here?
+       """
+    # tf.print(tf.shape(masks_a))
+    # tf.print(tf.shape(masks_b))
+    num_a = tf.shape(masks_a)[0]
+    num_b = tf.shape(masks_b)[0]
+    masks_a = tf.reshape(masks_a, (num_a, -1))
+    masks_b = tf.reshape(masks_b, (num_b, -1))
+    # tf.print(tf.shape(masks_a))
+    # tf.print(tf.shape(masks_b))
+    intersection = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
+    tf.print(tf.shape(intersection))
+    area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
+    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
+
+    return intersection / (area_a + area_b - intersection) if not iscrowd else intersection / area_a
 
 
 # post process after detection layer

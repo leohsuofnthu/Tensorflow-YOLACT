@@ -5,6 +5,7 @@ import os
 from collections import OrderedDict
 
 import tensorflow as tf
+from tensorflow.keras.utils import Progbar
 
 from absl import app
 from absl import flags
@@ -47,7 +48,7 @@ def calc_map(ap_data):
     aps = [{'box': [], 'mask': []} for _ in iou_thresholds]
 
     # 　calculate Ap for every classes individually
-    for _class in range():
+    for _class in range(cfg.NUM_CLASS):
         # each class have multiple different iou threshold to calculate
         for iou_idx in range(len(iou_thresholds)):
             # there are 2 type of mAP we want to know (bounding box and mask)
@@ -110,24 +111,32 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     scores = list(scores)
     box_scores = scores
     mask_scores = scores
+
     """
     why cuda tensor? for iou fast calculation?
     masks = masks.view(-1, h * w).cuda()
     boxes = boxes.cuda()
     """
-
     # if output json, add things to detections objects
 
     # else
     num_pred = len(classes)
     num_gt = len(gt_classes)
 
-    # calculating the IOU first
-    mask_iou_cache = _mask_iou(masks, gt_masks)
-    bbox_iou_cache = _bbox_iou(boxes, gt_bbox)
+    tf.print(num_pred)
+    tf.print(num_gt)
 
-    tf.print(f"mask_iou_cache:{mask_iou_cache.shape}")
-    tf.print(f"bbox_iou_cache:{bbox_iou_cache.shape}")
+    # resize gt mask
+    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [550, 550],
+                    method='bilinear'), axis=-1)
+
+    # calculating the IOU first
+    mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
+    bbox_iou_cache = _bbox_iou(boxes, gt_bbox[0][:num_gt]).numpy()
+
+    tf.print(mask_iou_cache)
+    tf.print(bbox_iou_cache)
+
 
     """
     # If crowd label included, split it and calculate iou separately from non-crowd label
@@ -154,13 +163,15 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
          lambda idx: mask_scores[idx], mask_indices)
     ]
 
+    gt_classes = list(gt_classes[0][:num_gt].numpy())
+
     # starting to update the ap_data from this batch
     for _class in set(classes + gt_classes):
         # calculating how many labels belong to this class
         num_gt_for_class = sum([1 for x in gt_classes if x == _class])
 
         for iouIdx in range(len(iou_thresholds)):
-            iou_thresholds = iou_thresholds[iouIdx]
+            th = iou_thresholds[iouIdx]
 
             for iou_type, iou_func, score_func, indices in iou_types:
                 gt_used = [False] * len(gt_classes)
@@ -173,7 +184,7 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
                     if classes[i] != _class:
                         continue
 
-                    max_iou_found = iou_thresholds
+                    max_iou_found = th
                     max_match_idx = -1
 
                     for j in range(num_gt):
@@ -213,7 +224,7 @@ def eval_video():
     ...
 
 
-def evaluate(model, dataset):
+def evaluate(model, detection_layer, dataset, batch_size=1):
     # if use fastnms
     # if use cross class nms
 
@@ -225,17 +236,26 @@ def evaluate(model, dataset):
     # For mAP evaluation, creating AP_Object for every class per iou_threshold
     ap_data = {
         # Todo add item in config.py
-        'box': [[APObject() for _ in cfg.NUM_CLASS] for _ in iou_thresholds],
-        'mask': [[APObject() for _ in cfg.NUM_CLASS] for _ in iou_thresholds]}
+        'box': [[APObject() for _ in range(cfg.NUM_CLASS)] for _ in iou_thresholds],
+        'mask': [[APObject() for _ in range(cfg.NUM_CLASS)] for _ in iou_thresholds]}
 
     # detection object made from prediction output
     detections = Detections()
 
+    pb = Progbar(1000)
     # iterate the whole dataset to save TP, FP, FN
+    i = 0
     for image, labels in dataset:
-        preds = model(...)
+        tf.print(i)
+        i+=1
+        output = model(image, training=False)
+        detection = detection_layer(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
-        prep_metrics(ap_data, preds, image, labels, w, h, detections)
+        # Todo 550 to variable
+        prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
+        pb.add(batch_size)
+        if i == 10:
+            break
 
     # if to json
     # save detection to json

@@ -1,6 +1,7 @@
 import datetime
 import contextlib
 import tensorflow as tf
+from tensorflow.keras.utils import Progbar
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
