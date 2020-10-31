@@ -1,5 +1,5 @@
 """
-Mostly adapted from:
+Mostly adapted from: https://github.com/dbolya/yolact/blob/master/eval.py
 """
 import os
 from collections import OrderedDict
@@ -255,7 +255,7 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         # Todo 550 to variable
         prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
         # pb.add(batch_size)
-        if i == 100:
+        if i == 10:
             break
 
     # if to json

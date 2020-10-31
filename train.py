@@ -26,7 +26,7 @@ flags.DEFINE_string('weights', './weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 800000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 8,
+flags.DEFINE_integer('batch_size', 2,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -34,9 +34,9 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('print_interval', 10,
+flags.DEFINE_float('print_interval', 1,
                    'number of iteration between printing loss')
-flags.DEFINE_float('save_interval', 10000,
+flags.DEFINE_float('save_interval', 1,
                    'number of iteration between saving model(checkpoint)')
 flags.DEFINE_float('valid_iter', 5000,
                    'number of iteration between saving validation weights')
@@ -52,7 +52,8 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
+        # Todo how many category should we put in trianing
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
