@@ -1,6 +1,7 @@
 import datetime
 import contextlib
 import tensorflow as tf
+from tensorflow.keras.utils import Progbar
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
@@ -8,9 +9,12 @@ from absl import flags
 from absl import logging
 
 import yolact
-from data import dataset_coco
+from data import dataset_coco, anchor
 from loss import loss_yolact
 from utils import learning_rate_schedule
+
+from eval import evaluate
+from layers.detection import Detect
 
 tf.random.set_seed(1234)
 
@@ -48,7 +52,7 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -61,8 +65,9 @@ def valid_step(model,
                metrics,
                image,
                labels):
+    # Todo Calculate mAP here for evaluation
     output = model(image, training=False)
-    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss, seg_loss
 
@@ -99,6 +104,21 @@ def main(argv):
                           num_mask=32,
                           aspect_ratio=[1, 0.5, 2],
                           scales=[24, 48, 96, 192, 384])
+
+    # Need default anchor
+    anchorobj = anchor.Anchor(img_size=550,
+                              feature_map_size=[69, 35, 18, 9, 5],
+                              aspect_ratio=[1, 0.5, 2],
+                              scale=[24, 48, 96, 192, 384])
+    anchors = anchorobj.get_anchors()
+
+    # Add detection Layer after model
+    detection_layer = Detect(num_cls=91,
+                             label_background=0,
+                             top_k=200,
+                             conf_threshold=0.05,
+                             nms_threshold=0.5,
+                             anchors=anchors)
 
     # add weight decay
     for layer in model.layers:
@@ -194,7 +214,9 @@ def main(argv):
             # save checkpoint
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
-            # validation
+            # validation and print mAP table
+            evaluate(model, detection_layer, valid_dataset)
+            """
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
                 if valid_iter > FLAGS.valid_iter:
@@ -205,6 +227,8 @@ def main(argv):
                               'loop_optimization': True,
                               'arithmetic_optimization': True,
                               'remapping': True}):
+                    # Todo accumulate mAP calculation, call evaluate(model, dataset) directly and print the mAP
+                    # get the detections, saving in objects
                     valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
                                                                                                   criterion,
                                                                                                   valid_loss,
@@ -224,24 +248,28 @@ def main(argv):
                 tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
 
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, Seg Loss: {}'
+            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, ' \
+                             'Seg Loss: {} '
             logging.info(train_template.format(iterations + 1,
-                                        train_loss.result(),
-                                        loc.result(),
-                                        conf.result(),
-                                        mask.result(),
-                                        seg.result()))
+                                               train_loss.result(),
+                                               loc.result(),
+                                               conf.result(),
+                                               mask.result(),
+                                               seg.result()))
             logging.info(valid_template.format(iterations + 1,
-                                        valid_loss.result(),
-                                        v_loc.result(),
-                                        v_conf.result(),
-                                        v_mask.result(),
-                                        v_seg.result()))
+                                               valid_loss.result(),
+                                               v_loc.result(),
+                                               v_conf.result(),
+                                               v_mask.result(),
+                                               v_seg.result()))
+            """
+            # Todo save the best mAP
+            """
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
                 model.save_weights('./weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
-
+            """
             # reset the metrics
             train_loss.reset_states()
             loc.reset_states()
@@ -249,11 +277,13 @@ def main(argv):
             mask.reset_states()
             seg.reset_states()
 
+            """
             valid_loss.reset_states()
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
             v_seg.reset_states()
+            """
 
 
 if __name__ == '__main__':

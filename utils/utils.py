@@ -31,9 +31,7 @@ def bboxes_intersection(bbox_ref, bboxes):
         tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
 
 
-def normalize_image(image,
-                    offset=(0.485, 0.456, 0.406),
-                    scale=(0.229, 0.224, 0.225)):
+def normalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
     """Normalizes the image to zero mean and unit variance.
      ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
   """
@@ -48,6 +46,24 @@ def normalize_image(image,
     scale = tf.expand_dims(scale, axis=0)
     image /= scale
     image *= 255
+    return image
+
+
+def denormalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
+    """Normalizes the image to zero mean and unit variance.
+     ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
+  """
+    image /= 255
+
+    scale = tf.constant(scale)
+    scale = tf.expand_dims(scale, axis=0)
+    scale = tf.expand_dims(scale, axis=0)
+    image *= scale
+
+    offset = tf.constant(offset)
+    offset = tf.expand_dims(offset, axis=0)
+    offset = tf.expand_dims(offset, axis=0)
+    image += offset
     return image
 
 
@@ -97,5 +113,160 @@ def crop(pred, boxes):
 
 
 # decode the offset back to center form bounding box when evaluation and prediction
-def map_to_bbox(x):
-    pass
+def map_to_bbox(anchors, loc_pred):
+    # we use this variance also when we encode the offset
+    variances = [0.1, 0.2]
+
+    # convert anchor to center_form
+    anchor_h = anchors[:, 2] - anchors[:, 0]
+    anchor_w = anchors[:, 3] - anchors[:, 1]
+    anchor_cx = anchors[:, 1] + (anchor_w / 2)
+    anchor_cy = anchors[:, 0] + (anchor_h / 2)
+    tf.print("cx", tf.shape(anchor_cx))
+
+    pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
+
+    new_cx = pred_cx * (anchor_w * variances[0]) + anchor_cx
+    new_cy = pred_cy * (anchor_h * variances[0]) + anchor_cy
+    new_w = tf.math.exp(pred_w * variances[1]) * anchor_w
+    new_h = tf.math.exp(pred_h * variances[1]) * anchor_h
+
+    ymin = new_cy - (new_h / 2)
+    xmin = new_cx - (new_w / 2)
+    ymax = new_cy + (new_h / 2)
+    xmax = new_cx + (new_w / 2)
+
+    decoded_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+    tf.print(tf.shape(decoded_boxes))
+
+    tf.print("anchor", tf.shape(anchors))
+    tf.print("pred", tf.shape(loc_pred))
+    return decoded_boxes
+
+
+def intersection(box_a, box_b):
+    """
+        ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
+        :param gt_bbox: [num_obj, 4]
+        :return:
+        """
+
+    # unstack the ymin, xmin, ymax, xmax
+    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
+    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+
+    # calculate intersection
+    all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=1))
+    all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=1))
+    all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=1))
+    all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=1))
+    intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
+    intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
+    return intersect_heights * intersect_widths
+
+
+def jaccard(box_a, box_b):
+    """
+         ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
+        :param gt_bbox: [num_obj, 4]
+        :return:
+        """
+    # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
+    # calculate A ∩ B (pairwise)
+    pairwise_inter = intersection(box_a, box_b)
+
+    # calculate areaA, areaB
+    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
+    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+
+    area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
+    area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+
+    # create same shape of matrix as intersection
+    pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=1)
+
+    # calculate A ∪ B
+    pairwise_union = pairwise_area - pairwise_inter
+
+    # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
+    return pairwise_inter / pairwise_union
+
+
+def mask_iou(masks_a, masks_b, iscrowd=False):
+    """
+       Computes the pariwise mask IoU between two sets of masks of size [a, h, w] and [b, h, w].
+       The output is of size [a, b].
+       Wait I thought this was "box_utils", why am I putting this in here?
+       """
+    # tf.print(tf.shape(masks_a))
+    # tf.print(tf.shape(masks_b))
+    num_a = tf.shape(masks_a)[0]
+    num_b = tf.shape(masks_b)[0]
+    masks_a = tf.reshape(masks_a, (num_a, -1))
+    masks_b = tf.reshape(masks_b, (num_b, -1))
+    # tf.print(tf.shape(masks_a))
+    # tf.print(tf.shape(masks_b))
+    intersection = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
+    tf.print(tf.shape(intersection))
+    area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
+    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
+
+    return intersection / (area_a + area_b - intersection) if not iscrowd else intersection / area_a
+
+
+# post process after detection layer
+# Todo: Use tensorflows intepolation mode option
+def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
+    dets = detection[batch_idx]
+    dets = dets['detection']
+
+    # Todo: If dets is None
+    # Todo: If scorethreshold is not zero
+    """
+    Ref:
+    if dets is None:
+        return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
+
+    if score_threshold > 0:
+        keep = dets['score'] > score_threshold
+
+        for k in dets:
+            if k != 'proto':
+                dets[k] = dets[k][keep]
+        
+        if dets['score'].size(0) == 0:
+            return [torch.Tensor()] * 4
+    """
+    classes = dets['class']
+    boxes = dets['box']
+    scores = dets['score']
+    masks = dets['mask']
+    proto_pred = dets['proto']
+    tf.print(tf.shape(proto_pred))
+    tf.print(tf.shape(masks))
+    pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
+    pred_mask = tf.nn.sigmoid(pred_mask)
+    pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
+    tf.print("pred mask", tf.shape(pred_mask))
+
+    import matplotlib.pyplot as plt
+    plt.figure()
+    plt.imshow(pred_mask[0])
+    # print(boxes)
+    masks = crop(pred_mask, boxes * float(138.0/550.0))
+    # masks = pred_mask
+    plt.figure()
+    plt.imshow(masks[0])
+    # intepolate to original size (test 550*550 here)
+    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
+                            method=intepolation_mode)
+    # plt.figure()
+    # plt.imshow(masks[0])
+    masks = tf.cast(masks + 0.5, tf.int64)
+    # plt.figure()
+    # plt.imshow(masks[0])
+    masks = tf.squeeze(tf.cast(masks, tf.float32))
+    # plt.figure()
+    # plt.imshow(masks[0])
+    # plt.show()
+    return classes, scores, boxes, masks

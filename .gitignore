@@ -1,3 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+data/__pycache__/
+utils/__pycache__/
+*.py[cod]
+*$py.class
+
 /data/annotations
 /data/train2017
 /data/val2017

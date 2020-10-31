@@ -166,6 +166,7 @@ class YOLACTLoss(object):
 
             # crop the pred (not real crop, zero out the area outside the gt box)
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
+            # Todo check if bbox is at same scale as s
             s = utils.crop(s, bbox)
             loss = tf.reduce_sum(s, axis=[1, 2]) / area
             loss_mask += tf.reduce_sum(loss)
