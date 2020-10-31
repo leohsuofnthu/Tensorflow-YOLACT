@@ -4,6 +4,7 @@ Mostly adapted from:
 import os
 from collections import OrderedDict
 
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.utils import Progbar
 
@@ -107,6 +108,7 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     gt_masks = labels['mask_target']
 
     # prepare data
+    # Todo Bug when detection is 1 only
     classes = list(classes)
     scores = list(scores)
     box_scores = scores
@@ -253,7 +255,7 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         # Todo 550 to variable
         prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
         # pb.add(batch_size)
-        if i == 30:
+        if i == 100:
             break
 
     # if to json
