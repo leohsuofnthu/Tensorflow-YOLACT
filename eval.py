@@ -253,7 +253,7 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         # Todo 550 to variable
         prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
         # pb.add(batch_size)
-        if i == 10:
+        if i == 30:
             break
 
     # if to json
