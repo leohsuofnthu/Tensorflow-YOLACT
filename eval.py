@@ -139,30 +139,58 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
         crowd_bbox_iou_cache = None
     """
 
-    """
-    # Do sth for indice ? what for ?
-    box_indices = sorted(range(num_pred), key=lambda i: -box_scores[i])
-        mask_indices = sorted(box_indices, key=lambda i: -mask_scores[i])
+    # get the sorted index of scores (descending order)
+    box_indices = sorted(range(num_pred), key=lambda idx: -box_scores[idx])
+    mask_indices = sorted(box_indices, key=lambda idx: -mask_scores[idx])
 
-        iou_types = [
-            ('box',  lambda i,j: bbox_iou_cache[i, j].item(),
-                     lambda i,j: crowd_bbox_iou_cache[i,j].item(),
-                     lambda i: box_scores[i], box_indices),
-            ('mask', lambda i,j: mask_iou_cache[i, j].item(),
-                     lambda i,j: crowd_mask_iou_cache[i,j].item(),
-                     lambda i: mask_scores[i], mask_indices)]
-    """
+    # define some useful lambda function for next section
+    # avoid writing "bbox_iou_cache[row, col]" too many times, wrap it as a lambda func
+    iou_types = [
+        ('box', lambda row, col: bbox_iou_cache[row, col].item(),
+         # lambda i, j: crowd_bbox_iou_cache[i, j].item(),
+         lambda idx: box_scores[idx], box_indices),
+        ('mask', lambda row, col: mask_iou_cache[row, col].item(),
+         # lambda i,j: crowd_mask_iou_cache[i,j].item(),
+         lambda idx: mask_scores[idx], mask_indices)
+    ]
 
     # starting to update the ap_data from this batch
     for _class in set(classes + gt_classes):
-        ap_per_iou = []
-        num_gt_class = sum([1 for x in gt_classes if x == _class])
+        # calculating how many labels belong to this class
+        num_gt_for_class = sum([1 for x in gt_classes if x == _class])
 
         for iouIdx in range(len(iou_thresholds)):
             iou_thresholds = iou_thresholds[iouIdx]
 
+            for iou_type, iou_func, score_func, indices in iou_types:
+                gt_used = [False] * len(gt_classes)
 
+                # get certain APobject
+                ap_obj = ap_data[iou_type][iouIdx][_class]
+                ap_obj.add_gt_positive(num_gt_for_class)
 
+                for i in indices:
+                    if classes[i] != _class:
+                        continue
+
+                    max_iou_found = iou_thresholds
+                    max_match_idx = -1
+
+                    for j in range(num_gt):
+                        if gt_used[j] or gt_classes[j] != _class:
+                            continue
+                        iou = iou_func(i, j)
+                        if iou > max_iou_found:
+                            max_iou_found = iou
+                            max_match_idx = j
+                    if max_match_idx >= 0:
+                        gt_used[max_match_idx] = True
+                        ap_obj.push(score_func(i), True)
+                    else:
+                        matched_crowd = False
+                        # for crowd annotation, if no, push as false positive
+                        if not matched_crowd:
+                            ap_obj.push(score_func(i), False)
 
 
 def prep_benchmarks():
