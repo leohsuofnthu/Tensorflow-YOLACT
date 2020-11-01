@@ -1,18 +1,3 @@
-# Copyright 2017 The TensorFlow Authors. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-# ==============================================================================
-
 r"""Convert raw COCO dataset to TFRecord for object_detection.
 
 Please note that this tool creates sharded output files.
@@ -26,6 +11,7 @@ Example usage:
       --val_annotations_file="${VAL_ANNOTATIONS_FILE}" \
       --testdev_annotations_file="${TESTDEV_ANNOTATIONS_FILE}" \
       --output_dir="${OUTPUT_DIR}"
+Adapted from: https://github.com/tensorflow/models/blob/master/research/object_detection/dataset_tools/create_coco_tf_record.py
 """
 import hashlib
 import io
@@ -42,7 +28,7 @@ from absl import flags
 from absl import logging
 from pycocotools import mask
 
-from data import dataset_util
+from data.coco_tfrecord_utils import *
 
 FLAGS = flags.FLAGS
 
@@ -65,11 +51,7 @@ flags.DEFINE_string('output_dir', './coco', 'Output data directory.')
 logging.set_verbosity(logging.INFO)
 
 
-def create_tf_example(image,
-                      annotations_list,
-                      image_dir,
-                      category_index,
-                      include_masks=True):
+def create_tf_example(image, annotations_list, image_dir, category_index, include_masks=True):
     """Converts image and annotations to a tf.Example proto.
 
     Args:
@@ -158,45 +140,44 @@ def create_tf_example(image,
 
     feature_dict = {
         'image/height':
-            dataset_util.int64_feature(image_height),
+            int64_feature(image_height),
         'image/width':
-            dataset_util.int64_feature(image_width),
+            int64_feature(image_width),
         'image/filename':
-            dataset_util.bytes_feature(filename.encode('utf8')),
+            bytes_feature(filename.encode('utf8')),
         'image/source_id':
-            dataset_util.bytes_feature(str(image_id).encode('utf8')),
+            bytes_feature(str(image_id).encode('utf8')),
         'image/key/sha256':
-            dataset_util.bytes_feature(key.encode('utf8')),
+            bytes_feature(key.encode('utf8')),
         'image/encoded':
-            dataset_util.bytes_feature(encoded_jpg),
+            bytes_feature(encoded_jpg),
         'image/format':
-            dataset_util.bytes_feature('jpeg'.encode('utf8')),
+            bytes_feature('jpeg'.encode('utf8')),
         'image/object/bbox/xmin':
-            dataset_util.float_list_feature(xmin),
+            float_list_feature(xmin),
         'image/object/bbox/xmax':
-            dataset_util.float_list_feature(xmax),
+            float_list_feature(xmax),
         'image/object/bbox/ymin':
-            dataset_util.float_list_feature(ymin),
+            float_list_feature(ymin),
         'image/object/bbox/ymax':
-            dataset_util.float_list_feature(ymax),
+            float_list_feature(ymax),
         'image/object/class/label_text':
-            dataset_util.bytes_list_feature(category_names),
+            bytes_list_feature(category_names),
         'image/object/class/label_id':
-            dataset_util.int64_list_feature(category_ids),
+            int64_list_feature(category_ids),
         'image/object/is_crowd':
-            dataset_util.int64_list_feature(is_crowd),
+            int64_list_feature(is_crowd),
         'image/object/area':
-            dataset_util.float_list_feature(area),
+            float_list_feature(area),
     }
     if include_masks:
-        feature_dict['image/object/mask'] = (
-            dataset_util.bytes_list_feature(encoded_mask_png))
+        feature_dict['image/object/mask'] = (bytes_list_feature(encoded_mask_png))
+
     example = tf.train.Example(features=tf.train.Features(feature=feature_dict))
     return key, example, num_annotations_skipped
 
 
-def _create_tf_record_from_coco_annotations(
-        annotations_file, image_dir, output_path, include_masks, num_shards):
+def _create_tf_record_from_coco_annotations(annotations_file, image_dir, output_path, include_masks, num_shards):
     """Loads COCO annotation json files and converts to tf.Record format.
 
     Args:
@@ -209,12 +190,10 @@ def _create_tf_record_from_coco_annotations(
     """
     with contextlib2.ExitStack() as tf_record_close_stack, \
             tf.io.gfile.GFile(annotations_file, 'r') as fid:
-        output_tfrecords = dataset_util.open_sharded_output_tfrecords(
-            tf_record_close_stack, output_path, num_shards)
+        output_tfrecords = open_sharded_output_tfrecords(tf_record_close_stack, output_path, num_shards)
         groundtruth_data = json.load(fid)
         images = groundtruth_data['images']
-        category_index = dataset_util.create_category_index(
-            groundtruth_data['categories'])
+        category_index = create_category_index(groundtruth_data['categories'])
 
         annotations_index = {}
         if 'annotations' in groundtruth_data:
