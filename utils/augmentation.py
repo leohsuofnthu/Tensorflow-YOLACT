@@ -5,7 +5,40 @@ from utils import utils
 
 """
 Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vgg_preprocessing.py
+Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f8ee/utils/augmentations.py
 """
+
+
+class PhotometricDistort(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, *args, **kwargs):
+        ...
+
+
+class Expand(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, *args, **kwargs):
+        ...
+
+
+class RandomSampleCrop(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, *args, **kwargs):
+        ...
+
+
+class RandomMirror(object):
+    def __int__(self):
+        ...
+
+    def __call__(self, *args, **kwargs):
+        ...
 
 
 def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes):

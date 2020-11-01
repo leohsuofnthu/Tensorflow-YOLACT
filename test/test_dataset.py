@@ -10,14 +10,9 @@ from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 # -----------------------------------------------------------------------------------------------
 tf.random.set_seed(1235)
 
-train_dataloader = prepare_dataloader("../data/coco", 32, "train")
+train_dataloader = prepare_dataloader("../data/coco", 1, "train")
 print(train_dataloader)
-i = 0
-for image, labels in train_dataloader:
-     i += 1
-
 # visualize the training sample
-"""
 for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy()) * 255
@@ -61,4 +56,3 @@ for image, labels in train_dataloader.take(1):
     cv2.addWeighted(final_m, 0.3, image, 0.7, 0, dst)
     cv2.imshow("check", dst)
     k = cv2.waitKey(0)
-"""
