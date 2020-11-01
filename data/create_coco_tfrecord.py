@@ -109,11 +109,6 @@ def create_tf_example(image,
         encoded_jpg = fid.read()
     encoded_jpg_io = io.BytesIO(encoded_jpg)
     image = PIL.Image.open(encoded_jpg_io)
-    r = 550
-    image = image.resize((r, r), PIL.Image.ANTIALIAS)
-    bytes_io = io.BytesIO()
-    image.save(bytes_io, format='JPEG')
-    encoded_jpg = bytes_io.getvalue()
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
     xmin = []
@@ -126,18 +121,24 @@ def create_tf_example(image,
     area = []
     encoded_mask_png = []
     num_annotations_skipped = 0
+
     for object_annotations in annotations_list:
         (x, y, width, height) = tuple(object_annotations['bbox'])
+        # ignore wrongly annotated data
         if width <= 0 or height <= 0:
             num_annotations_skipped += 1
             continue
         if x + width > image_width or y + height > image_height:
             num_annotations_skipped += 1
             continue
+
+        # normalized bbox
         xmin.append(float(x) / image_width)
         xmax.append(float(x + width) / image_width)
         ymin.append(float(y) / image_height)
         ymax.append(float(y + height) / image_height)
+
+        # other attribute
         is_crowd.append(object_annotations['iscrowd'])
         category_id = int(object_annotations['category_id'])
         category_ids.append(category_id)
@@ -150,7 +151,6 @@ def create_tf_example(image,
             binary_mask = mask.decode(run_len_encoding)
             if not object_annotations['iscrowd']:
                 binary_mask = np.amax(binary_mask, axis=2)
-
             pil_image = PIL.Image.fromarray(binary_mask)
             output_io = io.BytesIO()
             pil_image.save(output_io, format='PNG')
@@ -158,9 +158,9 @@ def create_tf_example(image,
 
     feature_dict = {
         'image/height':
-            dataset_util.int64_feature(r),
+            dataset_util.int64_feature(image_height),
         'image/width':
-            dataset_util.int64_feature(r),
+            dataset_util.int64_feature(image_width),
         'image/filename':
             dataset_util.bytes_feature(filename.encode('utf8')),
         'image/source_id':
