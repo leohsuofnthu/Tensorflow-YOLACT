@@ -79,7 +79,8 @@ class Parser(object):
         image = normalize_image(image)
 
         # we already resize the image when creating tfrecord
-        image = tf.image.resize(image, [self._output_size, self._output_size])
+        # Todo Resize during augmentation
+        # image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
