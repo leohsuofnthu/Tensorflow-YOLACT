@@ -75,6 +75,9 @@ class Parser(object):
         # read and normalize the image, for testing augmentation
         original_img = tf.identity(image)
 
+        # Todo Wrap following section in augmentation function
+        # Todo Remember: get original size (get normalize coordinate), aug, resize
+        """
         # convert image to range [0, 1], for facilitating augmentation
         image = normalize_image(image)
 
@@ -102,6 +105,7 @@ class Parser(object):
 
         # resized boxes for proto output size
         boxes_norm = boxes * (self._proto_output_size / self._output_size)
+        """
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(

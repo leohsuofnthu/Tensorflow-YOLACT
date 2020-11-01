@@ -9,9 +9,37 @@ Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f
 """
 
 
+class Resize(object):
+    def __int__(self):
+        ...
+
+    def __call__(self, image, masks, boxes, labels):
+        ...
+
+
+class BackboneTransform(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        ...
+
+
+class RandomLightNoise(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        ...
+
+
 class PhotometricDistort(object):
     def __init__(self):
-        self.actions = []
+        self.actions = [
+            tf.image.random_contrast(),
+            tf.image.random_saturation(),
+            tf.image.random_hue()
+        ]
 
     def __call__(self, image, masks, boxes, labels):
         ...
@@ -26,10 +54,40 @@ class Expand(object):
         if tf.random.uniform([1]) > 0.5:
             return image, masks, boxes, labels
 
-        height, width, depth = tf.shape(image)
-        ratio = ...
-        left = ...
-        top = ...
+        height, width, depth = image.get_shape()
+        # expand 4 times at most
+        ratio = tf.random.uniform([1], minval=1, maxval=4)
+        # define the leftmost, topmost coordinate for putting original image to expanding image
+        left = tf.random.uniform([1], minval=0, maxval=(width * ratio - width))
+        top = tf.random.uniform([1], minval=0, maxval=(height * ratio - height))
+
+        # padding the image, mask according to the left and top
+        left_padding = int(left)
+        top_padding = int(top)
+        expand_width = int(width * ratio)
+        expand_height = int(height * ratio)
+
+        image = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(image, 0),
+                                                        top_padding,
+                                                        left_padding,
+                                                        expand_height,
+                                                        expand_width))
+        masks = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(masks, 0),
+                                                        top_padding,
+                                                        left_padding,
+                                                        expand_height,
+                                                        expand_width))
+        # fill mean value of image
+        mean_mask = tf.cast((image == 0), image.dtype) + self.mean
+        image = image + mean_mask
+
+        # recalculate the bbox [ymin, xmin, ymax, xmax]
+        boxes[0] = ((boxes[0] * height) + top) / expand_height
+        boxes[1] = ((boxes[1] * width) + left) / expand_width
+        boxes[2] = ((boxes[2] * height) + top) / expand_height
+        boxes[3] = ((boxes[3] * width) + left) / expand_width
+
+        return image, masks, boxes, labels
 
 
 class RandomSampleCrop(object):
@@ -47,9 +105,8 @@ class RandomSampleCrop(object):
         }
 
     def __call__(self, image, masks, boxes=None, labels=None):
-        height, width, _ = tf.shape(image)
-
-        ...
+        # choose the min_object_covered value in self.sample_options
+        height, width, _ = image.get_shape()
 
 
 class RandomMirror(object):
