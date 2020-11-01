@@ -11,25 +11,44 @@ Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f
 
 class PhotometricDistort(object):
     def __init__(self):
-        ...
+        self.actions = []
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, image, masks, boxes, labels):
         ...
 
 
 class Expand(object):
-    def __init__(self):
-        ...
+    def __init__(self, mean):
+        self.mean = mean
 
-    def __call__(self, *args, **kwargs):
-        ...
+    def __call__(self, image, masks, boxes, labels):
+        # exapnd the image with probability 0.5
+        if tf.random.uniform([1]) > 0.5:
+            return image, masks, boxes, labels
+
+        height, width, depth = tf.shape(image)
+        ratio = ...
+        left = ...
+        top = ...
 
 
 class RandomSampleCrop(object):
     def __init__(self):
-        ...
+        self.sample_options = {
+            # using entire original input image
+            None,
+            # sample a patch s.t. MIN jaccard w/ obj in .1,.3,.4,.7,.9
+            (0.1, None),
+            (0.3, None),
+            (0.7, None),
+            (0.9, None),
+            # randomly sample a patch
+            (None, None),
+        }
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, image, masks, boxes=None, labels=None):
+        height, width, _ = tf.shape(image)
+
         ...
 
 
@@ -37,8 +56,14 @@ class RandomMirror(object):
     def __int__(self):
         ...
 
-    def __call__(self, *args, **kwargs):
-        ...
+    def __call__(self, image, masks, boxes, labels):
+        # random mirroring with probability 0.5
+        if tf.random.uniform([1]) > 0.5:
+            image = tf.image.flip_left_right(image)
+            masks = tf.image.flip_left_right(masks)
+            boxes = tf.stack([boxes[:, 0], 1 - boxes[:, 3],
+                              boxes[:, 2], 1 - boxes[:, 1]], axis=-1)
+        return image, masks, boxes, labels
 
 
 def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes):
@@ -46,7 +71,7 @@ def geometric_distortion(img, bboxes, masks, output_size, proto_output_size, cla
     bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
         tf.shape(img),
         bounding_boxes=tf.expand_dims(bboxes, 0),
-        min_object_covered=1,
+        min_object_covered=1,  # [0, 0.3, 0.5, 0.7, 0.9]
         aspect_ratio_range=(0.5, 2),
         area_range=(0.1, 1.0),
         max_attempts=100)
@@ -130,7 +155,8 @@ def horizontal_flip(image, bboxes, masks):
 
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
     # generate random
-    # FLAGS = tf.random.uniform([3], minval=0, maxval=1)
+    FLAGS = tf.random.uniform([5], minval=0, maxval=1)
+    tf.print("FLAGS:", FLAGS)
     # FLAG_GEO_DISTORTION = FLAGS[0]
     # FLAG_PHOTO_DISTORTION = FLAGS[1]
     # FLAG_HOR_FLIP = FLAGS[2]
