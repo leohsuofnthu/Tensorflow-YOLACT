@@ -53,44 +53,33 @@ class Parser(object):
             return self._parse_fn(data)
 
     def _parse_train_data(self, data):
-        is_crowds = data['gt_is_crowd']
+        # The parse function parse single data only, not in batch (reminder for myself)
+        image = data['image']
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
-        image_height = data['height']
-        image_width = data['width']
+        is_crowds = data['gt_is_crowd']
 
         # Skips annotations with `is_crowd` = True.
-        # Todo: Need to understand control_dependeicies
         if self._skip_crowd_during_training and self._is_training:
-            num_groundtrtuhs = tf.shape(input=classes)[0]
-            with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
+            num_groundtruths = tf.shape(classes)[0]
+            with tf.control_dependencies([num_groundtruths, is_crowds]):
                 indices = tf.cond(
-                    pred=tf.greater(tf.size(input=is_crowds), 0),
+                    pred=tf.greater(tf.size(is_crowds), 0),
                     true_fn=lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-                    false_fn=lambda: tf.cast(tf.range(num_groundtrtuhs), tf.int64))
+                    false_fn=lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
             classes = tf.gather(classes, indices)
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # read and normalize the image
-        image = data['image']
+        # read and normalize the image, for testing augmentation
         original_img = tf.identity(image)
 
-        # convert image to range [0, 1], faciliate augmentation
+        # convert image to range [0, 1], for facilitating augmentation
         image = normalize_image(image)
 
         # we already resize the image when creating tfrecord
         image = tf.image.resize(image, [self._output_size, self._output_size])
-
-        # Convert the gray image to 3 channel
-        """
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
-        """
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
@@ -117,7 +106,7 @@ class Parser(object):
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             self._match_threshold, self._unmatched_threshold, boxes, classes)
 
-        # Padding classes and mask to fix length [None, num_max_fix_padding, ...]
+        # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
@@ -146,12 +135,11 @@ class Parser(object):
         return image, labels
 
     def _parse_eval_data(self, data):
-        is_crowds = data['gt_is_crowd']
+        image = data['image']
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
-        image_height = data['height']
-        image_width = data['width']
+        is_crowds = data['gt_is_crowd']
 
         # Skips annotations with `is_crowd` = True.
         # Todo: Need to understand control_dependeicies and tf.gather
@@ -166,21 +154,11 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # read and normalize the image
-        image = data['image']
-
         # convert image to range [0, 1], faciliate augmentation
         image = normalize_image(image)
 
         # we already resize the image when creating tfrecord
-        # image = tf.image.resize(image, [self._output_size, self._output_size])
-
-        # Ignore the gray image
-        image = tf.cond(
-            tf.equal(tf.shape(image)[-1], tf.constant(3)),
-            true_fn=lambda: image,
-            false_fn=lambda: tf.ones([image_width, image_height, 3])
-        )
+        image = tf.image.resize(image, [self._output_size, self._output_size])
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)

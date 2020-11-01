@@ -21,12 +21,12 @@ class TfExampleDecoder(object):
         }
 
     def _decode_image(self, parsed_tensors):
-        # Todo deal with gray image, convert to 3 channel
         image = tf.io.decode_jpeg(parsed_tensors['image/encoded'])
-        image.set_shape([None, None, 3])
-        if tf.shape(image)[-1] == 1:
-            image = tf.image.grayscale_to_rgb(image)
-        tf.print(tf.shape(image))
+        image.set_shape([None, None, None])
+        # convert gray_image to rgb
+        image = tf.cond(tf.shape(image)[-1] < 3,
+                        lambda: tf.image.grayscale_to_rgb(image),
+                        lambda: tf.identity(image))
         return image
 
     def _decode_boxes(self, parsed_tensors):
