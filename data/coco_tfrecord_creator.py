@@ -3,7 +3,7 @@ r"""Convert raw COCO dataset to TFRecord for object_detection.
 Please note that this tool creates sharded output files.
 
 Example usage:
-    python create_coco_tf_record.py --logtostderr \
+    python coco_tfrecord_create.py --logtostderr \
       --train_image_dir="${TRAIN_IMAGE_DIR}" \
       --val_image_dir="${VAL_IMAGE_DIR}" \
       --test_image_dir="${TEST_IMAGE_DIR}" \
@@ -262,7 +262,7 @@ def main(_):
         FLAGS.val_image_dir,
         val_output_path,
         FLAGS.include_masks,
-        num_shards=10)
+        num_shards=50)
     """
     _create_tf_record_from_coco_annotations(
         FLAGS.testdev_annotations_file,

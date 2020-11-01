@@ -7,6 +7,7 @@ import tensorflow as tf
 class TfExampleDecoder(object):
     def __init__(self):
         self._keys_to_features = {
+            # I only take the key we need for this model
             'image/height': tf.io.FixedLenFeature([], dtype=tf.int64),
             'image/width': tf.io.FixedLenFeature([], dtype=tf.int64),
             'image/encoded': tf.io.FixedLenFeature([], dtype=tf.string),
@@ -20,16 +21,21 @@ class TfExampleDecoder(object):
         }
 
     def _decode_image(self, parsed_tensors):
+        # Todo deal with gray image, convert to 3 channel
         image = tf.io.decode_jpeg(parsed_tensors['image/encoded'])
         image.set_shape([None, None, 3])
+        if tf.shape(image)[-1] == 1:
+            image = tf.image.grayscale_to_rgb(image)
+        tf.print(tf.shape(image))
         return image
 
     def _decode_boxes(self, parsed_tensors):
-        # denormalize the box here
-        xmin = parsed_tensors['image/object/bbox/xmin']
+        # pass the bbox in the order [ymin, xmin, ymax, xmax]
+        # which is preferred by tensorflow
         ymin = parsed_tensors['image/object/bbox/ymin']
-        xmax = parsed_tensors['image/object/bbox/xmax']
+        xmin = parsed_tensors['image/object/bbox/xmin']
         ymax = parsed_tensors['image/object/bbox/ymax']
+        xmax = parsed_tensors['image/object/bbox/xmax']
         return tf.stack([ymin, xmin, ymax, xmax], axis=-1)
 
     def _decode_masks(self, parsed_tensors):

@@ -1,19 +1,18 @@
 import tensorflow as tf
 
-from data import tfrecord_decoder
+from data.coco_tfrecord_decoder import TfExampleDecoder
 from utils import augmentation
 from utils.utils import normalize_image
 
 
 class Parser(object):
-
     def __init__(self,
                  output_size,
+                 proto_output_size,
                  anchor_instance,
                  match_threshold=0.5,
                  unmatched_threshold=0.4,
                  num_max_fix_padding=100,
-                 proto_output_size=138,
                  skip_crow_during_training=True,
                  use_bfloat16=True,
                  mode=None):
@@ -22,7 +21,7 @@ class Parser(object):
         self._skip_crowd_during_training = skip_crow_during_training
         self._is_training = (mode == "train")
 
-        self._example_decoder = tfrecord_decoder.TfExampleDecoder()
+        self._example_decoder = TfExampleDecoder()
 
         self._output_size = output_size
         self._anchor_instance = anchor_instance
@@ -35,7 +34,7 @@ class Parser(object):
         # resize the mask to proto output size in advance (always 138, from paper's figure)
         self._proto_output_size = proto_output_size
 
-        # Device.
+        # Device (mix precision?)
         self._use_bfloat16 = use_bfloat16
 
         # Data is parsed depending on the model.
@@ -55,7 +54,6 @@ class Parser(object):
 
     def _parse_train_data(self, data):
         is_crowds = data['gt_is_crowd']
-        # Todo: Classes Remapping to 80 classes
         classes = data['gt_classes']
         boxes = data['gt_bboxes']
         masks = data['gt_masks']
@@ -63,7 +61,7 @@ class Parser(object):
         image_width = data['width']
 
         # Skips annotations with `is_crowd` = True.
-        # Todo: Need to understand control_dependeicies and tf.gather
+        # Todo: Need to understand control_dependeicies
         if self._skip_crowd_during_training and self._is_training:
             num_groundtrtuhs = tf.shape(input=classes)[0]
             with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
@@ -83,19 +81,20 @@ class Parser(object):
         image = normalize_image(image)
 
         # we already resize the image when creating tfrecord
-        # image = tf.image.resize(image, [self._output_size, self._output_size])
+        image = tf.image.resize(image, [self._output_size, self._output_size])
 
-        # Ignore the gray image
+        # Convert the gray image to 3 channel
+        """
         image = tf.cond(
             tf.equal(tf.shape(image)[-1], tf.constant(3)),
             true_fn=lambda: image,
             false_fn=lambda: tf.ones([image_width, image_height, 3])
         )
+        """
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
-        masks = tf.image.resize(masks, [self._output_size, self._output_size],
-                                method=tf.image.ResizeMethod.BILINEAR)
+        masks = tf.image.resize(masks, [self._output_size, self._output_size], method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
         # masks = tf.squeeze(masks)
         # masks = tf.cast(masks, tf.float32)
