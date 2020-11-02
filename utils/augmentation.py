@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 from utils import utils
-
+import config as cfg
 """
 Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vgg_preprocessing.py
 Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f8ee/utils/augmentations.py
@@ -239,17 +239,26 @@ class PrepareMasks(object):
 
 
 class BackboneTransform(object):
-    # Todo normalize by mean and std (from imagenet of coco itsself)
-    # Todo the channel order in orignal image is BGR or RGB?
-    def __init__(self):
-        ...
+    def __init__(self, mean, std):
+        self.mean = mean
+        self.std = std
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
-        ...
+        # normalize image (for Resnet), some model might only subtract mean, so modified for ur own need
+        offset = tf.constant(self.mean)
+        offset = tf.expand_dims(offset, axis=0)
+        offset = tf.expand_dims(offset, axis=0)
+        image -= offset
+
+        scale = tf.constant(self.std)
+        scale = tf.expand_dims(scale, axis=0)
+        scale = tf.expand_dims(scale, axis=0)
+        image /= scale
+        return image, masks, boxes, labels
 
 
 class SSDAugmentation(object):
-    def __init__(self, mode, mean=..., std=...):
+    def __init__(self, mode, mean=cfg.MEANS, std=cfg.STD):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
@@ -260,7 +269,7 @@ class SSDAugmentation(object):
                 Resize(),
                 # preserve aspect ratio or not?
                 PrepareMasks(),
-                BackboneTransform()
+                BackboneTransform(mean, std)
             ])
         else:
             # no data augmentation for validation and test set
@@ -269,7 +278,7 @@ class SSDAugmentation(object):
                 Resize(),
                 # preserve aspect ratio or not?
                 PrepareMasks(),
-                BackboneTransform()
+                BackboneTransform(mean, std)
             ])
 
     def __call__(self, image, masks, boxes, labels):
@@ -277,30 +286,6 @@ class SSDAugmentation(object):
 
 
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
-    # generate random
-    FLAGS = tf.random.uniform([5], minval=0, maxval=1)
-    tf.print("FLAGS:", FLAGS)
-    # FLAG_GEO_DISTORTION = FLAGS[0]
-    # FLAG_PHOTO_DISTORTION = FLAGS[1]
-    # FLAG_HOR_FLIP = FLAGS[2]
-
-    FLAG_GEO_DISTORTION = 0
-    FLAG_PHOTO_DISTORTION = 0
-    FLAG_HOR_FLIP = 0
-
-    # Random Geometric Distortion (img, bboxes, masks)
-    if FLAG_GEO_DISTORTION > 0.5:
-        tf.print("GEO DISTORTION")
-        img, bboxes, masks, classes = geometric_distortion(img, bboxes, masks, output_size, proto_output_size, classes)
-
-    # Random Photometric Distortions (img)
-    if FLAG_PHOTO_DISTORTION > 0.5:
-        tf.print("PHOTO DISTORTION")
-        img = photometric_distortion(img)
-
-    if FLAG_HOR_FLIP > 0.5:
-        tf.print("HOR FLIP")
-        img, bboxes, masks = horizontal_flip(img, bboxes, masks)
 
     # resize masks to protosize
     masks = tf.image.resize(masks, [proto_output_size, proto_output_size],

@@ -1,5 +1,5 @@
-# These are in BGR and are for ImageNet
-MEANS = (103.94, 116.78, 123.68)
-STD = (57.38, 57.12, 58.40)
+# These are in RGB and are for ImageNet
+MEANS = (123.68, 116.78, 103.94)
+STD = (58.40, 57.12, 57.38)
 
 NUM_CLASS = 91
