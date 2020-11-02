@@ -28,16 +28,14 @@ class ConvertFromInts(object):
         ...
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
-        # convert to tf.float32, but still in range [0~255]
-        image = tf.cast(image, dtype=tf.float32)
+        # convert to tf.float32, in range [0 ~ 1]
+        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         return image, masks, boxes, labels
 
 
 class RandomBrightness(object):
-    # input image range: [0 ~ 255]
-    def __init__(self, delta=32):
-        assert delta >= 0.0
-        assert delta <= 255.0
+    # input image range: [0 ~ 1]
+    def __init__(self, delta=0.125):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -47,10 +45,8 @@ class RandomBrightness(object):
 
 
 class RandomContrast(object):
-    # input image range: [0 ~ 255]
+    # input image range: [0 ~ 1]
     def __init__(self, lower=0.5, upper=1.5):
-        assert upper >= lower
-        assert lower >= 0
         self.lower = lower
         self.upper = upper
 
@@ -61,10 +57,8 @@ class RandomContrast(object):
 
 
 class RandomSaturation(object):
-    # input image range: [0 ~ 255]
+    # input image range: [0 ~ 1]
     def __init__(self, lower=0.5, upper=1.5):
-        assert upper >= lower
-        assert lower >= 0
         self.lower = lower
         self.upper = upper
 
@@ -75,9 +69,8 @@ class RandomSaturation(object):
 
 
 class RandomHue(object):
-    # input image range: [0 ~ 255]
-    def __init__(self, delta=18.0):
-        assert 0.0 <= delta <= 360.0
+    # input image range: [0 ~ 1]
+    def __init__(self, delta=0.025):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -100,10 +93,9 @@ class PhotometricDistort(object):
         image, masks, boxes, labels = self.rand_brightness(image, masks, boxes, labels)
         # different order have different effect
         if tf.random.uniform([1]) > 0.5:
-            photometric_distort = Compose(self.actions[:-1])
+            image, masks, boxes, labels = Compose(self.actions[:-1])(image, masks, boxes, labels)
         else:
-            photometric_distort = Compose(self.actions[1:])
-        image, masks, boxes, labels = photometric_distort(image, masks, boxes, labels)
+            image, masks, boxes, labels = Compose(self.actions[1:])(image, masks, boxes, labels)
         return image, masks, boxes, labels
 
 
@@ -134,7 +126,7 @@ class Expand(object):
                                                         left_padding,
                                                         expand_height,
                                                         expand_width))
-        masks = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(masks, 0),
+        masks = tf.squeeze(tf.image.pad_to_bounding_box(masks,
                                                         top_padding,
                                                         left_padding,
                                                         expand_height,
@@ -228,7 +220,7 @@ class RandomMirror(object):
 class Resize(object):
     """Resize to certain size after augmentation"""
 
-    def __int__(self, output_size, proto_output_size):
+    def __init__(self, output_size, proto_output_size):
         self.output_size = output_size
         self.proto_output_size = proto_output_size
 
@@ -237,7 +229,7 @@ class Resize(object):
         image = tf.image.resize(image, [self.output_size, self.output_size])
 
         # resize the mask to proto_out_size
-        masks = tf.image.resize(masks, [self.proto_output_size, self.proto_output_size],
+        masks = tf.image.resize(tf.expand_dims(masks, -1), [self.proto_output_size, self.proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
         masks = tf.squeeze(masks)
@@ -262,9 +254,7 @@ class BackboneTransform(object):
         scale = tf.expand_dims(scale, axis=0)
         scale = tf.expand_dims(scale, axis=0)
         image /= scale
-        # Convert the range from [0, 255] to [0, 1], for pretrained model of tensorflow
-        image = tf.image.convert_image_dtype(image, tf.float32)
-
+        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         return image, masks, boxes, labels
 
 
@@ -274,9 +264,9 @@ class SSDAugmentation(object):
             self.augmentations = Compose([
                 ConvertFromInts(),
                 PhotometricDistort(),
-                Expand(mean),
-                RandomSampleCrop(),
-                RandomMirror(),
+                # Expand(mean),
+                # RandomSampleCrop(),
+                # RandomMirror(),
                 Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)

@@ -1,6 +1,6 @@
 # These are in RGB and are for ImageNet
-MEANS = (123.68, 116.78, 103.94)
-STD = (58.40, 57.12, 57.38)
+MEANS = (0.407, 0.457, 0.485)
+STD = (0.225, 0.224, 0.229)
 
 NUM_CLASS = 91
 OUTPUT_SIZE = 550

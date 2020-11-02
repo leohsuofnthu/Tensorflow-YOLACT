@@ -20,9 +20,7 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                               aspect_ratio=[1, 0.5, 2],
                               scale=[24, 48, 96, 192, 384])
 
-    parser = coco_tfrecord_parser.Parser(output_size=550,
-                                         proto_output_size=138,
-                                         anchor_instance=anchorobj,
+    parser = coco_tfrecord_parser.Parser(anchor_instance=anchorobj,
                                          match_threshold=0.5,
                                          unmatched_threshold=0.5,
                                          mode=subset)
