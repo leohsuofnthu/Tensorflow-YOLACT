@@ -76,7 +76,7 @@ class Parser(object):
         original_img = tf.identity(image)
 
         # Todo Wrap following section in augmentation function
-        # Todo Remember: get original size (get normalize coordinate), aug, resize
+        # Todo Remember: get original size and normalize coordinate, aug, resize
         """
         # convert image to range [0, 1], for facilitating augmentation
         image = normalize_image(image)

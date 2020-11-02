@@ -9,6 +9,17 @@ Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f
 """
 
 
+class Compose(object):
+    """Composes several augmentations together."""
+    def __init__(self, transforms):
+        self.transforms = transforms
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        for transform in self.transforms:
+            image, masks, boxes, labels = transform(image, masks, boxes, labels)
+        return image, masks, boxes, labels
+
+
 class Resize(object):
     def __int__(self):
         ...
@@ -17,6 +28,7 @@ class Resize(object):
         ...
 
 
+# normalize image fot input
 class BackboneTransform(object):
     def __init__(self):
         ...
@@ -33,16 +45,77 @@ class RandomLightNoise(object):
         ...
 
 
+class RandomBrightness(object):
+    # Todo Make sure what is the range of image [0~255] or [0~1], and decide delta
+    def __init__(self, delta=32):
+        assert delta >= 0.0
+        assert delta <= 255.0
+        self.delta = delta
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        if tf.random.uniform([1]) > 0.5:
+            image = tf.image.random_brightness(image, max_delta=self.delta)
+        return image, masks, boxes, labels
+
+
+class RandomContrast(object):
+    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    def __init__(self, lower=0.5, upper=1.5):
+        assert upper >= lower
+        assert lower >= 0
+        self.lower = lower
+        self.upper = upper
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        if tf.random.uniform([1]) > 0.5:
+            image = tf.image.random_contrast(image, lower=self.lower, upper=self.upper)
+        return image, masks, boxes, labels
+
+
+class RandomSaturation(object):
+    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    def __init__(self, lower=0.5, upper=1.5):
+        assert upper >= lower
+        assert lower >= 0
+        self.lower = lower
+        self.upper = upper
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        if tf.random.uniform([1]) > 0.5:
+            image = tf.image.random_saturation(image, lower=self.lower, upper=self.upper)
+        return image, masks, boxes, labels
+
+
+class RandomHue(object):
+    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    def __init__(self, delta=18.0):
+        assert 0.0 <= delta <= 360.0
+        self.delta = delta
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        if tf.random.uniform([1]) > 0.5:
+            image = tf.image.random_hue(image, max_delta=self.delta)
+        return image, masks, boxes, labels
+
+
 class PhotometricDistort(object):
     def __init__(self):
         self.actions = [
-            tf.image.random_contrast(),
-            tf.image.random_saturation(),
-            tf.image.random_hue()
+            RandomContrast(),
+            RandomSaturation(),
+            RandomHue(),
+            RandomContrast()
         ]
+        self.rand_brightness = RandomBrightness()
 
     def __call__(self, image, masks, boxes, labels):
-        ...
+        image, masks, boxes, labels = self.rand_brightness(image, masks, boxes, labels)
+        if tf.random.uniform([1]) > 0.5:
+            photometric_distort = Compose(self.actions[:-1])
+        else:
+            photometric_distort = Compose(self.actions[1:])
+        image, masks, boxes, labels = photometric_distort(image, masks, boxes, labels)
+        return image, masks, boxes, labels
 
 
 class Expand(object):
