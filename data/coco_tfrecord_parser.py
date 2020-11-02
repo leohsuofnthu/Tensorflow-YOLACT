@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 from data.coco_tfrecord_decoder import TfExampleDecoder
-from utils import augmentation
+from utils.augmentation import SSDAugmentation
 from utils.utils import normalize_image
 
 
@@ -75,15 +75,13 @@ class Parser(object):
         # read and normalize the image, for testing augmentation
         original_img = tf.identity(image)
 
-        # Todo Wrap following section in augmentation function
-        # Todo Remember: get original size and normalize coordinate, aug, resize
-        """
-        # convert image to range [0, 1], for facilitating augmentation
-        image = normalize_image(image)
+        # Data Augmentation, Normalization, and Resize
+        # Todo output_size and masks proto_size, by getting from config file
+        # Todo Make SSDAugmentation as singleton somewhere
+        augmentor = SSDAugmentation(mode='train')
+        image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
 
-        # we already resize the image when creating tfrecord
-        # Todo Resize during augmentation
-        # image = tf.image.resize(image, [self._output_size, self._output_size])
+        """
 
         # resize mask
         masks = tf.expand_dims(masks, axis=-1)
@@ -92,20 +90,16 @@ class Parser(object):
         # masks = tf.squeeze(masks)
         # masks = tf.cast(masks, tf.float32)
 
-        # Todo: SSD data augmentation (Photometrics, expand, sample_crop, mirroring)
-        # data augmentation randomly
-        image, boxes, masks, classes = augmentation.random_augmentation(image, boxes, masks, self._output_size,
-                                                                        self._proto_output_size, classes)
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
 
-        # number of object in training sample
-        num_obj = tf.size(classes)
-
         # resized boxes for proto output size
         boxes_norm = boxes * (self._proto_output_size / self._output_size)
         """
+
+        # number of object in training sample
+        num_obj = tf.size(classes)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(

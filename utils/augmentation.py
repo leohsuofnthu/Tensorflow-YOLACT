@@ -28,29 +28,13 @@ class ConvertFromInts(object):
         ...
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
-        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        # convert to tf.float32, but still in range [0~255]
+        image = tf.cast(image, dtype=tf.float32)
         return image, masks, boxes, labels
 
 
-class Resize(object):
-    def __int__(self):
-        ...
-
-    def __call__(self, image, masks, boxes, labels):
-        ...
-
-
-# normalize image fot input
-class BackboneTransform(object):
-    def __init__(self):
-        ...
-
-    def __call__(self, image, masks=None, boxes=None, labels=None):
-        ...
-
-
 class RandomBrightness(object):
-    # Todo Make sure what is the range of image [0~255] or [0~1], and decide delta
+    # input image range: [0 ~ 255]
     def __init__(self, delta=32):
         assert delta >= 0.0
         assert delta <= 255.0
@@ -63,7 +47,7 @@ class RandomBrightness(object):
 
 
 class RandomContrast(object):
-    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    # input image range: [0 ~ 255]
     def __init__(self, lower=0.5, upper=1.5):
         assert upper >= lower
         assert lower >= 0
@@ -77,7 +61,7 @@ class RandomContrast(object):
 
 
 class RandomSaturation(object):
-    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    # input image range: [0 ~ 255]
     def __init__(self, lower=0.5, upper=1.5):
         assert upper >= lower
         assert lower >= 0
@@ -91,7 +75,7 @@ class RandomSaturation(object):
 
 
 class RandomHue(object):
-    # Todo Make sure what is the range of image [0~255] or [0~1], and decide lower, uppder
+    # input image range: [0 ~ 255]
     def __init__(self, delta=18.0):
         assert 0.0 <= delta <= 360.0
         self.delta = delta
@@ -236,6 +220,60 @@ class RandomMirror(object):
             boxes = tf.stack([boxes[:, 0], 1 - boxes[:, 3],
                               boxes[:, 2], 1 - boxes[:, 1]], axis=-1)
         return image, masks, boxes, labels
+
+
+class Resize(object):
+    def __int__(self):
+        ...
+
+    def __call__(self, image, masks, boxes, labels):
+        ...
+
+
+class PrepareMasks(object):
+    def __init__(self):
+        ...
+
+    def __call__(self, image, masks, boxes, labels=None):
+        ...
+
+
+class BackboneTransform(object):
+    # Todo normalize by mean and std (from imagenet of coco itsself)
+    # Todo the channel order in orignal image is BGR or RGB?
+    def __init__(self):
+        ...
+
+    def __call__(self, image, masks=None, boxes=None, labels=None):
+        ...
+
+
+class SSDAugmentation(object):
+    def __init__(self, mode, mean=..., std=...):
+        if mode == 'train':
+            self.augmentations = Compose([
+                ConvertFromInts(),
+                PhotometricDistort(),
+                Expand(mean),
+                RandomSampleCrop(),
+                RandomMirror(),
+                Resize(),
+                # preserve aspect ratio or not?
+                PrepareMasks(),
+                BackboneTransform()
+            ])
+        else:
+            # no data augmentation for validation and test set
+            self.augmentations = Compose([
+                ConvertFromInts(),
+                Resize(),
+                # preserve aspect ratio or not?
+                PrepareMasks(),
+                BackboneTransform()
+            ])
+
+    def __call__(self, image, masks, boxes, labels):
+        return self.augmentations(image, masks, boxes, labels)
 
 
 def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
