@@ -7,8 +7,6 @@ from utils.utils import normalize_image
 
 class Parser(object):
     def __init__(self,
-                 output_size,
-                 proto_output_size,
                  anchor_instance,
                  match_threshold=0.5,
                  unmatched_threshold=0.4,
@@ -23,7 +21,6 @@ class Parser(object):
 
         self._example_decoder = TfExampleDecoder()
 
-        self._output_size = output_size
         self._anchor_instance = anchor_instance
         self._match_threshold = match_threshold
         self._unmatched_threshold = unmatched_threshold
@@ -31,8 +28,6 @@ class Parser(object):
         # output related
         # for classes and mask to be padded to fix length
         self._num_max_fix_padding = num_max_fix_padding
-        # resize the mask to proto output size in advance (always 138, from paper's figure)
-        self._proto_output_size = proto_output_size
 
         # Device (mix precision?)
         self._use_bfloat16 = use_bfloat16
@@ -76,27 +71,14 @@ class Parser(object):
         original_img = tf.identity(image)
 
         # Data Augmentation, Normalization, and Resize
-        # Todo output_size and masks proto_size, by getting from config file
-        # Todo Make SSDAugmentation as singleton somewhere
         augmentor = SSDAugmentation(mode='train')
         image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
-
-        """
-
-        # resize mask
-        masks = tf.expand_dims(masks, axis=-1)
-        masks = tf.image.resize(masks, [self._output_size, self._output_size], method=tf.image.ResizeMethod.BILINEAR)
-        masks = tf.cast(masks + 0.5, tf.int64)
-        # masks = tf.squeeze(masks)
-        # masks = tf.cast(masks, tf.float32)
-
 
         # remember to unnormalized the bbox
         boxes = boxes * self._output_size
 
-        # resized boxes for proto output size
+        # resized boxes for proto output size (for mask loss)
         boxes_norm = boxes * (self._proto_output_size / self._output_size)
-        """
 
         # number of object in training sample
         num_obj = tf.size(classes)

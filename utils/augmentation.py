@@ -1,8 +1,8 @@
-import numpy as np
 import tensorflow as tf
 
 from utils import utils
 import config as cfg
+
 """
 Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vgg_preprocessing.py
 Ref: https://github.com/dbolya/yolact/blob/821e83047847b9b1faf21b03b0d7ad521508f8ee/utils/augmentations.py
@@ -140,7 +140,10 @@ class Expand(object):
                                                         expand_height,
                                                         expand_width))
         # fill mean value of image
-        mean_mask = tf.cast((image == 0), image.dtype) + self.mean
+        offset = tf.constant(self.mean)
+        offset = tf.expand_dims(offset, axis=0)
+        offset = tf.expand_dims(offset, axis=0)
+        mean_mask = tf.cast((image == 0), image.dtype) * offset
         image = image + mean_mask
 
         # recalculate the bbox [ymin, xmin, ymax, xmax]
@@ -223,19 +226,24 @@ class RandomMirror(object):
 
 
 class Resize(object):
-    def __int__(self):
-        ...
+    """Resize to certain size after augmentation"""
 
-    def __call__(self, image, masks, boxes, labels):
-        ...
+    def __int__(self, output_size, proto_output_size):
+        self.output_size = output_size
+        self.proto_output_size = proto_output_size
 
+    def __call__(self, image, masks, boxes=None, labels=None):
+        # resize the image to output size
+        image = tf.image.resize(image, [self.output_size, self.output_size])
 
-class PrepareMasks(object):
-    def __init__(self):
-        ...
+        # resize the mask to proto_out_size
+        masks = tf.image.resize(masks, [self.proto_output_size, self.proto_output_size],
+                                method=tf.image.ResizeMethod.BILINEAR)
+        masks = tf.cast(masks + 0.5, tf.int64)
+        masks = tf.squeeze(masks)
+        masks = tf.cast(masks, tf.float32)
 
-    def __call__(self, image, masks, boxes, labels=None):
-        ...
+        return image, masks, boxes, labels
 
 
 class BackboneTransform(object):
@@ -254,6 +262,9 @@ class BackboneTransform(object):
         scale = tf.expand_dims(scale, axis=0)
         scale = tf.expand_dims(scale, axis=0)
         image /= scale
+        # Convert the range from [0, 255] to [0, 1], for pretrained model of tensorflow
+        image = tf.image.convert_image_dtype(image, tf.float32)
+
         return image, masks, boxes, labels
 
 
@@ -266,31 +277,18 @@ class SSDAugmentation(object):
                 Expand(mean),
                 RandomSampleCrop(),
                 RandomMirror(),
-                Resize(),
+                Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
-                PrepareMasks(),
                 BackboneTransform(mean, std)
             ])
         else:
             # no data augmentation for validation and test set
             self.augmentations = Compose([
                 ConvertFromInts(),
-                Resize(),
+                Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
-                PrepareMasks(),
                 BackboneTransform(mean, std)
             ])
 
     def __call__(self, image, masks, boxes, labels):
         return self.augmentations(image, masks, boxes, labels)
-
-
-def random_augmentation(img, bboxes, masks, output_size, proto_output_size, classes):
-
-    # resize masks to protosize
-    masks = tf.image.resize(masks, [proto_output_size, proto_output_size],
-                            method=tf.image.ResizeMethod.BILINEAR)
-    masks = tf.cast(masks + 0.5, tf.int64)
-    masks = tf.squeeze(masks)
-    masks = tf.cast(masks, tf.float32)
-    return img, bboxes, masks, classes
