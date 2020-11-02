@@ -2,7 +2,7 @@ import tensorflow as tf
 
 from data.coco_tfrecord_decoder import TfExampleDecoder
 from utils.augmentation import SSDAugmentation
-from utils.utils import normalize_image
+import config as cfg
 
 
 class Parser(object):
@@ -75,10 +75,10 @@ class Parser(object):
         image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
 
         # remember to unnormalized the bbox
-        boxes = boxes * self._output_size
+        boxes = boxes * cfg.OUTPUT_SIZE
 
         # resized boxes for proto output size (for mask loss)
-        boxes_norm = boxes * (self._proto_output_size / self._output_size)
+        boxes_norm = boxes * (cfg.PROTO_OUTPUT_SIZE / cfg.OUTPUT_SIZE)
 
         # number of object in training sample
         num_obj = tf.size(classes)
@@ -91,8 +91,9 @@ class Parser(object):
         num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
-        pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
+        pad_masks = tf.zeros([num_padding, cfg.PROTO_OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE])
 
+        # Todo how to deal with more gracefully
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
 
@@ -123,7 +124,7 @@ class Parser(object):
         is_crowds = data['gt_is_crowd']
 
         # Skips annotations with `is_crowd` = True.
-        # Todo: Need to understand control_dependeicies and tf.gather
+        # Todo: Need to understand control_dependeicies
         if self._skip_crowd_during_training and self._is_training:
             num_groundtrtuhs = tf.shape(input=classes)[0]
             with tf.control_dependencies([num_groundtrtuhs, is_crowds]):
@@ -135,28 +136,18 @@ class Parser(object):
             boxes = tf.gather(boxes, indices)
             masks = tf.gather(masks, indices)
 
-        # convert image to range [0, 1], faciliate augmentation
-        image = normalize_image(image)
-
-        # we already resize the image when creating tfrecord
-        image = tf.image.resize(image, [self._output_size, self._output_size])
-
-        # resize mask
-        masks = tf.expand_dims(masks, axis=-1)
-        # using nearest neighbor to make sure the mask still in binary
-        masks = tf.image.resize(masks, [self._proto_output_size, self._proto_output_size],
-                                method=tf.image.ResizeMethod.BILINEAR)
-        masks = tf.cast(masks + 0.5, tf.int64)
-        masks = tf.squeeze(tf.cast(masks, tf.float32))
+        # Data Augmentation, Normalization, and Resize
+        augmentor = SSDAugmentation(mode='val')
+        image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
 
         # resize boxes for resized image
-        boxes = boxes * self._output_size
+        boxes = boxes * cfg.OUTPUT_SIZE
+
+        # resized boxes for proto output size (for mask loss)
+        boxes_norm = boxes * (cfg.PROTO_OUTPUT_SIZE / cfg.PROTO_OUTPUT_SIZE)
 
         # number of object in training sample
         num_obj = tf.size(classes)
-
-        # resized boxes for proto output size
-        boxes_norm = boxes * (self._proto_output_size / self._output_size)
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
@@ -168,6 +159,7 @@ class Parser(object):
         pad_boxes = tf.zeros([num_padding, 4])
         pad_masks = tf.zeros([num_padding, self._proto_output_size, self._proto_output_size])
 
+        # Todo how to deal with more gracefully
         if tf.shape(classes)[0] == 1:
             masks = tf.expand_dims(masks, axis=0)
 
