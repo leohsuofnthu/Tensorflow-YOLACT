@@ -31,7 +31,7 @@ def bboxes_intersection(bbox_ref, bboxes):
         tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
 
 
-def normalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
+def normalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
     """Normalizes the image to zero mean and unit variance.
      ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
   """
@@ -45,16 +45,13 @@ def normalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.
     scale = tf.expand_dims(scale, axis=0)
     scale = tf.expand_dims(scale, axis=0)
     image /= scale
-    image *= 255
     return image
 
 
-def denormalize_image(image, offset=(0.485, 0.456, 0.406), scale=(0.229, 0.224, 0.225)):
+def denormalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
     """Normalizes the image to zero mean and unit variance.
      ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
   """
-    image /= 255
-
     scale = tf.constant(scale)
     scale = tf.expand_dims(scale, axis=0)
     scale = tf.expand_dims(scale, axis=0)

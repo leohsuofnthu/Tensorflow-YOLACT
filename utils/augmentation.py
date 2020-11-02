@@ -111,8 +111,10 @@ class Expand(object):
         height, width, depth = image.get_shape()
         # expand 4 times at most
         ratio = tf.random.uniform([1], minval=1, maxval=4)
+        tf.print(ratio)
         # define the leftmost, topmost coordinate for putting original image to expanding image
         left = tf.random.uniform([1], minval=0, maxval=(width * ratio - width))
+        tf.print(left)
         top = tf.random.uniform([1], minval=0, maxval=(height * ratio - height))
 
         # padding the image, mask according to the left and top
@@ -139,23 +141,24 @@ class Expand(object):
         image = image + mean_mask
 
         # recalculate the bbox [ymin, xmin, ymax, xmax]
-        boxes[0] = ((boxes[0] * height) + top) / expand_height
-        boxes[1] = ((boxes[1] * width) + left) / expand_width
-        boxes[2] = ((boxes[2] * height) + top) / expand_height
-        boxes[3] = ((boxes[3] * width) + left) / expand_width
-
-        return image, masks, boxes, labels
+        ymin = ((boxes[:, 0] * height) + top) / expand_height
+        xmin = ((boxes[:, 1] * width) + left) / expand_width
+        ymax = ((boxes[:, 2] * height) + top) / expand_height
+        xmax = ((boxes[:, 3] * width) + left) / expand_width
+        new_boxes = tf.stack([ymin, xmin, ymax, xmax])
+        return image, masks, new_boxes, labels
 
 
 class RandomSampleCrop(object):
     def __init__(self):
-        self.min_iou = [0, 0.1, 0.3, 0.7, 0.9, None]
+        self.min_iou = [0, 0.1, 0.3, 0.7, 0.9, 1]
 
     def __call__(self, image, masks, boxes=None, labels=None):
         # choose the min_object_covered value in self.sample_options
-        idx = int(tf.random.uniform([1], minval=0, maxval=5.50))
+        idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
         min_iou = self.min_iou[idx]
-        if min_iou is None:
+        tf.print(min_iou)
+        if min_iou == 1:
             return image, masks, boxes, labels
 
         # Geometric Distortions (img, bbox, mask)
@@ -254,7 +257,7 @@ class BackboneTransform(object):
         scale = tf.expand_dims(scale, axis=0)
         scale = tf.expand_dims(scale, axis=0)
         image /= scale
-        image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        # image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         return image, masks, boxes, labels
 
 
@@ -263,7 +266,7 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                PhotometricDistort(),
+                # PhotometricDistort(),
                 # Expand(mean),
                 # RandomSampleCrop(),
                 # RandomMirror(),
