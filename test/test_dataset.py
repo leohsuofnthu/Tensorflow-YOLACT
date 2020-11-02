@@ -18,6 +18,9 @@ for image, labels in train_dataloader.take(1):
     image = np.squeeze(image.numpy())*255
     image = image.astype(np.uint8)
     print(image.max(), image.min())
+    ori = labels['ori'].numpy()
+    plt.imshow(np.squeeze(ori))
+    plt.show()
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()

@@ -151,13 +151,13 @@ class Expand(object):
 
 class RandomSampleCrop(object):
     def __init__(self):
-        self.min_iou = [0, 0.1, 0.3, 0.7, 0.9, 1]
+        self.min_iou = tf.constant([0, 0.1, 0.3, 0.7, 0.9, 1])
 
     def __call__(self, image, masks, boxes=None, labels=None):
         # choose the min_object_covered value in self.sample_options
         idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
-        min_iou = self.min_iou[idx]
-        tf.print(min_iou)
+        tf.print(idx)
+        min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
         if min_iou == 1:
             return image, masks, boxes, labels
 
@@ -180,8 +180,9 @@ class RandomSampleCrop(object):
         # cropped the mask
         bbox_begin = tf.concat([[0], bbox_begin], axis=0)
         bbox_size = tf.concat([[-1], bbox_size], axis=0)
-        cropped_masks = tf.slice(masks, bbox_begin, bbox_size)
+        cropped_masks = tf.slice(tf.expand_dims(masks, -1), bbox_begin, bbox_size)
         cropped_masks.set_shape([None, None, None, 1])
+        cropped_masks = tf.squeeze(cropped_masks, -1)
 
         # resize the scale of bboxes for cropped image
         v = tf.stack([distort_bbox[0], distort_bbox[1], distort_bbox[0], distort_bbox[1]])
@@ -214,9 +215,10 @@ class RandomMirror(object):
         # random mirroring with probability 0.5
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.flip_left_right(image)
-            masks = tf.image.flip_left_right(masks)
+            masks = tf.image.flip_left_right(tf.expand_dims(masks, -1))
             boxes = tf.stack([boxes[:, 0], 1 - boxes[:, 3],
                               boxes[:, 2], 1 - boxes[:, 1]], axis=-1)
+            masks = tf.squeeze(masks, -1)
         return image, masks, boxes, labels
 
 
@@ -268,7 +270,7 @@ class SSDAugmentation(object):
                 ConvertFromInts(),
                 # PhotometricDistort(),
                 # Expand(mean),
-                # RandomSampleCrop(),
+                RandomSampleCrop(),
                 # RandomMirror(),
                 Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
