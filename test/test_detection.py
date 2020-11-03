@@ -3,7 +3,7 @@ import tensorflow as tf
 import matplotlib.pyplot as plt
 import numpy as np
 
-from data import dataset_coco, anchor
+from data import coco_dataset, anchor
 from utils import learning_rate_schedule, label_map
 from yolact import Yolact
 from layers.detection import Detect
@@ -48,7 +48,7 @@ anchorobj = anchor.Anchor(img_size=550,
 
 # images for detection, new dataloader without repeating
 # Todo: Figure out why batch size = 1 cause memory issue
-valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir="../data/coco",
+valid_dataset = coco_dataset.prepare_dataloader(tfrecord_dir="../data/coco",
                                                 batch_size=1,
                                                 subset='val')
 anchors = anchorobj.get_anchors()

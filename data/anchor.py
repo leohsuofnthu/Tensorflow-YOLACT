@@ -36,8 +36,7 @@ class Anchor(object):
                     a = sqrt(ars)
                     w = scale[idx] * a / img_size
                     h = scale[idx] / a / img_size
-                    # the author od original paper accidetly use square anchor all the time
-                    h = w
+
                     # directly use point form here => [ymin, xmin, ymax, xmax]
                     ymin = y - (h / 2)
                     xmin = x - (w / 2)

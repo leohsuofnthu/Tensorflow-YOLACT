@@ -10,22 +10,20 @@ import os
 import tensorflow as tf
 
 from data import anchor
-from data import yolact_parser
+from data import coco_tfrecord_parser
 
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
 def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
-
     anchorobj = anchor.Anchor(img_size=550,
                               feature_map_size=[69, 35, 18, 9, 5],
                               aspect_ratio=[1, 0.5, 2],
                               scale=[24, 48, 96, 192, 384])
 
-    parser = yolact_parser.Parser(output_size=550,
-                                  anchor_instance=anchorobj,
-                                  match_threshold=0.5,
-                                  unmatched_threshold=0.5,
-                                  mode=subset)
+    parser = coco_tfrecord_parser.Parser(anchor_instance=anchorobj,
+                                         match_threshold=0.5,
+                                         unmatched_threshold=0.5,
+                                         mode=subset)
     files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
     num_shards = tf.cast(tf.shape(files)[0], tf.int64)
     shards = tf.data.Dataset.from_tensor_slices(files)
