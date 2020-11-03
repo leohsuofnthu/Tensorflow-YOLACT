@@ -35,7 +35,7 @@ class ConvertFromInts(object):
 
 class RandomBrightness(object):
     # input image range: [0 ~ 1]
-    def __init__(self, delta=0.125):
+    def __init__(self, delta=0.05):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -46,7 +46,7 @@ class RandomBrightness(object):
 
 class RandomContrast(object):
     # input image range: [0 ~ 1]
-    def __init__(self, lower=0.5, upper=1.5):
+    def __init__(self, lower=0.5, upper=0.6):
         self.lower = lower
         self.upper = upper
 
@@ -58,7 +58,7 @@ class RandomContrast(object):
 
 class RandomSaturation(object):
     # input image range: [0 ~ 1]
-    def __init__(self, lower=0.5, upper=1.5):
+    def __init__(self, lower=0.5, upper=0.6):
         self.lower = lower
         self.upper = upper
 
@@ -70,7 +70,7 @@ class RandomSaturation(object):
 
 class RandomHue(object):
     # input image range: [0 ~ 1]
-    def __init__(self, delta=0.025):
+    def __init__(self, delta=0.5):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -108,31 +108,34 @@ class Expand(object):
         if tf.random.uniform([1]) > 0.5:
             return image, masks, boxes, labels
 
-        height, width, depth = image.get_shape()
+        height = tf.cast(tf.shape(image)[0], tf.float32)
+        width = tf.cast(tf.shape(image)[1], tf.float32)
+
         # expand 4 times at most
-        ratio = tf.random.uniform([1], minval=1, maxval=4)
-        tf.print(ratio)
+        ratio = tf.squeeze(tf.random.uniform([1], minval=1, maxval=4))
+
         # define the leftmost, topmost coordinate for putting original image to expanding image
-        left = tf.random.uniform([1], minval=0, maxval=(width * ratio - width))
-        tf.print(left)
-        top = tf.random.uniform([1], minval=0, maxval=(height * ratio - height))
+        left = tf.squeeze(tf.random.uniform([1], minval=0, maxval=(width * ratio - width)))
+        top = tf.squeeze(tf.random.uniform([1], minval=0, maxval=(height * ratio - height)))
 
         # padding the image, mask according to the left and top
-        left_padding = int(left)
-        top_padding = int(top)
-        expand_width = int(width * ratio)
-        expand_height = int(height * ratio)
+        left_padding = tf.cast(left, tf.int32)
+        top_padding = tf.cast(top, tf.int32)
+        expand_width = tf.cast(width * ratio, tf.int32)
+        expand_height = tf.cast(height * ratio, tf.int32)
 
-        image = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(image, 0),
+        image = tf.image.pad_to_bounding_box(image,
+                                             top_padding,
+                                             left_padding,
+                                             expand_height,
+                                             expand_width)
+
+        masks = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(masks, -1),
                                                         top_padding,
                                                         left_padding,
                                                         expand_height,
-                                                        expand_width))
-        masks = tf.squeeze(tf.image.pad_to_bounding_box(masks,
-                                                        top_padding,
-                                                        left_padding,
-                                                        expand_height,
-                                                        expand_width))
+                                                        expand_width), -1)
+
         # fill mean value of image
         offset = tf.constant(self.mean)
         offset = tf.expand_dims(offset, axis=0)
@@ -141,11 +144,15 @@ class Expand(object):
         image = image + mean_mask
 
         # recalculate the bbox [ymin, xmin, ymax, xmax]
+        top = tf.cast(top, tf.float32)
+        left = tf.cast(left, tf.float32)
+        expand_height = tf.cast(expand_height, tf.float32)
+        expand_width = tf.cast(expand_width, tf.float32)
         ymin = ((boxes[:, 0] * height) + top) / expand_height
         xmin = ((boxes[:, 1] * width) + left) / expand_width
         ymax = ((boxes[:, 2] * height) + top) / expand_height
         xmax = ((boxes[:, 3] * width) + left) / expand_width
-        new_boxes = tf.stack([ymin, xmin, ymax, xmax])
+        new_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
         return image, masks, new_boxes, labels
 
 
@@ -156,7 +163,6 @@ class RandomSampleCrop(object):
     def __call__(self, image, masks, boxes=None, labels=None):
         # choose the min_object_covered value in self.sample_options
         idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
-        tf.print(idx)
         min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
         if min_iou == 1:
             return image, masks, boxes, labels
@@ -268,10 +274,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                # PhotometricDistort(),
-                # Expand(mean),
+                PhotometricDistort(),
+                Expand(mean),
                 RandomSampleCrop(),
-                # RandomMirror(),
+                RandomMirror(),
                 Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)

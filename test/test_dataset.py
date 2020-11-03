@@ -8,7 +8,7 @@ from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
-tf.random.set_seed(1235)
+# tf.random.set_seed(1235)
 
 train_dataloader = prepare_dataloader("../data/coco", 1, "train")
 print(train_dataloader)
@@ -17,7 +17,6 @@ for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy())*255
     image = image.astype(np.uint8)
-    print(image.max(), image.min())
     ori = labels['ori'].numpy()
     plt.imshow(np.squeeze(ori))
     plt.show()
