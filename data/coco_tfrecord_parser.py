@@ -69,8 +69,7 @@ class Parser(object):
             masks = tf.gather(masks, indices)
 
         # read and normalize the image, for testing augmentation
-        original_img = tf.identity(image)
-
+        original_img = tf.image.resize(tf.identity(image), [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode)
         image, masks, boxes, classes = augmentor(image, masks, boxes, classes)

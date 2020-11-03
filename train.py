@@ -9,7 +9,7 @@ from absl import flags
 from absl import logging
 
 import yolact
-from data import dataset_coco, anchor
+from data import coco_dataset, anchor
 from loss import loss_yolact
 from utils import learning_rate_schedule
 
@@ -88,11 +88,11 @@ def main(argv):
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
     logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
-    train_dataset = dataset_coco.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
+    train_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=FLAGS.batch_size,
                                                     subset='train')
 
-    valid_dataset = dataset_coco.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
+    valid_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=1,
                                                     subset='val')
     # -----------------------------------------------------------------
