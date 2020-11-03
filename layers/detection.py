@@ -14,25 +14,25 @@ class Detect(object):
 
     def __call__(self, prediction):
         loc_pred = prediction['pred_offset']
-        tf.print('loc pred', tf.shape(loc_pred))
+        # tf.print('loc pred', tf.shape(loc_pred))
         cls_pred = prediction['pred_cls']
-        tf.print('cls pred', tf.shape(cls_pred))
+        # tf.print('cls pred', tf.shape(cls_pred))
         mask_pred = prediction['pred_mask_coef']
-        tf.print('mask pred', tf.shape(mask_pred))
+        # tf.print('mask pred', tf.shape(mask_pred))
         proto_pred = prediction['proto_out']
-        tf.print('proto pred', tf.shape(proto_pred))
-        tf.print('anchors', tf.shape(self.anchors))
+        # tf.print('proto pred', tf.shape(proto_pred))
+        # tf.print('anchors', tf.shape(self.anchors))
         out = []
         num_batch = tf.shape(loc_pred)[0]
         num_anchors = tf.shape(loc_pred)[1]
-        tf.print("num batch:", num_batch)
-        tf.print("num anchors:", num_anchors)
+        # tf.print("num batch:", num_batch)
+        # tf.print("num anchors:", num_anchors)
 
         # apply softmax to pred_cls
         cls_pred = tf.nn.softmax(cls_pred, axis=-1)
-        tf.print("score", tf.shape(cls_pred))
+        # tf.print("score", tf.shape(cls_pred))
         cls_pred = tf.transpose(cls_pred, perm=[0, 2, 1])
-        tf.print("score", tf.shape(cls_pred))
+        # tf.print("score", tf.shape(cls_pred))
 
         for batch_idx in tf.range(num_batch):
             # add offset to anchors
@@ -48,27 +48,27 @@ class Detect(object):
     def _detection(self, batch_idx, cls_pred, decoded_boxes, mask_pred):
         # we don't need to deal with background label
         cur_score = cls_pred[batch_idx, 1:, :]
-        tf.print("cur score:", tf.shape(cur_score))
+        # tf.print("cur score:", tf.shape(cur_score))
         conf_score = tf.math.reduce_max(cur_score, axis=0)
         conf_score_id = tf.argmax(cur_score, axis=0)
-        tf.print("conf_score:", tf.shape(conf_score))
+        # tf.print("conf_score:", tf.shape(conf_score))
 
         # filter out the ROI that have conf score > confidence threshold
         candidate_ROI_idx = tf.squeeze(tf.where(conf_score > self.conf_threshold))
-        tf.print("candidate_ROI", tf.shape(candidate_ROI_idx))
+        # tf.print("candidate_ROI", tf.shape(candidate_ROI_idx))
 
         # Todo what if no detection?
         if tf.size(candidate_ROI_idx) == 0:
             return None
-        tf.print('original score', tf.shape(cur_score))
+        # tf.print('original score', tf.shape(cur_score))
         scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
         # scores = tf.gather(conf_score, candidate_ROI_idx)
         classes = tf.gather(conf_score_id, candidate_ROI_idx)
-        tf.print("scores", tf.shape(scores))
+        # tf.print("scores", tf.shape(scores))
         boxes = tf.gather(decoded_boxes, candidate_ROI_idx)
-        tf.print("boxes", tf.shape(boxes))
+        # tf.print("boxes", tf.shape(boxes))
         masks = tf.gather(mask_pred[batch_idx], candidate_ROI_idx)
-        tf.print("masks", tf.shape(masks))
+        # tf.print("masks", tf.shape(masks))
 
         """
         #　Normal NMS
@@ -93,82 +93,43 @@ class Detect(object):
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
 
         scores, idx = tf.math.top_k(scores, k=top_k)
-        tf.print("top k scores:", tf.shape(scores))
-        tf.print("top k indices", tf.shape(idx))
-        tf.print(idx[:5])
-        tf.print(scores[:5])
-        tf.print(idx[0][0])
-        tf.print(boxes[idx[0][0], :])
         num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
-        tf.print("num_classes:", num_classes)
-        tf.print("num dets:", num_dets)
-
-        tf.print("old boxes", tf.shape(boxes))
-
         boxes = tf.gather(boxes, idx, axis=0)
-        tf.print("new boxes", tf.shape(boxes))
-        tf.print(boxes[0, :5])
         masks = tf.gather(masks, idx, axis=0)
-        tf.print("new masks", tf.shape(masks))
-
         iou = utils.jaccard(boxes, boxes)
-        tf.print("iou", tf.shape(iou))
-        tf.print(iou[0])
 
         # upper trangular matrix - diagnoal
         upper_triangular = tf.linalg.band_part(iou, 0, -1)
         diag = tf.linalg.band_part(iou, 0, 0)
-        tf.print("upper tri", upper_triangular[0])
         iou = upper_triangular - diag
-        tf.print("iou", tf.shape(iou))
-        tf.print("iou", iou[0])
 
         # fitler out the unwanted ROI
         iou_max = tf.reduce_max(iou, axis=1)
-        tf.print("iou max", tf.shape(iou_max))
-        tf.print("iou max", iou_max[0])
-
         idx_det = tf.where(iou_max <= iou_threshold)
 
-        tf.print("idx det", tf.shape(idx_det))
-        tf.print(idx_det)
-
         classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max)) + 1
-        tf.print("classes", classes)
         classes = tf.gather_nd(classes, idx_det)
-        tf.print("new_classes", tf.shape(classes))
-        tf.print(classes)
         boxes = tf.gather_nd(boxes, idx_det)
-        tf.print("new_boxes", tf.shape(boxes))
         masks = tf.gather_nd(masks, idx_det)
-        tf.print("new_masks", tf.shape(masks))
         scores = tf.gather_nd(scores, idx_det)
-        tf.print("new_scores", tf.shape(scores))
-        tf.print(scores)
 
-        max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
         # number of max detection = 100 (u can choose whatever u want)
+        max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
-        tf.print("max num score", scores)
         classes = tf.gather(classes, idx)
-        tf.print("max num classes", classes)
         boxes = tf.gather(boxes, idx)
         masks = tf.gather(masks, idx)
 
         # Todo Handle the situation that only 1 or 0 detection
         # second threshold
         positive_det = tf.squeeze(tf.where(scores > iou_threshold))
-        tf.print("positive det", positive_det)
         scores = tf.gather(scores, positive_det)
         classes = classes[:tf.size(scores)]
-        tf.print("final classes", classes)
         boxes = boxes[:tf.size(scores)]
         masks = masks[:tf.size(scores)]
-
-        tf.print("final score", scores)
-        tf.print("num_final_detection", tf.size(scores))
 
         return boxes, masks, classes, scores
 
     def _cc_fast_nms(self):
+        """cross class FastNMS"""
         ...

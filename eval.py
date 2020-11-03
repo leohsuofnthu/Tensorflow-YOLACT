@@ -125,9 +125,6 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     num_pred = len(classes)
     num_gt = len(gt_classes)
 
-    tf.print(num_pred)
-    tf.print(num_gt)
-
     # resize gt mask
     masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [550, 550],
                                           method='bilinear'), axis=-1)
@@ -135,9 +132,6 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
     bbox_iou_cache = _bbox_iou(boxes, gt_bbox[0][:num_gt]).numpy()
-
-    tf.print(mask_iou_cache)
-    tf.print(bbox_iou_cache)
 
     """
     # If crowd label included, split it and calculate iou separately from non-crowd label
@@ -247,7 +241,6 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
     # iterate the whole dataset to save TP, FP, FN
     i = 0
     for image, labels in dataset:
-        tf.print(i)
         i += 1
         output = model(image, training=False)
         detection = detection_layer(output)

@@ -119,7 +119,7 @@ def map_to_bbox(anchors, loc_pred):
     anchor_w = anchors[:, 3] - anchors[:, 1]
     anchor_cx = anchors[:, 1] + (anchor_w / 2)
     anchor_cy = anchors[:, 0] + (anchor_h / 2)
-    tf.print("cx", tf.shape(anchor_cx))
+    # tf.print("cx", tf.shape(anchor_cx))
 
     pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
 
@@ -134,10 +134,10 @@ def map_to_bbox(anchors, loc_pred):
     xmax = new_cx + (new_w / 2)
 
     decoded_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
-    tf.print(tf.shape(decoded_boxes))
+    # tf.print(tf.shape(decoded_boxes))
 
-    tf.print("anchor", tf.shape(anchors))
-    tf.print("pred", tf.shape(loc_pred))
+    # tf.print("anchor", tf.shape(anchors))
+    # tf.print("pred", tf.shape(loc_pred))
     return decoded_boxes
 
 
@@ -204,7 +204,7 @@ def mask_iou(masks_a, masks_b, iscrowd=False):
     # tf.print(tf.shape(masks_a))
     # tf.print(tf.shape(masks_b))
     intersection = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
-    tf.print(tf.shape(intersection))
+    # tf.print(tf.shape(intersection))
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
     area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
 
@@ -239,31 +239,20 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     scores = dets['score']
     masks = dets['mask']
     proto_pred = dets['proto']
-    tf.print(tf.shape(proto_pred))
-    tf.print(tf.shape(masks))
+    # tf.print(tf.shape(proto_pred))
+    # tf.print(tf.shape(masks))
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
-    tf.print("pred mask", tf.shape(pred_mask))
+    # tf.print("pred mask", tf.shape(pred_mask))
 
-    import matplotlib.pyplot as plt
-    plt.figure()
-    plt.imshow(pred_mask[0])
-    # print(boxes)
     masks = crop(pred_mask, boxes * float(138.0/550.0))
-    # masks = pred_mask
-    plt.figure()
-    plt.imshow(masks[0])
+
     # intepolate to original size (test 550*550 here)
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
                             method=intepolation_mode)
-    # plt.figure()
-    # plt.imshow(masks[0])
+
     masks = tf.cast(masks + 0.5, tf.int64)
-    # plt.figure()
-    # plt.imshow(masks[0])
     masks = tf.squeeze(tf.cast(masks, tf.float32))
-    # plt.figure()
-    # plt.imshow(masks[0])
-    # plt.show()
+
     return classes, scores, boxes, masks
