@@ -6,33 +6,14 @@ import config as cfg
 
 
 class Parser(object):
-    def __init__(self,
-                 anchor_instance,
-                 match_threshold=0.5,
-                 unmatched_threshold=0.4,
-                 num_max_fix_padding=100,
-                 skip_crow_during_training=True,
-                 use_bfloat16=True,
-                 mode=None):
+    def __init__(self, anchor_instance, use_bfloat16=True, mode=None):
 
         self._mode = mode
-        self._skip_crowd_during_training = skip_crow_during_training
         self._is_training = (mode == "train")
-
         self._example_decoder = TfExampleDecoder()
-
         self._anchor_instance = anchor_instance
-        self._match_threshold = match_threshold
-        self._unmatched_threshold = unmatched_threshold
-
-        # output related
-        # for classes and mask to be padded to fix length
-        self._num_max_fix_padding = num_max_fix_padding
-
-        # Device (mix precision?)
         self._use_bfloat16 = use_bfloat16
-
-        # Data is parsed depending on the model.
+        
         if mode == "train":
             self._parse_fn = self._parse_train_data
         elif mode == "val":
@@ -48,6 +29,7 @@ class Parser(object):
             return self._parse_fn(data)
 
     def _parse_common(self, data, mode='train'):
+      
         # The parse function parse single data only, not in batch (reminder for myself)
         image = data['image']
         classes = data['gt_classes']
@@ -55,21 +37,19 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
-        # Todo should we ignore the crowd anntation
-        # Skips annotations with `is_crowd` = True.
-        if self._skip_crowd_during_training and self._is_training:
-            num_groundtruths = tf.shape(classes)[0]
-            with tf.control_dependencies([num_groundtruths, is_crowds]):
-                indices = tf.cond(
-                    pred=tf.greater(tf.size(is_crowds), 0),
-                    true_fn=lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-                    false_fn=lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
-            classes = tf.gather(classes, indices)
-            boxes = tf.gather(boxes, indices)
-            masks = tf.gather(masks, indices)
+        # put crowd annotation after non_crowd annotation
+        crowd_idx = tf.where(is_crowds == True)[:, 0]
+        non_crowd_idx = tf.where(tf.logical_not(is_crowds))[:, 0]
+        idxs = tf.concat([non_crowd_idx, crowd_idx], axis=0)
 
-        # read and normalize the image, for testing augmentation
-        original_img = tf.image.resize(tf.identity(image), [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
+        num_crowd = tf.size(crowd_idx)
+        classes = tf.gather(classes, idxs)
+        boxes = tf.gather(boxes, idxs)
+        masks = tf.gather(masks, idxs)
+
+        original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
+        original_img = tf.image.resize(original_img, [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
+
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode)
         image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
@@ -85,10 +65,10 @@ class Parser(object):
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
-            self._match_threshold, self._unmatched_threshold, boxes, classes)
+            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes)
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
-        num_padding = self._num_max_fix_padding - tf.shape(classes)[0]
+        num_padding = cfg.NUM_MAX_PADDING - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
         pad_masks = tf.zeros([num_padding, cfg.PROTO_OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE])
@@ -110,6 +90,7 @@ class Parser(object):
             'positiveness': match_positiveness,
             'classes': classes,
             'num_obj': num_obj,
+            'num_crowd': num_crowd,
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors,
             'ori': original_img

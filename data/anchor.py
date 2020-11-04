@@ -99,7 +99,7 @@ class Anchor(object):
     def get_anchors(self):
         return self.anchors
 
-    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels):
+    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels, crowd_bbox=None):
         """
         :param threshold_neg:
         :param threshold_pos:
