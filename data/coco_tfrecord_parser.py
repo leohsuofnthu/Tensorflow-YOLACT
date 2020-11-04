@@ -13,7 +13,7 @@ class Parser(object):
         self._example_decoder = TfExampleDecoder()
         self._anchor_instance = anchor_instance
         self._use_bfloat16 = use_bfloat16
-
+        
         if mode == "train":
             self._parse_fn = self._parse_train_data
         elif mode == "val":
@@ -29,7 +29,7 @@ class Parser(object):
             return self._parse_fn(data)
 
     def _parse_common(self, data, mode='train'):
-
+      
         # The parse function parse single data only, not in batch (reminder for myself)
         image = data['image']
         classes = data['gt_classes']

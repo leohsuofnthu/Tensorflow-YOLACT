@@ -1,6 +1,6 @@
 # YOLACT Real-time Instance Segmentation
-This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture from object detection and its own idea of parallel prototype generation. In this Repo, I focus on reproducing the result by implementing one of the structure "ResNet50-FPN" on MS-COCO datasets. The part for training this model is ready, and the part for inference and mAP evaluation will be updated soon.
-
+This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture from object detection and its own idea of parallel prototype generation. In this Repo, I focus on reproducing the result by implementing one of the structure "ResNet50-FPN" on MS-COCO datasets. The part for training this model is ready, and the part for inference and mAP evaluation will be updated soon. <br/>
+[update] 2020/10/31 Back to work on this !
 ## Model
 Here is the illustration of YOLACT from original paper.
 ![ad](https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/images/model.png)
@@ -15,7 +15,7 @@ Here is the illustration of YOLACT from original paper.
 In this repo, we convert images and annotations into TFRecord through the */data/create_coco_tfrecord.py.* In this script, I directly resize the image to 550 * 550 and ignore the images with only crowd annotations. Using the following command to create TFRecord.
 
 ```bash
-python -m  data.create_coco_tfrecord -train_image_dir 'path of train2017' -val_image_dir 'path of val2017' -train_annotations_file 'path of train annotations' -val_annotations_file 'path of val annotations' -output_dir 'path for output TFRecord'
+python -m  data.coco_tfrecord_creator -train_image_dir 'path of train2017' -val_image_dir 'path of val2017' -train_annotations_file 'path of train annotations' -val_annotations_file 'path of val annotations' -output_dir 'path for output TFRecord'
 ```
 ## Train
 ### (1) Usage

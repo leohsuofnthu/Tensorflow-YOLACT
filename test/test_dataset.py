@@ -14,7 +14,7 @@ train_dataloader = prepare_dataloader("../data/coco", 1, "train")
 print(train_dataloader)
 for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
-    image = np.squeeze(image.numpy()) * 255
+    image = np.squeeze(image.numpy())*255
     image = image.astype(np.uint8)
     ori = labels['ori']
     ori = np.squeeze(labels['ori'].numpy())

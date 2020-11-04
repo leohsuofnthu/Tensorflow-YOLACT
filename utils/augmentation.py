@@ -274,10 +274,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                # PhotometricDistort(),
-                # Expand(mean),
-                # RandomSampleCrop(),
-                # RandomMirror(),
+                PhotometricDistort(),
+                Expand(mean),
+                RandomSampleCrop(),
+                RandomMirror(),
                 Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)

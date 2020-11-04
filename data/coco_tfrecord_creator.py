@@ -227,7 +227,6 @@ def _create_tf_record_from_coco_annotations(annotations_file, image_dir, output_
                     output_tfrecords[shard_idx].write(tf_example.SerializeToString())
             else:
                 logging.info('Ignore Image with no annotations')
-
         logging.info('Finished writing, skipped %d annotations.',
                      total_num_annotations_skipped)
 
