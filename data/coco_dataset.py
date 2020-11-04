@@ -21,8 +21,6 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
                               scale=[24, 48, 96, 192, 384])
 
     parser = coco_tfrecord_parser.Parser(anchor_instance=anchorobj,
-                                         match_threshold=0.5,
-                                         unmatched_threshold=0.5,
                                          mode=subset)
     files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
     num_shards = tf.cast(tf.shape(files)[0], tf.int64)
