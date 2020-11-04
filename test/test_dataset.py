@@ -17,14 +17,20 @@ for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy())*255
     image = image.astype(np.uint8)
-    ori = labels['ori'].numpy()
-    plt.imshow(np.squeeze(ori))
+    ori = labels['ori']
+    ori = np.squeeze(labels['ori'].numpy())
+    plt.imshow(ori)
     plt.show()
     bbox = labels['bbox'].numpy()
     cls = labels['classes'].numpy()
     mask = labels['mask_target'].numpy()
+    """
+    mask = tf.image.resize(tf.expand_dims(mask[0], -1), [550, 550], method=tf.image.ResizeMethod.BILINEAR)
+    mask = tf.cast(mask + 0.5, tf.int64)
+    mask = tf.squeeze(mask)
+    mask = tf.cast(mask, tf.float32).numpy()
+    """
     num_obj = labels['num_obj'].numpy()
-    # original_img = np.squeeze(labels['ori'].numpy().astype(np.uint8))
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     final_m = np.zeros_like(mask[0][0][:, :, None])
     for idx in range(num_obj[0]):

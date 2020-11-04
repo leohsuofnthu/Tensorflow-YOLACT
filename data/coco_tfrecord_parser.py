@@ -55,21 +55,30 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
-        # Todo should we ignore the crowd anntation
-        # Skips annotations with `is_crowd` = True.
-        if self._skip_crowd_during_training and self._is_training:
-            num_groundtruths = tf.shape(classes)[0]
-            with tf.control_dependencies([num_groundtruths, is_crowds]):
-                indices = tf.cond(
-                    pred=tf.greater(tf.size(is_crowds), 0),
-                    true_fn=lambda: tf.where(tf.logical_not(is_crowds))[:, 0],
-                    false_fn=lambda: tf.cast(tf.range(num_groundtruths), tf.int64))
-            classes = tf.gather(classes, indices)
-            boxes = tf.gather(boxes, indices)
-            masks = tf.gather(masks, indices)
+        non_crowd_idx = tf.where(tf.logical_not(is_crowds))[:, 0]
+        crowd_idx = tf.where(is_crowds == 1)[:, 0]
+
+        # get target labels
+        non_crowd_classes = tf.gather(classes, non_crowd_idx)
+        non_crowd_boxes = tf.gather(boxes, non_crowd_idx)
+        non_crowd_masks = tf.gather(masks, non_crowd_idx)
+
+        # get crowd labels
+        crowd_classes = tf.gather(classes, crowd_idx)
+        crowd_boxes = tf.gather(boxes, crowd_idx)
+        crowd_masks = tf.gather(masks, crowd_idx)
+        num_crowd = tf.shape(crowd_classes[0])
+        tf.print("Number of Crowd:", num_crowd)
+
+        # crowd annotation in the end of array
+        classes = tf.stack([crowd_classes, non_crowd_classes], axis=0)
+        boxes = tf.stack([crowd_boxes, non_crowd_boxes], axis=0)
+        masks = tf.stack([crowd_masks, non_crowd_masks], axis=0)
 
         # read and normalize the image, for testing augmentation
-        original_img = tf.image.resize(tf.identity(image), [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
+        original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
+        original_img = tf.image.resize(original_img, [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
+
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode)
         image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
@@ -110,6 +119,7 @@ class Parser(object):
             'positiveness': match_positiveness,
             'classes': classes,
             'num_obj': num_obj,
+            'num_crowd': num_crowd,
             'mask_target': masks,
             'max_id_for_anchors': max_id_for_anchors,
             'ori': original_img
