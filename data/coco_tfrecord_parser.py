@@ -55,27 +55,15 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
+        crowd_idx = tf.where(is_crowds == True)[:, 0]
         non_crowd_idx = tf.where(tf.logical_not(is_crowds))[:, 0]
-        crowd_idx = tf.where(is_crowds == 1)[:, 0]
+        idxs = tf.concat([non_crowd_idx, crowd_idx], axis=0)
 
-        # get target labels
-        non_crowd_classes = tf.gather(classes, non_crowd_idx)
-        non_crowd_boxes = tf.gather(boxes, non_crowd_idx)
-        non_crowd_masks = tf.gather(masks, non_crowd_idx)
+        num_crowd = tf.size(crowd_idx)
+        classes = tf.gather(classes, idxs)
+        boxes = tf.gather(boxes, idxs)
+        masks = tf.gather(masks, idxs)
 
-        # get crowd labels
-        crowd_classes = tf.gather(classes, crowd_idx)
-        crowd_boxes = tf.gather(boxes, crowd_idx)
-        crowd_masks = tf.gather(masks, crowd_idx)
-        num_crowd = tf.shape(crowd_classes[0])
-        tf.print("Number of Crowd:", num_crowd)
-
-        # crowd annotation in the end of array
-        classes = tf.stack([crowd_classes, non_crowd_classes], axis=0)
-        boxes = tf.stack([crowd_boxes, non_crowd_boxes], axis=0)
-        masks = tf.stack([crowd_masks, non_crowd_masks], axis=0)
-
-        # read and normalize the image, for testing augmentation
         original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
         original_img = tf.image.resize(original_img, [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
 
