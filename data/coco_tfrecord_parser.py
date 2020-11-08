@@ -13,7 +13,7 @@ class Parser(object):
         self._example_decoder = TfExampleDecoder()
         self._anchor_instance = anchor_instance
         self._use_bfloat16 = use_bfloat16
-        
+
         if mode == "train":
             self._parse_fn = self._parse_train_data
         elif mode == "val":
@@ -29,7 +29,7 @@ class Parser(object):
             return self._parse_fn(data)
 
     def _parse_common(self, data, mode='train'):
-      
+
         # The parse function parse single data only, not in batch (reminder for myself)
         image = data['image']
         classes = data['gt_classes']
@@ -42,17 +42,21 @@ class Parser(object):
         non_crowd_idx = tf.where(tf.logical_not(is_crowds))[:, 0]
         idxs = tf.concat([non_crowd_idx, crowd_idx], axis=0)
 
-        num_crowd = tf.size(crowd_idx)
         classes = tf.gather(classes, idxs)
         boxes = tf.gather(boxes, idxs)
         masks = tf.gather(masks, idxs)
+        is_crowds = tf.gather(is_crowds, idxs)
 
         original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
         original_img = tf.image.resize(original_img, [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
 
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode)
-        image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
+        image, masks, boxes, classes, is_crowds = augmentor(image, masks, boxes, classes, is_crowds)
+
+        # Calculate num of crowd annotation here
+        tf.print(is_crowds)
+        num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
         boxes = boxes * cfg.OUTPUT_SIZE

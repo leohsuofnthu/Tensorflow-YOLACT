@@ -15,10 +15,10 @@ class Compose(object):
     def __init__(self, transforms):
         self.transforms = transforms
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         for transform in self.transforms:
-            image, masks, boxes, labels = transform(image, masks, boxes, labels)
-        return image, masks, boxes, labels
+            image, masks, boxes, labels, is_crowds = transform(image, masks, boxes, labels, is_crowds)
+        return image, masks, boxes, labels, is_crowds
 
 
 class ConvertFromInts(object):
@@ -27,10 +27,10 @@ class ConvertFromInts(object):
     def __init__(self):
         ...
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         # convert to tf.float32, in range [0 ~ 1]
         image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class RandomBrightness(object):
@@ -38,10 +38,10 @@ class RandomBrightness(object):
     def __init__(self, delta=0.05):
         self.delta = delta
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_brightness(image, max_delta=self.delta)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class RandomContrast(object):
@@ -50,10 +50,10 @@ class RandomContrast(object):
         self.lower = lower
         self.upper = upper
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_contrast(image, lower=self.lower, upper=self.upper)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class RandomSaturation(object):
@@ -62,10 +62,10 @@ class RandomSaturation(object):
         self.lower = lower
         self.upper = upper
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_saturation(image, lower=self.lower, upper=self.upper)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class RandomHue(object):
@@ -73,10 +73,10 @@ class RandomHue(object):
     def __init__(self, delta=0.5):
         self.delta = delta
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_hue(image, max_delta=self.delta)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class PhotometricDistort(object):
@@ -89,24 +89,24 @@ class PhotometricDistort(object):
         ]
         self.rand_brightness = RandomBrightness()
 
-    def __call__(self, image, masks, boxes, labels):
-        image, masks, boxes, labels = self.rand_brightness(image, masks, boxes, labels)
+    def __call__(self, image, masks, boxes, labels, is_crowds):
+        image, masks, boxes, labels, is_crowds = self.rand_brightness(image, masks, boxes, labels, is_crowds)
         # different order have different effect
         if tf.random.uniform([1]) > 0.5:
-            image, masks, boxes, labels = Compose(self.actions[:-1])(image, masks, boxes, labels)
+            image, masks, boxes, labels, is_crowds = Compose(self.actions[:-1])(image, masks, boxes, labels)
         else:
-            image, masks, boxes, labels = Compose(self.actions[1:])(image, masks, boxes, labels)
-        return image, masks, boxes, labels
+            image, masks, boxes, labels, is_crowds = Compose(self.actions[1:])(image, masks, boxes, labels)
+        return image, masks, boxes, labels, is_crowds
 
 
 class Expand(object):
     def __init__(self, mean):
         self.mean = mean
 
-    def __call__(self, image, masks, boxes, labels):
+    def __call__(self, image, masks, boxes, labels, is_crowds):
         # exapnd the image with probability 0.5
         if tf.random.uniform([1]) > 0.5:
-            return image, masks, boxes, labels
+            return image, masks, boxes, labels, is_crowds
 
         height = tf.cast(tf.shape(image)[0], tf.float32)
         width = tf.cast(tf.shape(image)[1], tf.float32)
@@ -153,19 +153,19 @@ class Expand(object):
         ymax = ((boxes[:, 2] * height) + top) / expand_height
         xmax = ((boxes[:, 3] * width) + left) / expand_width
         new_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
-        return image, masks, new_boxes, labels
+        return image, masks, new_boxes, labels, is_crowds
 
 
 class RandomSampleCrop(object):
     def __init__(self):
         self.min_iou = tf.constant([0, 0.1, 0.3, 0.7, 0.9, 1])
 
-    def __call__(self, image, masks, boxes=None, labels=None):
+    def __call__(self, image, masks, boxes, labels, is_crowds):
         # choose the min_object_covered value in self.sample_options
         idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
         min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
         if min_iou == 1:
-            return image, masks, boxes, labels
+            return image, masks, boxes, labels, is_crowds
 
         # Geometric Distortions (img, bbox, mask)
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
@@ -202,22 +202,25 @@ class RandomSampleCrop(object):
         # filter out
         scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], boxes.dtype), boxes)
         bool_mask = scores > 0.5
+
         classes = tf.boolean_mask(labels, bool_mask)
         bboxes = tf.boolean_mask(boxes, bool_mask)
+        is_crowds = tf.boolean_mask(is_crowds, bool_mask)
 
         # deal with negative value of bbox
         bboxes = tf.clip_by_value(bboxes, clip_value_min=0, clip_value_max=1)
 
+        # get new masks
         cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
 
-        return cropped_image, cropped_masks, bboxes, classes
+        return cropped_image, cropped_masks, bboxes, classes, is_crowds
 
 
 class RandomMirror(object):
     def __int__(self):
         ...
 
-    def __call__(self, image, masks, boxes, labels):
+    def __call__(self, image, masks, boxes, labels=None, is_crowds=None):
         # random mirroring with probability 0.5
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.flip_left_right(image)
@@ -225,7 +228,7 @@ class RandomMirror(object):
             boxes = tf.stack([boxes[:, 0], 1 - boxes[:, 3],
                               boxes[:, 2], 1 - boxes[:, 1]], axis=-1)
             masks = tf.squeeze(masks, -1)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class Resize(object):
@@ -235,7 +238,7 @@ class Resize(object):
         self.output_size = output_size
         self.proto_output_size = proto_output_size
 
-    def __call__(self, image, masks, boxes=None, labels=None):
+    def __call__(self, image, masks, boxes, labels, is_crowds):
         # resize the image to output size
         image = tf.image.resize(image, [self.output_size, self.output_size])
 
@@ -246,7 +249,33 @@ class Resize(object):
         masks = tf.squeeze(masks)
         masks = tf.cast(masks, tf.float32)
 
-        return image, masks, boxes, labels
+        tf.print("masks size", tf.shape(masks))
+        # discard the boxes that are too small
+        # todo general reading config file
+        w = cfg.OUTPUT_SIZE * (boxes[:, 3] - boxes[:, 1])  # xmax - xmin
+        h = cfg.OUTPUT_SIZE * (boxes[:, 2] - boxes[:, 0])  # ymax - ymin
+
+        # find intersection of those 2 idxs
+        w_keep_idxs = tf.cast(w > cfg.discard_box_width, tf.int32)
+        h_keep_idxs = tf.cast(h > cfg.discard_box_height, tf.int32)
+        keep_idxs = w_keep_idxs * h_keep_idxs
+
+        tf.print("w keep", w_keep_idxs)
+        tf.print("h keep", h_keep_idxs)
+        tf.print("keep", keep_idxs)
+        tf.print("sum", tf.reduce_sum(keep_idxs))
+
+        boxes = tf.boolean_mask(boxes, keep_idxs)
+        masks = tf.boolean_mask(masks, keep_idxs)
+        labels = tf.boolean_mask(labels, keep_idxs)
+        is_crowds = tf.boolean_mask(is_crowds, keep_idxs)
+
+        tf.print(tf.shape(boxes))
+        tf.print(tf.shape(masks))
+        tf.print(tf.shape(labels))
+        tf.print(tf.shape(is_crowds))
+
+        return image, masks, boxes, labels, is_crowds
 
 
 class BackboneTransform(object):
@@ -254,7 +283,7 @@ class BackboneTransform(object):
         self.mean = mean
         self.std = std
 
-    def __call__(self, image, masks=None, boxes=None, labels=None):
+    def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         # normalize image (for Resnet), some model might only subtract mean, so modified for ur own need
         offset = tf.constant(self.mean)
         offset = tf.expand_dims(offset, axis=0)
@@ -266,7 +295,7 @@ class BackboneTransform(object):
         scale = tf.expand_dims(scale, axis=0)
         image /= scale
         # image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-        return image, masks, boxes, labels
+        return image, masks, boxes, labels, is_crowds
 
 
 class SSDAugmentation(object):
@@ -274,10 +303,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                PhotometricDistort(),
-                Expand(mean),
-                RandomSampleCrop(),
-                RandomMirror(),
+                # PhotometricDistort(),
+                # Expand(mean),
+                # RandomSampleCrop(),
+                # RandomMirror(),
                 Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
@@ -291,5 +320,5 @@ class SSDAugmentation(object):
                 BackboneTransform(mean, std)
             ])
 
-    def __call__(self, image, masks, boxes, labels):
-        return self.augmentations(image, masks, boxes, labels)
+    def __call__(self, image, masks, boxes, labels, is_crowds):
+        return self.augmentations(image, masks, boxes, labels, is_crowds)
