@@ -162,7 +162,7 @@ def intersection(box_a, box_b):
     return intersect_heights * intersect_widths
 
 
-def jaccard(box_a, box_b):
+def jaccard(box_a, box_b, is_crowd=False):
     """
          ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
         :param gt_bbox: [num_obj, 4]
@@ -189,7 +189,7 @@ def jaccard(box_a, box_b):
     return pairwise_inter / pairwise_union
 
 
-def mask_iou(masks_a, masks_b, iscrowd=False):
+def mask_iou(masks_a, masks_b, is_crowd=False):
     """
        Computes the pariwise mask IoU between two sets of masks of size [a, h, w] and [b, h, w].
        The output is of size [a, b].
@@ -208,7 +208,7 @@ def mask_iou(masks_a, masks_b, iscrowd=False):
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
     area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
 
-    return intersection / (area_a + area_b - intersection) if not iscrowd else intersection / area_a
+    return intersection / (area_a + area_b - intersection) if not is_crowd else intersection / area_a
 
 
 # post process after detection layer
