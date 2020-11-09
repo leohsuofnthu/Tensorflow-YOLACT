@@ -69,7 +69,7 @@ class Parser(object):
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
-            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, crowd_bbox=boxes[-num_crowd, :])
+            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, num_crowd)
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = cfg.NUM_MAX_PADDING - tf.shape(classes)[0]

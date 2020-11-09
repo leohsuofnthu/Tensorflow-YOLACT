@@ -103,13 +103,16 @@ class Anchor(object):
     def get_anchors(self):
         return self.anchors
 
-    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels, crowd_bbox=None):
+    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels, num_crowd=None):
         """
         :param threshold_neg:
         :param threshold_pos:
         :param gt_bbox:
         :param gt_labels:
         :return:
+
+        Args:
+            num_crowd:
         """
         num_gt = tf.shape(gt_bbox)[0]
         # tf.print("num gt", num_gt)
@@ -139,9 +142,9 @@ class Anchor(object):
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, neu_iou, -1 * tf.ones(tf.size(neu_iou)))
 
         # deal with crowd annotations
-        if crowd_bbox and cfg.CROWD_IOU_THRESHOLD < 1:
+        if num_crowd > 0 and cfg.CROWD_IOU_THRESHOLD < 1:
             # crowd pairwise IoU
-            crowd_pairwise_iou = self._pairwise_iou(gt_bbox=crowd_bbox)
+            crowd_pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox[-num_crowd:])
 
             # assign the max overlap gt index for each anchor
             crowd_max_iou_for_anchors = tf.reduce_max(crowd_pairwise_iou, axis=-1)
