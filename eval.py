@@ -94,18 +94,20 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     """Mainly update the ap_data for validation table"""
 
     # postprocess the prediction
-    # Todo 550 to constant
-    classes, scores, boxes, masks = postprocess(dets, 550, 550, 0, "bilinear")
+    classes, scores, boxes, masks = postprocess(dets, cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE, 0, "bilinear")
     classes, scores = classes.numpy(), scores.numpy()
-
-    # if no detections
-    if classes.shape[0] == 0:
-        return
 
     # prepare gt
     gt_bbox = labels['bbox']
     gt_classes = labels['classes']
     gt_masks = labels['mask_target']
+    num_crowd = labels['num_crowd']
+
+    if num_crowd > 0:
+        split = lambda x: (x[-num_crowd:], x[:-num_crowd])
+        crowd_boxes, gt_bbox = split(gt_bbox)
+        crowd_classes, gt_classes = split(gt_classes)
+        crowd_masks, gt_masks = split(gt_masks)
 
     # prepare data
     # Todo Bug when detection is 1 only
@@ -126,14 +128,13 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     num_gt = len(gt_classes)
 
     # resize gt mask
-    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [550, 550],
+    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [h, w],
                                           method='bilinear'), axis=-1)
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
     bbox_iou_cache = _bbox_iou(boxes, gt_bbox[0][:num_gt]).numpy()
 
-    """
     # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
         crowd_mask_iou_cache = _mask_iou(masks, crowd_masks, iscrowd=True)
@@ -141,7 +142,6 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     else:
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
-    """
 
     # get the sorted index of scores (descending order)
     box_indices = sorted(range(num_pred), key=lambda idx: -box_scores[idx])
@@ -151,11 +151,11 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     # avoid writing "bbox_iou_cache[row, col]" too many times, wrap it as a lambda func
     iou_types = [
         ('box', lambda row, col: bbox_iou_cache[row, col].item(),
-         # lambda i, j: crowd_bbox_iou_cache[i, j].item(),
-         lambda idx: box_scores[idx], box_indices),
+                lambda i, j: crowd_bbox_iou_cache[i, j].item(),
+                lambda idx: box_scores[idx], box_indices),
         ('mask', lambda row, col: mask_iou_cache[row, col].item(),
-         # lambda i,j: crowd_mask_iou_cache[i,j].item(),
-         lambda idx: mask_scores[idx], mask_indices)
+                 lambda i, j: crowd_mask_iou_cache[i, j].item(),
+                 lambda idx: mask_scores[idx], mask_indices)
     ]
 
     gt_classes = list(gt_classes[0][:num_gt].numpy())
@@ -168,7 +168,7 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
         for iouIdx in range(len(iou_thresholds)):
             th = iou_thresholds[iouIdx]
 
-            for iou_type, iou_func, score_func, indices in iou_types:
+            for iou_type, iou_func, crowd_func, score_func, indices in iou_types:
                 gt_used = [False] * len(gt_classes)
 
                 # get certain APobject
@@ -194,6 +194,16 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
                         ap_obj.push(score_func(i), True)
                     else:
                         matched_crowd = False
+                        if num_crowd > 0:
+                            for j in range(len(crowd_classes)):
+                                if crowd_classes[j] != _class:
+                                    continue
+
+                                iou = crowd_func(i, j)
+
+                                if iou > th:
+                                    matched_crowd = True
+                                    break
                         # for crowd annotation, if no, push as false positive
                         if not matched_crowd:
                             ap_obj.push(score_func(i), False)
@@ -245,8 +255,7 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         output = model(image, training=False)
         detection = detection_layer(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
-        # Todo 550 to variable
-        prep_metrics(ap_data, detection, image, labels, 550, 550, detections)
+        prep_metrics(ap_data, detection, image, labels, cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE, detections)
         # pb.add(batch_size)
         if i == 10:
             break
