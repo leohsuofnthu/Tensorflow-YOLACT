@@ -4,7 +4,7 @@ from utils import utils
 
 # Todo Optimize the detection speed
 class Detect(object):
-    def __init__(self, num_cls, label_background, top_k, conf_threshold, nms_threshold, anchors):
+    def __init__(self, anchors, num_cls, label_background, top_k, conf_threshold, nms_threshold):
         self.num_cls = num_cls
         self.label_background = label_background
         self.top_k = top_k

@@ -1,7 +1,6 @@
 import tensorflow as tf
 
 from utils import utils
-import config as cfg
 
 """
 Ref: https://github.com/balancap/SSD-Tensorflow/blob/master/preprocessing/ssd_vgg_preprocessing.py
@@ -234,9 +233,11 @@ class RandomMirror(object):
 class Resize(object):
     """Resize to certain size after augmentation"""
 
-    def __init__(self, output_size, proto_output_size):
+    def __init__(self, output_size, proto_output_size, discard_w, discard_h):
         self.output_size = output_size
         self.proto_output_size = proto_output_size
+        self.discard_w = discard_w
+        self.discard_h = discard_h
 
     def __call__(self, image, masks, boxes, labels, is_crowds):
         # resize the image to output size
@@ -254,12 +255,12 @@ class Resize(object):
 
         # discard the boxes that are too small
         # todo general reading config file
-        w = cfg.OUTPUT_SIZE * (boxes[:, 3] - boxes[:, 1])  # xmax - xmin
-        h = cfg.OUTPUT_SIZE * (boxes[:, 2] - boxes[:, 0])  # ymax - ymin
+        w = self.output_size * (boxes[:, 3] - boxes[:, 1])  # xmax - xmin
+        h = self.output_size * (boxes[:, 2] - boxes[:, 0])  # ymax - ymin
 
         # find intersection of those 2 idxs
-        w_keep_idxs = tf.cast(w > cfg.discard_box_width, tf.int32)
-        h_keep_idxs = tf.cast(h > cfg.discard_box_height, tf.int32)
+        w_keep_idxs = tf.cast(w > self.discard_w, tf.int32)
+        h_keep_idxs = tf.cast(h > self.discard_h, tf.int32)
         keep_idxs = w_keep_idxs * h_keep_idxs
 
         boxes = tf.boolean_mask(boxes, keep_idxs)
@@ -291,7 +292,7 @@ class BackboneTransform(object):
 
 
 class SSDAugmentation(object):
-    def __init__(self, mode, mean=cfg.MEANS, std=cfg.STD):
+    def __init__(self, mode, mean, std, output_size, proto_output_size, discard_box_width, discard_box_height):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
@@ -299,7 +300,7 @@ class SSDAugmentation(object):
                 # Expand(mean),
                 # RandomSampleCrop(),
                 # RandomMirror(),
-                Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
+                Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
             ])
@@ -307,7 +308,7 @@ class SSDAugmentation(object):
             # no data augmentation for validation and test set
             self.augmentations = Compose([
                 ConvertFromInts(),
-                Resize(cfg.OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE),
+                Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
             ])

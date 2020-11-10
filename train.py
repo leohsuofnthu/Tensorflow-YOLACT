@@ -104,12 +104,9 @@ def main(argv):
     logging.info("Creating the model instance of YOLACT")
     model = yolact.Yolact(**cfg.model_parmas)
 
-    # Need default anchor
-    anchorobj = anchor.Anchor(**cfg.anchor_params)
-    anchors = anchorobj.get_anchors()
-
     # Add detection Layer after model
-    detection_layer = Detect(**cfg.detection_params)
+    # todo create singleton here
+    # detection_layer = Detect(**cfg.detection_params)
 
     # add weight decay
     for layer in model.layers:

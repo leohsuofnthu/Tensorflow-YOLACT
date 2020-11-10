@@ -2,17 +2,20 @@ import tensorflow as tf
 
 from data.coco_tfrecord_decoder import TfExampleDecoder
 from utils.augmentation import SSDAugmentation
-import config as cfg
 
 
 class Parser(object):
-    def __init__(self, anchor_instance, use_bfloat16=True, mode=None):
+    def __init__(self, anchor_instance, mode=None, **parser_params):
 
         self._mode = mode
         self._is_training = (mode == "train")
         self._example_decoder = TfExampleDecoder()
         self._anchor_instance = anchor_instance
-        self._use_bfloat16 = use_bfloat16
+        self.output_size = parser_params['output_size']
+        self.proto_out_size = parser_params['proto_out_size']
+        self.num_max_padding = parser_params['num_max_padding']
+        self.matching_params = parser_params['matching_params']
+        self.augmentation_params = parser_params['augmentation_params']
 
         if mode == "train":
             self._parse_fn = self._parse_train_data
@@ -37,6 +40,9 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
+        original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
+        original_img = tf.image.resize(original_img, [self.output_size, self.output_size])
+
         # put crowd annotation after non_crowd annotation
         crowd_idx = tf.where(is_crowds == True)[:, 0]
         non_crowd_idx = tf.where(tf.logical_not(is_crowds))[:, 0]
@@ -47,25 +53,22 @@ class Parser(object):
         masks = tf.gather(masks, idxs)
         is_crowds = tf.gather(is_crowds, idxs)
 
-        original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
-        original_img = tf.image.resize(original_img, [cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE])
-
         # Data Augmentation, Normalization, and Resize
-        augmentor = SSDAugmentation(mode=mode)
+        augmentor = SSDAugmentation(mode=mode, **self.augmentation_params)
         image, masks, norm_boxes, classes, is_crowds = augmentor(image, masks, boxes, classes, is_crowds)
 
         # Calculate num of crowd annotation here
         num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
-        boxes = norm_boxes * cfg.OUTPUT_SIZE
+        boxes = norm_boxes * self.output_size
 
         # resized boxes for proto output size (for mask loss)
-        boxes_norm = norm_boxes * cfg.PROTO_OUTPUT_SIZE
+        boxes_norm = norm_boxes * self.proto_out_size
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
-            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, num_crowd)
+            boxes, classes, num_crowd, **self.matching_params)
 
         if mode == 'train' and num_crowd > 0:
             # do not return annotation, cuz it s not used in loss calculation but evaluation
@@ -78,10 +81,10 @@ class Parser(object):
         num_obj = tf.shape(classes)[0]
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
-        num_padding = cfg.NUM_MAX_PADDING - tf.shape(classes)[0]
+        num_padding = self.num_max_padding - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
-        pad_masks = tf.zeros([num_padding, cfg.PROTO_OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE])
+        pad_masks = tf.zeros([num_padding, self.proto_out_size, self.proto_out_size])
 
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)

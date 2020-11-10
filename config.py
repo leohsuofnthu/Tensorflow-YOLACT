@@ -10,13 +10,15 @@ parser_params = {
         # These are in RGB and are for ImageNet
         "mean": (0.407, 0.457, 0.485),
         "std": (0.225, 0.224, 0.229),
+        "output_size": IMG_SIZE,
+        "proto_output_size": PROTO_OUTPUT_SIZE,
         "discard_box_width": 4. / 550.,
         "discard_box_height": 4. / 550.,
     },
     "matching_params": {
-        "pos_iou_threshold": 0.5,
-        "nrg_iou_threshold": 0.4,
-        "crowd_iou_threshold": 0.7
+        "threshold_pos": 0.5,
+        "threshold_neg": 0.4,
+        "threshold_crowd": 0.7
     }
 }
 
@@ -36,6 +38,8 @@ detection_params = {
 }
 
 model_parmas = {
+    # choose resnet50 or resnet101
+    "backbone": "resnet50",
     "input_size": IMG_SIZE,
     "fpn_channels": 256,
     "feature_map_size": [69, 35, 18, 9, 5],
