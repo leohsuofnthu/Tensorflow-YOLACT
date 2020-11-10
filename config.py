@@ -1,18 +1,49 @@
-# These are in RGB and are for ImageNet
-MEANS = (0.407, 0.457, 0.485)
-STD = (0.225, 0.224, 0.229)
-
-NUM_CLASS = 91
-OUTPUT_SIZE = 550
+NUM_CLASSES = 91
+IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
 
-discard_box_width = 4. / 550.
-discard_box_height = 4. / 550.
+parser_params = {
+    "output_size": IMG_SIZE,
+    "proto_out_size": PROTO_OUTPUT_SIZE,
+    "num_max_padding": 100,
+    "augmentation_params": {
+        # These are in RGB and are for ImageNet
+        "mean": (0.407, 0.457, 0.485),
+        "std": (0.225, 0.224, 0.229),
+        "discard_box_width": 4. / 550.,
+        "discard_box_height": 4. / 550.,
+    },
+    "matching_params": {
+        "pos_iou_threshold": 0.5,
+        "nrg_iou_threshold": 0.4,
+        "crowd_iou_threshold": 0.7
+    }
+}
 
-POS_IOU_THRESHOLD = 0.5
-NEG_IOU_THRESHOLD = 0.4
-CROWD_IOU_THRESHOLD = 0.7
-NUM_MAX_PADDING = 100
+anchor_params = {
+    "img_size": IMG_SIZE,
+    "feature_map_size": [69, 35, 18, 9, 5],
+    "aspect_ratio": [1, 0.5, 2],
+    "scale": [24, 48, 96, 192, 384]
+}
+
+detection_params = {
+    "num_cls": NUM_CLASSES,
+    "label_background": 0,
+    "top_k": 200,
+    "conf_threshold": 0.05,
+    "nms_threshold": 0.5,
+}
+
+model_parmas = {
+    "input_size": IMG_SIZE,
+    "fpn_channels": 256,
+    "feature_map_size": [69, 35, 18, 9, 5],
+    "num_class": NUM_CLASSES,
+    "num_mask": 32,
+    "aspect_ratio": [1, 0.5, 2],
+    "scales": [24, 48, 96, 192, 384]
+}
 
 # RGB values of color for drawing nice bounding boxes
 COLORS = ((244, 67, 54),

@@ -16,6 +16,8 @@ from utils import learning_rate_schedule
 from eval import evaluate
 from layers.detection import Detect
 
+import config as cfg
+
 tf.random.set_seed(1234)
 
 FLAGS = flags.FLAGS
@@ -24,9 +26,9 @@ flags.DEFINE_string('tfrecord_dir', './data/coco',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 800000,
+flags.DEFINE_integer('train_iter', 10000,
                      'iteraitons')
-flags.DEFINE_integer('batch_size', 2,
+flags.DEFINE_integer('batch_size', 3,
                      'batch size')
 flags.DEFINE_float('lr', 1e-3,
                    'learning rate')
@@ -34,11 +36,11 @@ flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
-flags.DEFINE_float('print_interval', 1,
+flags.DEFINE_float('print_interval', 10,
                    'number of iteration between printing loss')
-flags.DEFINE_float('save_interval', 1,
+flags.DEFINE_float('save_interval', 100,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('valid_iter', 5000,
+flags.DEFINE_float('valid_iter', 1000,
                    'number of iteration between saving validation weights')
 
 
@@ -68,7 +70,7 @@ def valid_step(model,
                labels):
     # Todo Calculate mAP here for evaluation
     output = model(image, training=False)
-    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 80)
+    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss, seg_loss
 
@@ -90,36 +92,24 @@ def main(argv):
     logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
     train_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=FLAGS.batch_size,
-                                                    subset='train')
+                                                    subset='train',
+                                                    **cfg.parser_params)
 
     valid_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
                                                     batch_size=1,
-                                                    subset='val')
+                                                    subset='val',
+                                                    **cfg.parser_params)
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = yolact.Yolact(input_size=550,
-                          fpn_channels=256,
-                          feature_map_size=[69, 35, 18, 9, 5],
-                          num_class=91,
-                          num_mask=32,
-                          aspect_ratio=[1, 0.5, 2],
-                          scales=[24, 48, 96, 192, 384])
+    model = yolact.Yolact(**cfg.model_parmas)
 
     # Need default anchor
-    anchorobj = anchor.Anchor(img_size=550,
-                              feature_map_size=[69, 35, 18, 9, 5],
-                              aspect_ratio=[1, 0.5, 2],
-                              scale=[24, 48, 96, 192, 384])
+    anchorobj = anchor.Anchor(**cfg.anchor_params)
     anchors = anchorobj.get_anchors()
 
     # Add detection Layer after model
-    detection_layer = Detect(num_cls=91,
-                             label_background=0,
-                             top_k=200,
-                             conf_threshold=0.05,
-                             nms_threshold=0.5,
-                             anchors=anchors)
+    detection_layer = Detect(**cfg.detection_params)
 
     # add weight decay
     for layer in model.layers:
@@ -216,8 +206,7 @@ def main(argv):
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation and print mAP table
-            evaluate(model, detection_layer, valid_dataset)
-            """
+            # evaluate(model, detection_layer, valid_dataset)
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
                 if valid_iter > FLAGS.valid_iter:
@@ -263,7 +252,7 @@ def main(argv):
                                                v_conf.result(),
                                                v_mask.result(),
                                                v_seg.result()))
-            """
+
             # Todo save the best mAP
             """
             if valid_loss.result() < best_val:
@@ -278,13 +267,11 @@ def main(argv):
             mask.reset_states()
             seg.reset_states()
 
-            """
             valid_loss.reset_states()
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
             v_seg.reset_states()
-            """
 
 
 if __name__ == '__main__':

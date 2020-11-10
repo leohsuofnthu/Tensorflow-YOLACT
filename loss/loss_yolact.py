@@ -139,12 +139,7 @@ class YOLACTLoss(object):
             max_id = max_id_for_anchors[idx]
 
             pos_indices = tf.squeeze(tf.where(pos == 1))
-            # tf.print("num_pos", tf.shape(pos_indices))
-            """
-            if tf.size(pos_indices) == 0:
-                tf.print("detect no positive")
-                continue
-            """
+
             # Todo decrease the number pf positive to be 100
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
@@ -166,9 +161,8 @@ class YOLACTLoss(object):
 
             # crop the pred (not real crop, zero out the area outside the gt box)
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
-            # Todo check if bbox is at same scale as s
             s = utils.crop(s, bbox)
-            loss = tf.reduce_sum(s, axis=[1, 2]) / area
+            loss = tf.reduce_sum(s, axis=[1, 2]) / (area)
             loss_mask += tf.reduce_sum(loss)
 
         loss_mask /= tf.cast(total_pos, tf.float32)

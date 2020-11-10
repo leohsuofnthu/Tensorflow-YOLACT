@@ -52,26 +52,27 @@ class Parser(object):
 
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode)
-        image, masks, boxes, classes, is_crowds = augmentor(image, masks, boxes, classes, is_crowds)
+        image, masks, norm_boxes, classes, is_crowds = augmentor(image, masks, boxes, classes, is_crowds)
 
         # Calculate num of crowd annotation here
         num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
-        boxes = boxes * cfg.OUTPUT_SIZE
+        boxes = norm_boxes * cfg.OUTPUT_SIZE
+
+        # resized boxes for proto output size (for mask loss)
+        boxes_norm = norm_boxes * cfg.PROTO_OUTPUT_SIZE
 
         # matching anchors
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, num_crowd)
 
-        if mode == 'train':
+        if mode == 'train' and num_crowd > 0:
             # do not return annotation, cuz it s not used in loss calculation but evaluation
             masks = masks[:-num_crowd]
             classes = classes[:-num_crowd]
             boxes = boxes[:-num_crowd]
-
-        # resized boxes for proto output size (for mask loss)
-        boxes_norm = boxes * (cfg.PROTO_OUTPUT_SIZE / cfg.OUTPUT_SIZE)
+            boxes_norm = boxes_norm[:-num_crowd]
 
         # number of object in training sample
         num_obj = tf.shape(classes)[0]

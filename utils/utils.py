@@ -104,7 +104,6 @@ def crop(pred, boxes):
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
     crop_mask = tf.cast(crop_mask, tf.float32)
-    # tf.print('crop', tf.shape(crop_mask))
 
     return pred * crop_mask
 

@@ -14,7 +14,7 @@ from data import coco_tfrecord_parser
 
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
-def prepare_dataloader(tfrecord_dir, batch_size, subset="train"):
+def prepare_dataloader(tfrecord_dir, batch_size, subset="train", parser_params):
     anchorobj = anchor.Anchor(img_size=550,
                               feature_map_size=[69, 35, 18, 9, 5],
                               aspect_ratio=[1, 0.5, 2],
