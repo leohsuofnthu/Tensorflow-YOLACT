@@ -42,15 +42,6 @@ class YOLACTLoss(object):
         max_id_for_anchors = label['max_id_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
-        num_crowd = label['num_crowd']
-
-        # split the crowd annotation, we dont use crowd annotation for training
-        if num_crowd > 0:
-            box_targets = box_targets[:-num_crowd]
-            cls_targets = cls_targets[:-num_crowd]
-            bbox_norm = bbox_norm[:-num_crowd]
-            masks = masks[:-num_crowd]
-            classes = classes[:-num_crowd]
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box

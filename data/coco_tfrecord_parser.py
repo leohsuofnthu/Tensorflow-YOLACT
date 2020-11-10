@@ -55,31 +55,32 @@ class Parser(object):
         image, masks, boxes, classes, is_crowds = augmentor(image, masks, boxes, classes, is_crowds)
 
         # Calculate num of crowd annotation here
-        tf.print(is_crowds)
         num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
         boxes = boxes * cfg.OUTPUT_SIZE
 
+        # matching anchors
+        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
+            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, num_crowd)
+
+        if mode == 'train':
+            # do not return annotation, cuz it s not used in loss calculation but evaluation
+            masks = masks[:-num_crowd]
+            classes = classes[:-num_crowd]
+            boxes = boxes[:-num_crowd]
+
         # resized boxes for proto output size (for mask loss)
         boxes_norm = boxes * (cfg.PROTO_OUTPUT_SIZE / cfg.OUTPUT_SIZE)
 
         # number of object in training sample
-        num_obj = tf.size(classes)
-
-        # matching anchors
-        cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
-            cfg.POS_IOU_THRESHOLD, cfg.NEG_IOU_THRESHOLD, boxes, classes, num_crowd)
+        num_obj = tf.shape(classes)[0]
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = cfg.NUM_MAX_PADDING - tf.shape(classes)[0]
         pad_classes = tf.zeros([num_padding], dtype=tf.int64)
         pad_boxes = tf.zeros([num_padding, 4])
         pad_masks = tf.zeros([num_padding, cfg.PROTO_OUTPUT_SIZE, cfg.PROTO_OUTPUT_SIZE])
-
-        # Todo how to deal with more gracefully
-        if tf.shape(classes)[0] == 1:
-            masks = tf.expand_dims(masks, axis=0)
 
         masks = tf.concat([masks, pad_masks], axis=0)
         classes = tf.concat([classes, pad_classes], axis=0)

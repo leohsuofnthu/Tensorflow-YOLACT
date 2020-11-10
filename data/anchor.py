@@ -152,6 +152,8 @@ class Anchor(object):
             # assign neutral for those neg iou that over crowd threshold
             crowd_neu_iou = tf.where(
                 tf.math.logical_and((max_iou_for_anchors <= 0), crowd_max_iou_for_anchors > cfg.CROWD_IOU_THRESHOLD))
+
+            # reassigh from negative to neutral
             max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, crowd_neu_iou,
                                                               -1 * tf.ones(tf.size(crowd_neu_iou)))
         match_positiveness = max_iou_for_anchors
