@@ -249,7 +249,9 @@ class Resize(object):
         masks = tf.squeeze(masks)
         masks = tf.cast(masks, tf.float32)
 
-        tf.print("masks size", tf.shape(masks))
+        if tf.rank(masks) < 3:
+            masks = tf.expand_dims(masks, axis=0)
+
         # discard the boxes that are too small
         # todo general reading config file
         w = cfg.OUTPUT_SIZE * (boxes[:, 3] - boxes[:, 1])  # xmax - xmin
@@ -260,20 +262,10 @@ class Resize(object):
         h_keep_idxs = tf.cast(h > cfg.discard_box_height, tf.int32)
         keep_idxs = w_keep_idxs * h_keep_idxs
 
-        tf.print("w keep", w_keep_idxs)
-        tf.print("h keep", h_keep_idxs)
-        tf.print("keep", keep_idxs)
-        tf.print("sum", tf.reduce_sum(keep_idxs))
-
         boxes = tf.boolean_mask(boxes, keep_idxs)
         masks = tf.boolean_mask(masks, keep_idxs)
         labels = tf.boolean_mask(labels, keep_idxs)
         is_crowds = tf.boolean_mask(is_crowds, keep_idxs)
-
-        tf.print(tf.shape(boxes))
-        tf.print(tf.shape(masks))
-        tf.print(tf.shape(labels))
-        tf.print(tf.shape(is_crowds))
 
         return image, masks, boxes, labels, is_crowds
 

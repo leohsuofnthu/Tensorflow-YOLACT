@@ -2,6 +2,7 @@ from itertools import product
 from math import sqrt
 
 import tensorflow as tf
+import config as cfg
 
 
 # Can generate one instance only when creating the model
@@ -90,8 +91,11 @@ class Anchor(object):
         # create same shape of matrix as intersection
         pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=0)
 
-        # calculate A ∪ B
-        pairwise_union = pairwise_area - pairwise_inter
+        # calculate A ∪ B, consider crowd situation
+        if is_crowd:
+            pairwise_union = tf.expand_dims(area_gt, axis=0)
+        else:
+            pairwise_union = pairwise_area - pairwise_inter
 
         # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
         return pairwise_inter / pairwise_union
@@ -99,13 +103,16 @@ class Anchor(object):
     def get_anchors(self):
         return self.anchors
 
-    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels, crowd_bbox=None):
+    def matching(self, threshold_pos, threshold_neg, gt_bbox, gt_labels, num_crowd=None):
         """
         :param threshold_neg:
         :param threshold_pos:
         :param gt_bbox:
         :param gt_labels:
         :return:
+
+        Args:
+            num_crowd:
         """
         num_gt = tf.shape(gt_bbox)[0]
         # tf.print("num gt", num_gt)
@@ -133,6 +140,22 @@ class Anchor(object):
         neu_iou = tf.where(
             tf.math.logical_and((max_iou_for_anchors <= threshold_pos), max_iou_for_anchors >= threshold_neg))
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, neu_iou, -1 * tf.ones(tf.size(neu_iou)))
+
+        # deal with crowd annotations
+        if num_crowd > 0 and cfg.CROWD_IOU_THRESHOLD < 1:
+            # crowd pairwise IoU
+            crowd_pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox[-num_crowd:])
+
+            # assign the max overlap gt index for each anchor
+            crowd_max_iou_for_anchors = tf.reduce_max(crowd_pairwise_iou, axis=-1)
+
+            # assign neutral for those neg iou that over crowd threshold
+            crowd_neu_iou = tf.where(
+                tf.math.logical_and((max_iou_for_anchors <= 0), crowd_max_iou_for_anchors > cfg.CROWD_IOU_THRESHOLD))
+
+            # reassigh from negative to neutral
+            max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, crowd_neu_iou,
+                                                              -1 * tf.ones(tf.size(crowd_neu_iou)))
         match_positiveness = max_iou_for_anchors
 
         # create class target
