@@ -2,6 +2,7 @@ from itertools import product
 from math import sqrt
 
 import tensorflow as tf
+import config as cfg
 
 
 # Can generate one instance only when creating the model
@@ -109,10 +110,13 @@ class Anchor(object):
         :return:
 
         Args:
+            num_crowd:
+            threshold_pos:
+            threshold_neg:
+            threshold_crowd:
             pos_iou_threshold:
             num_crowd:
             neg_iou_threshold:
-            num_crowd:
         """
         num_gt = tf.shape(gt_bbox)[0]
         # tf.print("num gt", num_gt)
