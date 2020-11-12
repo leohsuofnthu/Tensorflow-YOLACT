@@ -240,6 +240,8 @@ class Resize(object):
         self.discard_h = discard_h
 
     def __call__(self, image, masks, boxes, labels, is_crowds):
+        # todo resize image mask while maintaining aspect ratio, also consider how to convert bbox
+
         # resize the image to output size
         image = tf.image.resize(image, [self.output_size, self.output_size])
 
@@ -254,7 +256,6 @@ class Resize(object):
             masks = tf.expand_dims(masks, axis=0)
 
         # discard the boxes that are too small
-        # todo general reading config file
         w = self.output_size * (boxes[:, 3] - boxes[:, 1])  # xmax - xmin
         h = self.output_size * (boxes[:, 2] - boxes[:, 0])  # ymax - ymin
 

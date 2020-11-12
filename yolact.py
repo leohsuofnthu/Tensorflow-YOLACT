@@ -11,6 +11,8 @@ from layers.head import PredictionModule
 from layers.protonet import ProtoNet
 from utils.create_prior import make_priors
 
+import config as cfg
+
 assert tf.__version__.startswith('2')
 
 
@@ -24,23 +26,15 @@ class Yolact(tf.keras.Model):
     def __init__(self, backbone, input_size, fpn_channels, feature_map_size, num_class, num_mask, aspect_ratio, scales):
         super(Yolact, self).__init__()
         # choose the backbone network
-        if backbone == "resnet50":
-            out = ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out']
-            # use pre-trained ResNet50
-            # Todo figure out how pre-trained can be train again
-            base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
-                                                        include_top=False,
-                                                        layers=tf.keras.layers,
-                                                        weights='imagenet')
-            # extract certain feature maps for FPN
-            self.backbone_resnet = tf.keras.Model(inputs=base_model.input,
-                                                  outputs=[base_model.get_layer(x).output for x in out])
-        elif backbone == "resnet101":
-            ...
-        else:
-            # raise error here
-            ...
+        try:
+            out = cfg.backbones_extracted[backbone]
+            base_model = cfg.backbones_objects[backbone]
+        except:
+            raise Exception(f'Backbone option of {backbone} is not supported yet!!!')
 
+        # extract certain feature maps for FPN
+        self.backbone_resnet = tf.keras.Model(inputs=base_model.input,
+                                              outputs=[base_model.get_layer(x).output for x in out])
         # create remain parts of model
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
         self.protonet = ProtoNet(num_mask)

@@ -118,10 +118,19 @@ class Anchor(object):
             num_crowd:
             neg_iou_threshold:
         """
+        if num_crowd > 0:
+            # split the gt_bbox
+            gt_bbox = gt_bbox[:-num_crowd]
+            crowd_gt_bbox = gt_bbox[-num_crowd:]
+        else:
+            crowd_gt_bbox = tf.zeros_like(gt_bbox)
+
+        # Matching only for non-crowd annotation
+        # --------------------------------------------------------------------------------------------------------------
         num_gt = tf.shape(gt_bbox)[0]
         # tf.print("num gt", num_gt)
         # pairwise IoU
-        pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox)
+        pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox, is_crowd=False)
 
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
@@ -131,7 +140,7 @@ class Anchor(object):
         forced_update_id = tf.cast(tf.range(0, num_gt), tf.int64)
 
         # force the iou over threshold for not wasting any training data
-        forced_update_iou = tf.reduce_max(pairwise_iou, axis=0) + 2
+        forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
         forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
@@ -145,10 +154,11 @@ class Anchor(object):
             tf.math.logical_and((max_iou_for_anchors <= threshold_pos), max_iou_for_anchors >= threshold_neg))
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, neu_iou, -1 * tf.ones(tf.size(neu_iou)))
 
-        # deal with crowd annotations
+        # deal with crowd annotations, only affect non-positive
+        # --------------------------------------------------------------------------------------------------------------
         if num_crowd > 0 and threshold_crowd < 1:
             # crowd pairwise IoU
-            crowd_pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox[-num_crowd:])
+            crowd_pairwise_iou = self._pairwise_iou(gt_bbox=crowd_gt_bbox, is_crowd=True)
 
             # assign the max overlap gt index for each anchor
             crowd_max_iou_for_anchors = tf.reduce_max(crowd_pairwise_iou, axis=-1)
