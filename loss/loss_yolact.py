@@ -42,6 +42,8 @@ class YOLACTLoss(object):
         max_id_for_anchors = label['max_id_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
+        tf.print("num objects:", num_obj)
+
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
@@ -127,6 +129,8 @@ class YOLACTLoss(object):
 
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
+        proto_h = shape_proto[1]
+        proto_w = shape_proto[2]
         loss_mask = 0.
         total_pos = 0
         for idx in tf.range(num_batch):
@@ -145,7 +149,6 @@ class YOLACTLoss(object):
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
             if tf.size(pos_indices) == 1:
-                # tf.print("detect only one dim")
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
             total_pos += tf.size(pos_indices)
@@ -158,8 +161,10 @@ class YOLACTLoss(object):
             bbox = tf.gather(bbox_norm, pos_max_id)
             bbox_center = utils.map_to_center_form(bbox)
             area = bbox_center[:, -1] * bbox_center[:, -2]
+            tf.print(area)
 
             # crop the pred (not real crop, zero out the area outside the gt box)
+            # pred_mask = tf.clip_by_value(pred_mask, clip_value_min=0, clip_value_max=1.0)
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
             s = utils.crop(s, bbox)
             loss = tf.reduce_sum(s, axis=[1, 2]) / (area)

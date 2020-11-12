@@ -28,6 +28,7 @@ class Yolact(tf.keras.Model):
             out = ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out']
             # use pre-trained ResNet50
             # Todo figure out how pre-trained can be train again
+            # Todo make those as part of config file
             base_model = tf.keras.applications.ResNet50(input_shape=(550, 550, 3),
                                                         include_top=False,
                                                         layers=tf.keras.layers,
