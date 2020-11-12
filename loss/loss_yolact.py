@@ -42,8 +42,6 @@ class YOLACTLoss(object):
         max_id_for_anchors = label['max_id_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
-        tf.print("num objects:", num_obj)
-
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
@@ -89,7 +87,7 @@ class YOLACTLoss(object):
         pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
         pos_gt = tf.gather(gt_cls, pos_indices[:, 0])
 
-        # calculate the needed amount of  negative sample
+        # calculate the needed amount of negative sample
         num_pos = tf.shape(pos_gt)[0]
         num_neg_needed = num_pos * self._neg_pos_ratio
 
@@ -133,6 +131,7 @@ class YOLACTLoss(object):
         proto_w = shape_proto[2]
         loss_mask = 0.
         total_pos = 0
+
         for idx in tf.range(num_batch):
             # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -148,9 +147,25 @@ class YOLACTLoss(object):
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
+
             if tf.size(pos_indices) == 1:
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
+            elif tf.size(pos_indices) == 0:
+                continue
+            else:
+                ...
+            """
+            old_num_pos = tf.size(pos_indices)
+            if old_num_pos > self.cfg.masks_to_train:
+                perm = torch.randperm(pos_coef.size(0))
+                select = perm[:self.cfg.masks_to_train]
+                pos_coef = pos_coef[select]
+                pos_prior_index = pos_prior_index[select]
+                pos_prior_box = pos_prior_box[select]
+            num_pos = pos_coef.size(0)
+            """
+
             total_pos += tf.size(pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
@@ -161,7 +176,6 @@ class YOLACTLoss(object):
             bbox = tf.gather(bbox_norm, pos_max_id)
             bbox_center = utils.map_to_center_form(bbox)
             area = bbox_center[:, -1] * bbox_center[:, -2]
-            tf.print(area)
 
             # crop the pred (not real crop, zero out the area outside the gt box)
             # pred_mask = tf.clip_by_value(pred_mask, clip_value_min=0, clip_value_max=1.0)

@@ -61,9 +61,11 @@ class Parser(object):
         num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
+        # Todo if we preserve aspecct ratio, how to deal with this
         boxes = norm_boxes * self.output_size
 
         # resized boxes for proto output size (for mask loss)
+        # Todo if we preserve aspecct ratio, how to deal with this
         boxes_norm = norm_boxes * self.proto_out_size
 
         # matching anchors

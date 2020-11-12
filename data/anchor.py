@@ -118,9 +118,6 @@ class Anchor(object):
             # split the gt_bbox
             gt_bbox = gt_bbox[:-num_crowd]
             crowd_gt_bbox = gt_bbox[-num_crowd:]
-            tf.print("has crowd")
-            tf.print("gt", tf.shape(gt_bbox))
-            tf.print("crowd", tf.shape(crowd_gt_bbox))
         else:
             crowd_gt_bbox = tf.zeros_like(gt_bbox)
 
@@ -130,7 +127,6 @@ class Anchor(object):
         # tf.print("num gt", num_gt)
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox, is_crowd=False)
-        tf.print("pairwise iou", tf.shape(pairwise_iou))
 
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
@@ -159,7 +155,6 @@ class Anchor(object):
         if num_crowd > 0 and threshold_crowd < 1:
             # crowd pairwise IoU
             crowd_pairwise_iou = self._pairwise_iou(gt_bbox=crowd_gt_bbox, is_crowd=True)
-            tf.print("crowd iou", tf.shape(crowd_pairwise_iou))
 
             # assign the max overlap gt index for each anchor
             crowd_max_iou_for_anchors = tf.reduce_max(crowd_pairwise_iou, axis=-1)

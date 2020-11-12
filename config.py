@@ -1,3 +1,5 @@
+import tensorflow as tf
+
 NUM_CLASSES = 91
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
@@ -48,6 +50,26 @@ model_parmas = {
     "aspect_ratio": [1, 0.5, 2],
     "scales": [24, 48, 96, 192, 384]
 }
+
+# Adding any backbone u want as long as the output size are: (28, 28), (14, 14), (7,7)
+backbones_objects = dict({
+    "resnet50": tf.keras.applications.ResNet50(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                                               include_top=False,
+                                               layers=tf.keras.layers,
+                                               weights='imagenet'),
+    "resnet101": tf.keras.applications.ResNet101(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                                                 include_top=False,
+                                                 layers=tf.keras.layers,
+                                                 weights='imagenet'),
+    # "efficientNet-B7": ...
+
+})
+
+backbones_extracted = dict({
+    "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
+    "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
+    # "efficientNet-B7":[]
+})
 
 # RGB values of color for drawing nice bounding boxes
 COLORS = ((244, 67, 54),
