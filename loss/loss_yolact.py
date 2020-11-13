@@ -30,18 +30,26 @@ class YOLACTLoss(object):
         pred_cls = pred['pred_cls']
         pred_offset = pred['pred_offset']
         pred_mask_coef = pred['pred_mask_coef']
+        tf.print("pred mask coef", tf.shape(pred_mask_coef))
         proto_out = pred['proto_out']
+        tf.print("proto out", tf.shape(proto_out))
         seg = pred['seg']
+        tf.print("seg", tf.shape(seg))
 
         # all label component
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
         positiveness = label['positiveness']
         bbox_norm = label['bbox_for_norm']
+        tf.print("bbox_norm", tf.shape(bbox_norm))
         masks = label['mask_target']
+        tf.print("masks", tf.shape(masks))
         max_id_for_anchors = label['max_id_for_anchors']
+        tf.print("max_id_for_anchors", tf.shape(max_id_for_anchors))
         classes = label['classes']
+        tf.print("classes", tf.shape(classes))
         num_obj = label['num_obj']
+        tf.print("num_obj", tf.shape(num_obj))
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
@@ -72,7 +80,9 @@ class YOLACTLoss(object):
 
         # reshape pred_cls from [batch, num_anchor, num_cls] => [batch * num_anchor, num_cls]
         pred_cls = tf.reshape(pred_cls, [-1, num_cls])
-
+        pred_cls_max = tf.reduce_max(tf.reduce_max(pred_cls, axis=-1))
+        logsumexp_pred_cls = tf.math.log(
+            tf.reduce_sum(tf.math.exp(pred_cls - pred_cls_max), -1)) + pred_cls_max - pred_cls[:, 0]
         # reshape gt_cls from [batch, num_anchor] => [batch * num_anchor, 1]
         gt_cls = tf.expand_dims(gt_cls, axis=-1)
         gt_cls = tf.reshape(gt_cls, [-1, 1])
@@ -91,17 +101,13 @@ class YOLACTLoss(object):
         num_pos = tf.shape(pos_gt)[0]
         num_neg_needed = num_pos * self._neg_pos_ratio
 
+        # sort and find negative samples
         neg_pred_cls = tf.gather(pred_cls, neg_indices[:, 0])
         neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
 
-        # apply softmax on the pred_cls
-        neg_softmax = neg_pred_cls
-
-        # -log(softmax class 0)
-        neg_minus_log_class0 = -1 * tf.math.log(neg_softmax[:, 0])
-
         # sort of -log(softmax class 0)
-        neg_minus_log_class0_sort = tf.argsort(neg_minus_log_class0, direction="DESCENDING")
+        neg_log_prob = tf.gather(logsumexp_pred_cls, neg_indices[:, 0])
+        neg_minus_log_class0_sort = tf.argsort(neg_log_prob, direction="DESCENDING")
 
         # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
         neg_indices_for_loss = neg_minus_log_class0_sort[:num_neg_needed]
@@ -117,6 +123,7 @@ class YOLACTLoss(object):
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
         # loss
+        # Todo change to logsoftmax ?
         loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(target_labels, target_logits)) / tf.cast(
             num_pos, tf.float32)
 
