@@ -143,20 +143,30 @@ def map_to_bbox(anchors, loc_pred):
 def intersection(box_a, box_b):
     """
         ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
-        :param gt_bbox: [num_obj, 4]
+        :param gt_bbox: [n, num_obj, 4]
         :return:
         """
+    """
+    tf.print("box a", tf.shape(box_a))
+    tf.print("box b", tf.shape(box_b))
+    n = tf.shape(box_a)[0]
+    A = tf.shape(box_a)[1]
+    B = tf.shape(box_b)[1]
+    """
 
     # unstack the ymin, xmin, ymax, xmax
     ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
     ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
 
+    tf.print(tf.shape(xmin_anchor))
     # calculate intersection
     all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=1))
     all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=1))
     all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=1))
     all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=1))
+    tf.print(tf.shape(all_pairs_max_xmin))
     intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
+    tf.print(tf.shape(intersect_heights))
     intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
     return intersect_heights * intersect_widths
 
@@ -177,6 +187,11 @@ def jaccard(box_a, box_b, is_crowd=False):
 
     area_a = (xmax_a - xmin_a) * (ymax_a - ymin_a)
     area_b = (xmax_b - xmin_b) * (ymax_b - ymin_b)
+
+    """
+    tf.print("b area a", tf.shape(area_a))
+    tf.print("b area b", tf.shape(area_b))
+    """
 
     # create same shape of matrix as intersection
     pairwise_area = tf.expand_dims(area_a, axis=-1) + tf.expand_dims(area_b, axis=1)
@@ -200,8 +215,13 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
     masks_a = tf.reshape(masks_a, (num_a, -1))
     masks_b = tf.reshape(masks_b, (num_b, -1))
     inter = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
+    # tf.print("inter", inter)
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
-    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
+    # tf.print("area a", tf.shape(area_a))
+    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=0)
+    # tf.print("area b", tf.shape(area_b))
+
+    # tf.print("a+b", tf.shape(area_a + area_b))
 
     union = area_a if is_crowd else (area_a + area_b - inter)
 
@@ -211,26 +231,25 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
 # post process after detection layer
 # Todo: Use tensorflows intepolation mode option
 def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
-    dets = detection[batch_idx]
-    dets = dets['detection']
-
     # Todo: If dets is None
     # Todo: If scorethreshold is not zero
     """
-    Ref:
-    if dets is None:
-        return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
-
     if score_threshold > 0:
-        keep = dets['score'] > score_threshold
+        keep = detection['score'] > score_threshold
 
-        for k in dets:
+        for k in detection:
             if k != 'proto':
-                dets[k] = dets[k][keep]
-        
-        if dets['score'].size(0) == 0:
+                detection[k] = detection[k][keep]
+
+        if detection['score'].size(0) == 0:
             return [torch.Tensor()] * 4
     """
+    dets = detection[batch_idx]
+    dets = dets['detection']
+
+    if dets is None:
+        return None, None, None, None  # Warning, this is 4 copies of the same thing
+
     classes = dets['class']
     boxes = dets['box']
     scores = dets['score']
@@ -243,10 +262,11 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
     # tf.print("pred mask", tf.shape(pred_mask))
 
-    masks = crop(pred_mask, boxes * float(138.0 / 550.0))
+    if crop_mask:
+        masks = crop(pred_mask, boxes * float(138.0 / 550.0))
 
     # intepolate to original size (test 550*550 here)
-    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
+    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
                             method=intepolation_mode)
 
     masks = tf.cast(masks + 0.5, tf.int64)

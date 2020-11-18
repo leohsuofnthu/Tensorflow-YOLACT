@@ -59,6 +59,7 @@ class Detect(object):
 
         # Todo what if no detection?
         if tf.size(candidate_ROI_idx) == 0:
+            tf.print("No detection")
             return None
         # tf.print('original score', tf.shape(cur_score))
         scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
@@ -88,10 +89,14 @@ class Detect(object):
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
         boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
 
+        tf.print("detected boxes", tf.shape(boxes))
+        tf.print("detected masks", tf.shape(masks))
+        tf.print("detected classes", tf.shape(classes))
+        tf.print("detected scores", tf.shape(scores))
+
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
-
         scores, idx = tf.math.top_k(scores, k=top_k)
         num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
         boxes = tf.gather(boxes, idx, axis=0)
@@ -119,7 +124,6 @@ class Detect(object):
         classes = tf.gather(classes, idx)
         boxes = tf.gather(boxes, idx)
         masks = tf.gather(masks, idx)
-
         # Todo Handle the situation that only 1 or 0 detection
         # second threshold
         positive_det = tf.squeeze(tf.where(scores > iou_threshold))

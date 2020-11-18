@@ -30,26 +30,18 @@ class YOLACTLoss(object):
         pred_cls = pred['pred_cls']
         pred_offset = pred['pred_offset']
         pred_mask_coef = pred['pred_mask_coef']
-        tf.print("pred mask coef", tf.shape(pred_mask_coef))
         proto_out = pred['proto_out']
-        tf.print("proto out", tf.shape(proto_out))
         seg = pred['seg']
-        tf.print("seg", tf.shape(seg))
 
         # all label component
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
         positiveness = label['positiveness']
         bbox_norm = label['bbox_for_norm']
-        tf.print("bbox_norm", tf.shape(bbox_norm))
         masks = label['mask_target']
-        tf.print("masks", tf.shape(masks))
         max_id_for_anchors = label['max_id_for_anchors']
-        tf.print("max_id_for_anchors", tf.shape(max_id_for_anchors))
         classes = label['classes']
-        tf.print("classes", tf.shape(classes))
         num_obj = label['num_obj']
-        tf.print("num_obj", tf.shape(num_obj))
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
@@ -123,7 +115,7 @@ class YOLACTLoss(object):
         target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
 
         # loss
-        # Todo change to logsoftmax ?
+        # Todo change to logsoftmax and manual cross-entropy
         loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(target_labels, target_logits)) / tf.cast(
             num_pos, tf.float32)
 
@@ -140,7 +132,7 @@ class YOLACTLoss(object):
         total_pos = 0
 
         for idx in tf.range(num_batch):
-            # extract randomly postive sample in pred_mask_coef, gt_cls, gt_offset according to positive_indices
+            # extract randomly postive sample in prejd_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
             mask_coef = pred_mask_coef[idx]
             mask_gt = gt_masks[idx]
@@ -150,7 +142,7 @@ class YOLACTLoss(object):
 
             pos_indices = tf.squeeze(tf.where(pos == 1))
 
-            # Todo decrease the number pf positive to be 100
+            # Todo max_masks_for_train
             # [num_pos, k]
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
@@ -162,21 +154,12 @@ class YOLACTLoss(object):
                 continue
             else:
                 ...
-            """
-            old_num_pos = tf.size(pos_indices)
-            if old_num_pos > self.cfg.masks_to_train:
-                perm = torch.randperm(pos_coef.size(0))
-                select = perm[:self.cfg.masks_to_train]
-                pos_coef = pos_coef[select]
-                pos_prior_index = pos_prior_index[select]
-                pos_prior_box = pos_prior_box[select]
-            num_pos = pos_coef.size(0)
-            """
 
             total_pos += tf.size(pos_indices)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
+            pred_mask = tf.nn.sigmoid(pred_mask)
 
             # calculating loss for each mask coef correspond to each postitive anchor
             gt = tf.gather(mask_gt, pos_max_id)
@@ -184,11 +167,14 @@ class YOLACTLoss(object):
             bbox_center = utils.map_to_center_form(bbox)
             area = bbox_center[:, -1] * bbox_center[:, -2]
 
+            # Todo sigmoid first than crop than manual cross-entropy
             # crop the pred (not real crop, zero out the area outside the gt box)
-            # pred_mask = tf.clip_by_value(pred_mask, clip_value_min=0, clip_value_max=1.0)
-            s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
-            s = utils.crop(s, bbox)
-            loss = tf.reduce_sum(s, axis=[1, 2]) / (area)
+            pred_mask = utils.crop(pred_mask, bbox)
+            pred_mask = tf.clip_by_value(pred_mask, clip_value_min=1e-8, clip_value_max=1)
+            s = gt * -tf.math.log(pred_mask) + (1 - gt) * -tf.math.log(1 - pred_mask)
+            # s = tf.nn.sigmoid_cross_entropy_with_logits(gt, tf.clip_by_value(pred_mask, clip_value_min=0,
+            # clip_value_max=1))
+            loss = tf.reduce_sum(s, axis=[1, 2]) / area
             loss_mask += tf.reduce_sum(loss)
 
         loss_mask /= tf.cast(total_pos, tf.float32)

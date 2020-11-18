@@ -38,7 +38,7 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
                    'number of iteration between printing loss')
-flags.DEFINE_float('save_interval', 100,
+flags.DEFINE_float('save_interval', 1000,
                    'number of iteration between saving model(checkpoint)')
 flags.DEFINE_float('valid_iter', 1000,
                    'number of iteration between saving validation weights')
@@ -106,7 +106,8 @@ def main(argv):
 
     # Add detection Layer after model
     # todo create singleton here
-    # detection_layer = Detect(**cfg.detection_params)
+    ar = anchor.Anchor(**cfg.anchor_params).get_anchors()
+    detection_layer = Detect(anchors=ar, **cfg.detection_params)
 
     # add weight decay
     for layer in model.layers:
@@ -203,7 +204,8 @@ def main(argv):
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation and print mAP table
-            # evaluate(model, detection_layer, valid_dataset)
+            evaluate(model, detection_layer, valid_dataset)
+            """
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
                 if valid_iter > FLAGS.valid_iter:
@@ -233,7 +235,7 @@ def main(argv):
                 tf.summary.scalar('V Conf loss', v_conf.result(), step=iterations)
                 tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
                 tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
-
+            """
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
             valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, ' \
                              'Seg Loss: {} '
@@ -243,15 +245,15 @@ def main(argv):
                                                conf.result(),
                                                mask.result(),
                                                seg.result()))
+            """
             logging.info(valid_template.format(iterations + 1,
                                                valid_loss.result(),
                                                v_loc.result(),
                                                v_conf.result(),
                                                v_mask.result(),
                                                v_seg.result()))
-
+            
             # Todo save the best mAP
-            """
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
@@ -264,12 +266,13 @@ def main(argv):
             mask.reset_states()
             seg.reset_states()
 
+            """
             valid_loss.reset_states()
             v_loc.reset_states()
             v_conf.reset_states()
             v_mask.reset_states()
             v_seg.reset_states()
-
+            """
 
 if __name__ == '__main__':
     app.run(main)

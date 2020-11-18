@@ -73,6 +73,8 @@ class Parser(object):
             boxes, classes, num_crowd, **self.matching_params)
 
         if mode == 'train' and num_crowd > 0:
+            # if num_crowd > 0:
+            tf.print(mode)
             # do not return annotation, cuz it s not used in loss calculation but evaluation
             masks = masks[:-num_crowd]
             classes = classes[:-num_crowd]
@@ -81,6 +83,11 @@ class Parser(object):
 
         # number of object in training sample
         num_obj = tf.shape(classes)[0]
+        """
+        if mode != 'train':
+            tf.print("clssssssss", classes)
+            tf.print("num obj", num_obj)
+        """
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = self.num_max_padding - tf.shape(classes)[0]
