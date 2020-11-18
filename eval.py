@@ -95,7 +95,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # get the shape of image
     w = tf.shape(img)[1]
     h = tf.shape(img)[2]
-    tf.print(f"w, h:{w}, {h}")
+    # tf.print(f"w, h:{w}, {h}")
 
     # postprocess the prediction
     classes, scores, boxes, masks = postprocess(dets, w, h, 0, "bilinear")
@@ -128,21 +128,26 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     tf.print('num crowd', tf.shape(num_crowd))
     tf.print("num obj", num_obj)
     """
-
+    tf.print(num_crowd)
     num_crowd = num_crowd.numpy()[0]
+    num_obj = num_obj.numpy()[0]
+    tf.print(num_crowd)
 
     if num_crowd > 0:
-        split = lambda x: (x[:, -num_crowd:], x[:, :-num_crowd])
+        split = lambda x: (x[:, num_obj - num_crowd:num_obj], x[:, :num_obj - num_crowd])
         crowd_boxes, gt_bbox = split(gt_bbox)
         crowd_classes, gt_classes = split(gt_classes)
         crowd_masks, gt_masks = split(gt_masks)
-        """
+        crowd_classes = list(crowd_classes[0].numpy())
+
         tf.print('gt bbox', tf.shape(gt_bbox))
         tf.print('gt classes', tf.shape(gt_classes))
         tf.print('gt masks', tf.shape(gt_masks))
         tf.print('num crowd', tf.shape(num_crowd))
         tf.print("num obj", num_obj)
-        """
+        tf.print("crowdboxes", tf.shape(crowd_boxes))
+        tf.print("crowdmasks", tf.shape(crowd_masks))
+        tf.print("crowd_classes len", len(crowd_classes))
 
     # prepare data
     classes = list(classes)
@@ -166,13 +171,13 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # else
     num_pred = len(classes)
-    num_gt = num_obj.numpy()[0]
+    num_gt = num_obj - num_crowd
 
     tf.print("num pred", num_pred)
     tf.print("num gt", num_gt)
 
     # resize gt mask
-    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [h, w],
+    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0], axis=-1), [h, w],
                                           method='bilinear'), axis=-1)
 
     if num_pred == 1:
@@ -186,18 +191,27 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
-    bbox_iou_cache = tf.squeeze(_bbox_iou(tf.expand_dims(boxes, axis=0), gt_bbox[:, :num_gt])).numpy()
+    bbox_iou_cache = tf.squeeze(_bbox_iou(tf.expand_dims(boxes, axis=0), gt_bbox), axis=0).numpy()
 
-    tf.print(mask_iou_cache)
-    tf.print(bbox_iou_cache)
+    # tf.print(mask_iou_cache)
+    # tf.print(bbox_iou_cache)
 
-    tf.print(tf.shape(mask_iou_cache))
-    tf.print(tf.shape(bbox_iou_cache))
+    tf.print("maskiou:", tf.shape(mask_iou_cache))
+    tf.print("bboxiou", tf.shape(bbox_iou_cache))
 
     # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
-        crowd_mask_iou_cache = _mask_iou(masks, crowd_masks, is_crowd=True).numpy()
-        crowd_bbox_iou_cache = tf.squeeze(_bbox_iou(boxes.float(), crowd_boxes.float(), is_crowd=True)).numpy()
+        # resize gt mask
+        tf.print("crowd masks", tf.shape(crowd_masks))
+        crowd_masks = tf.squeeze(tf.image.resize(tf.expand_dims(crowd_masks[0], axis=-1), [h, w],
+                                                 method='bilinear'), axis=-1)
+        crowd_mask_iou_cache = _mask_iou(crowd_masks, masks_gt, is_crowd=True).numpy()
+        crowd_bbox_iou_cache = tf.squeeze(
+            _bbox_iou(tf.expand_dims(crowd_boxes, axis=0), gt_bbox, is_crowd=True)).numpy()
+        if tf.shape(crowd_masks)[0] == 1:
+            crowd_bbox_iou_cache = tf.expand_dims(crowd_bbox_iou_cache, axis=0)
+        tf.print("crowd maskiou:", tf.shape(crowd_mask_iou_cache))
+        tf.print("crowd bboxiou:", tf.shape(crowd_bbox_iou_cache))
     else:
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
@@ -209,15 +223,15 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # define some useful lambda function for next section
     # avoid writing "bbox_iou_cache[row, col]" too many times, wrap it as a lambda func
     iou_types = [
-        ('box', lambda row, col: bbox_iou_cache[row, col].item(),
-         lambda i, j: crowd_bbox_iou_cache[i, j].item(),
+        ('box', lambda row, col: bbox_iou_cache[row, col],
+         lambda i, j: crowd_bbox_iou_cache[i, j],
          lambda idx: box_scores[idx], box_indices),
-        ('mask', lambda row, col: mask_iou_cache[row, col].item(),
-         lambda i, j: crowd_mask_iou_cache[i, j].item(),
+        ('mask', lambda row, col: mask_iou_cache[row, col],
+         lambda i, j: crowd_mask_iou_cache[i, j],
          lambda idx: mask_scores[idx], mask_indices)
     ]
 
-    gt_classes = list(gt_classes[0][:num_gt].numpy())
+    gt_classes = list(gt_classes[0].numpy())
 
     # starting to update the ap_data from this batch
     for _class in set(classes + gt_classes):
@@ -258,7 +272,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                                 if crowd_classes[j] != _class:
                                     continue
 
-                                iou = crowd_func(i, j)
+                                iou = crowd_func(j, i)
 
                                 if iou > th:
                                     matched_crowd = True
@@ -312,7 +326,6 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         i += 1
         output = model(image, training=False)
         detection = detection_layer(output)
-        tf.print(detection)
         # update ap_data or detection depends if u want to save it to json or just for validation table
         prep_metrics(ap_data, detection, image, labels, detections)
 

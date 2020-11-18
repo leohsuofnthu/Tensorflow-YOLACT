@@ -55,7 +55,7 @@ class Detect(object):
 
         # filter out the ROI that have conf score > confidence threshold
         candidate_ROI_idx = tf.squeeze(tf.where(conf_score > self.conf_threshold))
-        # tf.print("candidate_ROI", tf.shape(candidate_ROI_idx))
+        # tf.print("candidate_ROI", candidate_ROI_idx)
 
         # Todo what if no detection?
         if tf.size(candidate_ROI_idx) == 0:
@@ -86,6 +86,7 @@ class Detect(object):
         """
 
         # Fast NMS
+        # tf.print("before fastnms score", scores)
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
         boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
 

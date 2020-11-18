@@ -249,6 +249,8 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
 
     if dets is None:
         return None, None, None, None  # Warning, this is 4 copies of the same thing
+    elif tf.shape(tf.size(dets['score'])) == 0:
+        return None, None, None, None  # Warning, this is 4 copies of the same thing
 
     classes = dets['class']
     boxes = dets['box']
