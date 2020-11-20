@@ -12,15 +12,12 @@ import tensorflow as tf
 from data import anchor
 from data import coco_tfrecord_parser
 
+import config as cfg
+
 
 # Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
 def prepare_dataloader(tfrecord_dir, batch_size, subset="train", **parser_params):
-    # Todo Create singleton here
-    anchorobj = anchor.Anchor(img_size=550,
-                              feature_map_size=[69, 35, 18, 9, 5],
-                              aspect_ratio=[1, 0.5, 2],
-                              scale=[24, 48, 96, 192, 384])
-
+    anchorobj = anchor.Anchor(**cfg.anchor_params)
     parser = coco_tfrecord_parser.Parser(anchor_instance=anchorobj,
                                          mode=subset,
                                          **parser_params)

@@ -5,13 +5,12 @@ import tensorflow as tf
 from data.coco_dataset import prepare_dataloader
 from utils.utils import denormalize_image
 from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
-
+import config as cfg
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
-# tf.random.set_seed(1235)
-
-train_dataloader = prepare_dataloader("../data/coco", 1, "train")
+train_dataloader = prepare_dataloader("../data/coco", 1, "train", **cfg.parser_params)
 print(train_dataloader)
+
 for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy())*255

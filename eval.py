@@ -284,7 +284,7 @@ def eval_video():
     ...
 
 
-def evaluate(model, detection_layer, dataset, batch_size=1):
+def evaluate(model, detection_layer, dataset, num_val=0, batch_size=1):
     # if use fastnms
     # if use cross class nms
 
@@ -304,12 +304,15 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
 
     # iterate the whole dataset to save TP, FP, FN
     i = 0
+    progbar = tf.keras.utils.Progbar(num_val)
+    tf.print("Evaluating...")
     for image, labels in dataset:
         i += 1
         output = model(image, training=False)
         detection = detection_layer(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
         prep_metrics(ap_data, detection, image, labels, detections)
+        progbar.update(i)
 
     # if to json
     # save detection to json

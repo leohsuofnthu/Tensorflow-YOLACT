@@ -99,6 +99,11 @@ def main(argv):
                                                     batch_size=1,
                                                     subset='val',
                                                     **cfg.parser_params)
+    # count number of valid data for progress bar
+    num_val = 8000
+    # for element in valid_dataset:
+    #     num_val += 1
+    # logging.info("Number of Valid data", num_val)
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
@@ -204,7 +209,7 @@ def main(argv):
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation and print mAP table
-            evaluate(model, detection_layer, valid_dataset)
+            evaluate(model, detection_layer, valid_dataset, num_val)
             """
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:

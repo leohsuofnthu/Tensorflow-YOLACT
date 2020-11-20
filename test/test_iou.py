@@ -4,7 +4,6 @@ from utils.utils import jaccard, intersection, mask_iou, bboxes_intersection
 # ----------------------------------------------------------------------------------------------------------------------
 # Test intersection, jaccard, and bboxes_intersection function
 # gt [ymin, xmin, ymax, xmax]
-"""
 test_gt_bbox = tf.constant([[[2, 1, 5, 4]],
                             [[2, 2, 7, 5]],
                             [[4, 1, 6, 3]]], dtype=tf.float32)
@@ -13,11 +12,7 @@ test_gt_bbox = tf.constant([[[2, 1, 5, 4]],
 test_pred_bbox = tf.constant([[[1, 3, 3, 6]],
                               [[3, 3, 5, 5]],
                               [[1, 4, 3, 6]]], dtype=tf.float32)
-"""
-test_gt_bbox = tf.constant([[[2, 1, 5, 4]]], dtype=tf.float32)
 
-# pred [ymin, xmin, ymax, xmax]
-test_pred_bbox = tf.constant([[[1, 3, 3, 6]]], dtype=tf.float32)
 
 tf.print(f"test gt", tf.shape(test_gt_bbox))
 tf.print(f"test pred", tf.shape(test_pred_bbox))
