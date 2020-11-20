@@ -4,11 +4,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from data import coco_dataset, anchor
-from utils import learning_rate_schedule, label_map
+from utils import learning_rate_schedule
 from yolact import Yolact
 from layers.detection import Detect
 from utils.utils import postprocess, denormalize_image
-from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
+from config import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 
 import cv2
 import config as cfg

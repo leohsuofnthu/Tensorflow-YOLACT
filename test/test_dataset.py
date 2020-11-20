@@ -4,7 +4,7 @@ import numpy as np
 import tensorflow as tf
 from data.coco_dataset import prepare_dataloader
 from utils.utils import denormalize_image
-from utils.label_map import COCO_LABEL_MAP, COCO_CLASSES, COLORS
+from config import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 import config as cfg
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
