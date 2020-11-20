@@ -244,13 +244,14 @@ def main(_):
     train_output_path = os.path.join(FLAGS.output_dir, 'coco_train.record')
     val_output_path = os.path.join(FLAGS.output_dir, 'coco_val.record')
     # testdev_output_path = os.path.join(FLAGS.output_dir, 'coco_testdev.record')
-
+    """
     _create_tf_record_from_coco_annotations(
         FLAGS.train_annotations_file,
         FLAGS.train_image_dir,
         train_output_path,
         FLAGS.include_masks,
         num_shards=100)
+    """
     _create_tf_record_from_coco_annotations(
         FLAGS.val_annotations_file,
         FLAGS.val_image_dir,

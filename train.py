@@ -100,10 +100,10 @@ def main(argv):
                                                     subset='val',
                                                     **cfg.parser_params)
     # count number of valid data for progress bar
-    num_val = 8000
-    # for element in valid_dataset:
-    #     num_val += 1
-    # logging.info("Number of Valid data", num_val)
+    num_val = 0
+    for element in valid_dataset:
+        num_val += 1
+    logging.info("Number of Valid data", num_val)
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")

@@ -25,13 +25,17 @@ def prepare_dataloader(tfrecord_dir, batch_size, subset="train", **parser_params
     files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
     num_shards = tf.cast(tf.shape(files)[0], tf.int64)
     shards = tf.data.Dataset.from_tensor_slices(files)
-    shards = shards.shuffle(num_shards)
-    shards = shards.repeat()
-    dataset = shards.interleave(tf.data.TFRecordDataset,
-                                cycle_length=num_shards,
-                                num_parallel_calls=tf.data.experimental.AUTOTUNE)
 
-    dataset = dataset.shuffle(buffer_size=2048)
+    if subset == 'train':
+        shards = shards.shuffle(num_shards)
+        shards = shards.repeat()
+        dataset = shards.interleave(tf.data.TFRecordDataset,
+                                    cycle_length=num_shards,
+                                    num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.shuffle(buffer_size=2048)
+    else:
+        dataset = tf.data.TFRecordDataset(shards)
+
     dataset = dataset.map(map_func=parser)
     dataset = dataset.batch(batch_size)
     dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
