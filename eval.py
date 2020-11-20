@@ -24,15 +24,15 @@ print(iou_thresholds)
 # Todo write test file to check if works correctly
 # for calculating IOU between gt and detection box
 # so as to decide the TP, FP, FN
-def _bbox_iou(bbox1, bbox2):
-    ret = jaccard(bbox1, bbox2)
+def _bbox_iou(bbox1, bbox2, is_crowd=False):
+    ret = jaccard(bbox1, bbox2, is_crowd)
     return ret
 
 
 # Todo write test file to check if works correctly
 # for calculating IOU between gt and detection mask
-def _mask_iou(mask1, mask2):
-    ret = mask_iou(mask1, mask2)
+def _mask_iou(mask1, mask2, is_crowd=False):
+    ret = mask_iou(mask1, mask2, is_crowd)
     return ret
 
 
@@ -49,7 +49,7 @@ def calc_map(ap_data):
     aps = [{'box': [], 'mask': []} for _ in iou_thresholds]
 
     # 　calculate Ap for every classes individually
-    for _class in range(cfg.NUM_CLASS):
+    for _class in range(cfg.NUM_CLASSES):
         # each class have multiple different iou threshold to calculate
         for iou_idx in range(len(iou_thresholds)):
             # there are 2 type of mAP we want to know (bounding box and mask)
@@ -90,55 +90,111 @@ def print_maps(all_maps):
     print()
 
 
-def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=None):
+def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     """Mainly update the ap_data for validation table"""
+    # get the shape of image
+    w = tf.shape(img)[1]
+    h = tf.shape(img)[2]
+    # tf.print(f"img size (w, h):{w}, {h}")
 
-    # postprocess the prediction
-    classes, scores, boxes, masks = postprocess(dets, cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE, 0, "bilinear")
-    classes, scores = classes.numpy(), scores.numpy()
+    # Load prediction
+    classes, scores, boxes, masks = postprocess(dets, w, h, 0, "bilinear")
 
-    # prepare gt
+    # if no detection or only one detection
+    if classes is None:
+        return
+    elif tf.size(scores) == 1:
+        scores = tf.expand_dims(scores, axis=0)
+        masks = tf.expand_dims(masks, axis=0)
+    boxes = tf.expand_dims(boxes, axis=0)
+
+    """
+    tf.print("prep classes", tf.shape(classes))
+    tf.print("prep scores", tf.shape(scores))
+    tf.print("prep boxes", tf.shape(boxes))
+    tf.print("prep masks", tf.shape(masks))
+    """
+
+    # Load gt
     gt_bbox = labels['bbox']
     gt_classes = labels['classes']
     gt_masks = labels['mask_target']
     num_crowd = labels['num_crowd']
+    num_obj = labels['num_obj']
+
+    """
+    tf.print('prep gt bbox', tf.shape(gt_bbox))
+    tf.print('prep gt classes', tf.shape(gt_classes))
+    tf.print('prep gt masks', tf.shape(gt_masks))
+    tf.print('prep num crowd', tf.shape(num_crowd))
+    tf.print("prep num obj", tf.shape(num_obj))
+    """
+
+    # convert to scalar
+    num_crowd = num_crowd.numpy()[0]
+    num_obj = num_obj.numpy()[0]
 
     if num_crowd > 0:
-        split = lambda x: (x[-num_crowd:], x[:-num_crowd])
-        crowd_boxes, gt_bbox = split(gt_bbox)
-        crowd_classes, gt_classes = split(gt_classes)
-        crowd_masks, gt_masks = split(gt_masks)
+        split = lambda x: (x[:, num_obj - num_crowd:num_obj], x[:, :num_obj - num_crowd])
+        gt_crowd_boxes, gt_bbox = split(gt_bbox)
+        gt_crowd_classes, gt_classes = split(gt_classes)
+        gt_crowd_masks, gt_masks = split(gt_masks)
+        gt_crowd_classes = list(gt_crowd_classes[0].numpy())
+
+        """
+        tf.print('split gt bbox', tf.shape(gt_bbox))
+        tf.print('split gt classes', tf.shape(gt_classes))
+        tf.print('split gt masks', tf.shape(gt_masks))
+
+        tf.print("split crowd boxes", tf.shape(gt_crowd_boxes))
+        tf.print("split crowd masks", tf.shape(gt_crowd_masks))
+        tf.print("split crowd classes length", len(gt_crowd_classes))
+        """
 
     # prepare data
-    # Todo Bug when detection is 1 only
-    classes = list(classes)
-    scores = list(scores)
+    classes = list(classes.numpy())
+    scores = list(scores.numpy())
     box_scores = scores
     mask_scores = scores
 
-    """
-    why cuda tensor? for iou fast calculation?
-    masks = masks.view(-1, h * w).cuda()
-    boxes = boxes.cuda()
-    """
     # if output json, add things to detections objects
 
     # else
     num_pred = len(classes)
-    num_gt = len(gt_classes)
+    num_gt = num_obj - num_crowd
+
+    """
+    tf.print("num pred", num_pred)
+    tf.print("num gt", num_gt)
+    """
 
     # resize gt mask
-    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0][:num_gt], axis=-1), [h, w],
+    # should be [num_gt, w, h]
+    masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0], axis=-1), [h, w],
                                           method='bilinear'), axis=-1)
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
-    bbox_iou_cache = _bbox_iou(boxes, gt_bbox[0][:num_gt]).numpy()
+    bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox), axis=0).numpy()
 
+    """
+    tf.print("non crowd mask iou shape:", tf.shape(mask_iou_cache))
+    tf.print("non crowd bbox iou shape:", tf.shape(bbox_iou_cache))
+    """
     # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
-        crowd_mask_iou_cache = _mask_iou(masks, crowd_masks, iscrowd=True)
-        crowd_bbox_iou_cache = _bbox_iou(boxes.float(), crowd_boxes.float(), iscrowd=True)
+        # resize gt mask
+        # should be [num_crowd, w, h]
+        gt_crowd_masks = tf.squeeze(tf.image.resize(tf.expand_dims(gt_crowd_masks[0], axis=-1), [h, w],
+                                                    method='bilinear'), axis=-1)
+        # tf.print("crowd masks", tf.shape(gt_crowd_masks))
+        crowd_mask_iou_cache = _mask_iou(masks, gt_crowd_masks, is_crowd=True).numpy()
+        crowd_bbox_iou_cache = tf.squeeze(
+            _bbox_iou(boxes, gt_crowd_boxes, is_crowd=True), axis=0).numpy()
+        """
+        tf.print("gt crowd mask iou shape:", tf.shape(crowd_mask_iou_cache))
+        tf.print("gt crowd bbox iou shape:", tf.shape(crowd_bbox_iou_cache))
+        """
     else:
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
@@ -150,15 +206,14 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
     # define some useful lambda function for next section
     # avoid writing "bbox_iou_cache[row, col]" too many times, wrap it as a lambda func
     iou_types = [
-        ('box', lambda row, col: bbox_iou_cache[row, col].item(),
-                lambda i, j: crowd_bbox_iou_cache[i, j].item(),
-                lambda idx: box_scores[idx], box_indices),
-        ('mask', lambda row, col: mask_iou_cache[row, col].item(),
-                 lambda i, j: crowd_mask_iou_cache[i, j].item(),
-                 lambda idx: mask_scores[idx], mask_indices)
-    ]
+        ('box', lambda row, col: bbox_iou_cache[row, col],
+         lambda row, col: crowd_bbox_iou_cache[row, col],
+         lambda idx: box_scores[idx], box_indices),
+        ('mask', lambda row, col: mask_iou_cache[row, col],
+         lambda row, col: crowd_mask_iou_cache[row, col],
+         lambda idx: mask_scores[idx], mask_indices)]
 
-    gt_classes = list(gt_classes[0][:num_gt].numpy())
+    gt_classes = list(gt_classes[0].numpy())
 
     # starting to update the ap_data from this batch
     for _class in set(classes + gt_classes):
@@ -195,8 +250,8 @@ def prep_metrics(ap_data, dets, img, labels, h, w, image_id=None, detections=Non
                     else:
                         matched_crowd = False
                         if num_crowd > 0:
-                            for j in range(len(crowd_classes)):
-                                if crowd_classes[j] != _class:
+                            for j in range(len(gt_crowd_classes)):
+                                if gt_crowd_classes[j] != _class:
                                     continue
 
                                 iou = crowd_func(i, j)
@@ -241,13 +296,12 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
     # For mAP evaluation, creating AP_Object for every class per iou_threshold
     ap_data = {
         # Todo add item in config.py
-        'box': [[APObject() for _ in range(cfg.NUM_CLASS)] for _ in iou_thresholds],
-        'mask': [[APObject() for _ in range(cfg.NUM_CLASS)] for _ in iou_thresholds]}
+        'box': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds],
+        'mask': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds]}
 
     # detection object made from prediction output
     detections = Detections()
 
-    # pb = Progbar(1000)
     # iterate the whole dataset to save TP, FP, FN
     i = 0
     for image, labels in dataset:
@@ -255,10 +309,7 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
         output = model(image, training=False)
         detection = detection_layer(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
-        prep_metrics(ap_data, detection, image, labels, cfg.OUTPUT_SIZE, cfg.OUTPUT_SIZE, detections)
-        # pb.add(batch_size)
-        if i == 10:
-            break
+        prep_metrics(ap_data, detection, image, labels, detections)
 
     # if to json
     # save detection to json

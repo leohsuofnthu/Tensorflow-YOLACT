@@ -1,5 +1,5 @@
 import tensorflow as tf
-
+import config as cfg
 
 def bboxes_intersection(bbox_ref, bboxes):
     """Compute relative intersection between a reference box and a
@@ -11,10 +11,13 @@ def bboxes_intersection(bbox_ref, bboxes):
     Return:
       (N,) Tensor with relative intersection.
     """
+    # tf.print("ref bbox", tf.shape(bbox_ref))
+    # tf.print("bboxes", tf.shape(bboxes))
 
     # Should be more efficient to first transpose.
     bboxes = tf.transpose(bboxes)
     bbox_ref = tf.transpose(bbox_ref)
+
     # Intersection bbox and volume.
     int_ymin = tf.maximum(bboxes[0], bbox_ref[0])
     int_xmin = tf.maximum(bboxes[1], bbox_ref[1])
@@ -22,9 +25,13 @@ def bboxes_intersection(bbox_ref, bboxes):
     int_xmax = tf.minimum(bboxes[3], bbox_ref[3])
     h = tf.maximum(int_ymax - int_ymin, 0.)
     w = tf.maximum(int_xmax - int_xmin, 0.)
+
     # Volumes.
     inter_vol = h * w
     bboxes_vol = (bboxes[2] - bboxes[0]) * (bboxes[3] - bboxes[1])
+
+    # tf.print("inter vol", inter_vol)
+    # tf.print("bboxes vol", bboxes_vol)
 
     return tf.where(
         tf.equal(bboxes_vol, 0.0),
@@ -141,12 +148,6 @@ def map_to_bbox(anchors, loc_pred):
 
 
 def intersection(box_a, box_b):
-    """
-        ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
-        :param gt_bbox: [num_obj, 4]
-        :return:
-        """
-
     # unstack the ymin, xmin, ymax, xmax
     ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
     ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
@@ -156,20 +157,18 @@ def intersection(box_a, box_b):
     all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=1))
     all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=1))
     all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=1))
+
     intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
     intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
+
     return intersect_heights * intersect_widths
 
 
 def jaccard(box_a, box_b, is_crowd=False):
-    """
-         ref: https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
-        :param gt_bbox: [num_obj, 4]
-        :return:
-        """
     # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
     # calculate A ∩ B (pairwise)
     pairwise_inter = intersection(box_a, box_b)
+    # tf.print("pairwise inter", pairwise_inter)
 
     # calculate areaA, areaB
     ymin_a, xmin_a, ymax_a, xmax_a = tf.unstack(box_a, axis=-1)
@@ -178,11 +177,15 @@ def jaccard(box_a, box_b, is_crowd=False):
     area_a = (xmax_a - xmin_a) * (ymax_a - ymin_a)
     area_b = (xmax_b - xmin_b) * (ymax_b - ymin_b)
 
+    # tf.print("area a", area_a)
+    # tf.print("area b", area_b)
+
     # create same shape of matrix as intersection
     pairwise_area = tf.expand_dims(area_a, axis=-1) + tf.expand_dims(area_b, axis=1)
 
     # calculate A ∪ B
-    pairwise_union = area_a if is_crowd else (pairwise_area - pairwise_inter)
+    pairwise_union = tf.expand_dims(area_a, axis=-1) if is_crowd else (pairwise_area - pairwise_inter)
+    # tf.print("pairwise union", pairwise_union)
 
     # IOU(Jaccard overlap) = intersection / union, there might be possible to have division by 0
     return pairwise_inter / pairwise_union
@@ -197,59 +200,70 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
 
     num_a = tf.shape(masks_a)[0]
     num_b = tf.shape(masks_b)[0]
+    # tf.print("num a", num_a)
+    # tf.print("num b", num_b)
+
     masks_a = tf.reshape(masks_a, (num_a, -1))
     masks_b = tf.reshape(masks_b, (num_b, -1))
+    # tf.print("masks a", tf.shape(masks_a))
+    # tf.print("masks b", tf.shape(masks_b))
+
     inter = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
+    # tf.print("inter", inter)
+
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
-    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=1)
+    # tf.print("area a", tf.shape(area_a))
+    area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=0)
+    # tf.print("area b", tf.shape(area_b))
+
+    # tf.print("a+b", tf.shape(area_a + area_b))
 
     union = area_a if is_crowd else (area_a + area_b - inter)
 
     return inter / union
 
 
-# post process after detection layer
-# Todo: Use tensorflows intepolation mode option
 def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
+    """post process after detection layer"""
+    # Todo: If scorethreshold is not zero
+    """
+    if score_threshold > 0:
+        keep = detection['score'] > score_threshold
+
+        for k in detection:
+            if k != 'proto':
+                detection[k] = detection[k][keep]
+    """
     dets = detection[batch_idx]
     dets = dets['detection']
 
-    # Todo: If dets is None
-    # Todo: If scorethreshold is not zero
-    """
-    Ref:
-    if dets is None:
-        return [torch.Tensor()] * 4 # Warning, this is 4 copies of the same thing
+    if dets is None or dets['score'] is None:
+        return None, None, None, None  # Warning, this is 4 copies of the same thing
+    elif tf.size(dets['score']) == 0:
+        return None, None, None, None  # Warning, this is 4 copies of the same thing
 
-    if score_threshold > 0:
-        keep = dets['score'] > score_threshold
-
-        for k in dets:
-            if k != 'proto':
-                dets[k] = dets[k][keep]
-        
-        if dets['score'].size(0) == 0:
-            return [torch.Tensor()] * 4
-    """
     classes = dets['class']
     boxes = dets['box']
     scores = dets['score']
     masks = dets['mask']
     proto_pred = dets['proto']
-    # tf.print(tf.shape(proto_pred))
-    # tf.print(tf.shape(masks))
+    # tf.print("proto pred after detection", tf.shape(proto_pred))
+    # tf.print("masks after detection", tf.shape(masks))
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
-    # tf.print("pred mask", tf.shape(pred_mask))
+    # tf.print("pred mask after detection", tf.shape(pred_mask))
 
-    masks = crop(pred_mask, boxes * float(138.0 / 550.0))
+    if crop_mask:
+        # Todo need to import from config
+        masks = crop(pred_mask, boxes * float(cfg.PROTO_OUTPUT_SIZE / cfg.IMG_SIZE))
 
     # intepolate to original size (test 550*550 here)
-    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [550, 550],
+    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
                             method=intepolation_mode)
 
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(tf.cast(masks, tf.float32))
+    # tf.print("masks after postprecessing", tf.shape(masks))
 
     return classes, scores, boxes, masks

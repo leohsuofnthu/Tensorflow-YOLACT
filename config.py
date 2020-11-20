@@ -61,14 +61,17 @@ backbones_objects = dict({
                                                  include_top=False,
                                                  layers=tf.keras.layers,
                                                  weights='imagenet'),
-    # "efficientNet-B7": ...
+
+    # "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+    #                                                        include_top=False,
+    #                                                        weights='imagenet')
 
 })
 
 backbones_extracted = dict({
     "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
     "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
-    # "efficientNet-B7":[]
+    # "efficientNet-B0": ['block4c_add', 'block5b_add', 'block6c_add']
 })
 
 # RGB values of color for drawing nice bounding boxes

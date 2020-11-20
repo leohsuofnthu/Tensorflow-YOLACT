@@ -39,7 +39,7 @@ class Detect(object):
             decoded_boxes = utils.map_to_bbox(self.anchors, loc_pred[batch_idx])
             # do detection
             result = self._detection(batch_idx, cls_pred, decoded_boxes, mask_pred)
-            if result is not None and proto_pred is not None:
+            if (result is not None) and (proto_pred is not None):
                 result['proto'] = proto_pred[batch_idx]
             out.append({'detection': result})
 
@@ -55,9 +55,9 @@ class Detect(object):
 
         # filter out the ROI that have conf score > confidence threshold
         candidate_ROI_idx = tf.squeeze(tf.where(conf_score > self.conf_threshold))
-        # tf.print("candidate_ROI", tf.shape(candidate_ROI_idx))
+        # tf.print("candidate_ROI", candidate_ROI_idx)
 
-        # Todo what if no detection?
+        # there might not have any score that over self.conf_threshold
         if tf.size(candidate_ROI_idx) == 0:
             return None
         # tf.print('original score', tf.shape(cur_score))
@@ -85,14 +85,16 @@ class Detect(object):
         """
 
         # Fast NMS
+        # tf.print("before fastnms score", scores)
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
         boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
 
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
-
         scores, idx = tf.math.top_k(scores, k=top_k)
+        if tf.size(idx) == 1:
+            return None, None, None, None
         num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
@@ -120,7 +122,6 @@ class Detect(object):
         boxes = tf.gather(boxes, idx)
         masks = tf.gather(masks, idx)
 
-        # Todo Handle the situation that only 1 or 0 detection
         # second threshold
         positive_det = tf.squeeze(tf.where(scores > iou_threshold))
         scores = tf.gather(scores, positive_det)
