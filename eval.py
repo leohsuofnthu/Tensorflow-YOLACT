@@ -95,26 +95,27 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # get the shape of image
     w = tf.shape(img)[1]
     h = tf.shape(img)[2]
-    # tf.print(f"w, h:{w}, {h}")
+    # tf.print(f"img size (w, h):{w}, {h}")
 
-    # postprocess the prediction
+    # Load prediction
     classes, scores, boxes, masks = postprocess(dets, w, h, 0, "bilinear")
 
-    if tf.size(scores) == 0:
+    # if no detection or only one detection
+    if classes is None:
         return
     elif tf.size(scores) == 1:
         scores = tf.expand_dims(scores, axis=0)
-
-    classes, scores = classes.numpy(), scores.numpy()
+        masks = tf.expand_dims(masks, axis=0)
+    boxes = tf.expand_dims(boxes, axis=0)
 
     """
-    tf.print("classes", classes)
-    tf.print("scores", scores)
-    tf.print("boxes", boxes)
-    tf.print("masks", tf.shape(masks))
+    tf.print("prep classes", tf.shape(classes))
+    tf.print("prep scores", tf.shape(scores))
+    tf.print("prep boxes", tf.shape(boxes))
+    tf.print("prep masks", tf.shape(masks))
     """
 
-    # prepare gt
+    # Load gt
     gt_bbox = labels['bbox']
     gt_classes = labels['classes']
     gt_masks = labels['mask_target']
@@ -122,96 +123,78 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     num_obj = labels['num_obj']
 
     """
-    tf.print('gt bbox', tf.shape(gt_bbox))
-    tf.print('gt classes', tf.shape(gt_classes))
-    tf.print('gt masks', tf.shape(gt_masks))
-    tf.print('num crowd', tf.shape(num_crowd))
-    tf.print("num obj", num_obj)
+    tf.print('prep gt bbox', tf.shape(gt_bbox))
+    tf.print('prep gt classes', tf.shape(gt_classes))
+    tf.print('prep gt masks', tf.shape(gt_masks))
+    tf.print('prep num crowd', tf.shape(num_crowd))
+    tf.print("prep num obj", tf.shape(num_obj))
     """
-    tf.print(num_crowd)
+
+    # convert to scalar
     num_crowd = num_crowd.numpy()[0]
     num_obj = num_obj.numpy()[0]
-    tf.print(num_crowd)
 
     if num_crowd > 0:
         split = lambda x: (x[:, num_obj - num_crowd:num_obj], x[:, :num_obj - num_crowd])
-        crowd_boxes, gt_bbox = split(gt_bbox)
-        crowd_classes, gt_classes = split(gt_classes)
-        crowd_masks, gt_masks = split(gt_masks)
-        crowd_classes = list(crowd_classes[0].numpy())
+        gt_crowd_boxes, gt_bbox = split(gt_bbox)
+        gt_crowd_classes, gt_classes = split(gt_classes)
+        gt_crowd_masks, gt_masks = split(gt_masks)
+        gt_crowd_classes = list(gt_crowd_classes[0].numpy())
 
-        tf.print('gt bbox', tf.shape(gt_bbox))
-        tf.print('gt classes', tf.shape(gt_classes))
-        tf.print('gt masks', tf.shape(gt_masks))
-        tf.print('num crowd', tf.shape(num_crowd))
-        tf.print("num obj", num_obj)
-        tf.print("crowdboxes", tf.shape(crowd_boxes))
-        tf.print("crowdmasks", tf.shape(crowd_masks))
-        tf.print("crowd_classes len", len(crowd_classes))
+        """
+        tf.print('split gt bbox', tf.shape(gt_bbox))
+        tf.print('split gt classes', tf.shape(gt_classes))
+        tf.print('split gt masks', tf.shape(gt_masks))
+
+        tf.print("split crowd boxes", tf.shape(gt_crowd_boxes))
+        tf.print("split crowd masks", tf.shape(gt_crowd_masks))
+        tf.print("split crowd classes length", len(gt_crowd_classes))
+        """
 
     # prepare data
-    classes = list(classes)
-    scores = list(scores)
+    classes = list(classes.numpy())
+    scores = list(scores.numpy())
     box_scores = scores
     mask_scores = scores
 
-    """
-    tf.print("classes", classes)
-    tf.print("scores", scores)
-    tf.print("box scores", box_scores)
-    tf.print("mask scores", mask_scores)
-    """
-
-    """
-    why cuda tensor? for iou fast calculation?
-    masks = masks.view(-1, h * w).cuda()
-    boxes = boxes.cuda()
-    """
     # if output json, add things to detections objects
 
     # else
     num_pred = len(classes)
     num_gt = num_obj - num_crowd
 
+    """
     tf.print("num pred", num_pred)
     tf.print("num gt", num_gt)
+    """
 
     # resize gt mask
+    # should be [num_gt, w, h]
     masks_gt = tf.squeeze(tf.image.resize(tf.expand_dims(gt_masks[0], axis=-1), [h, w],
                                           method='bilinear'), axis=-1)
 
-    if num_pred == 1:
-        masks = tf.expand_dims(masks, axis=0)
-
-    """
-    tf.print("size", tf.shape(scores))
-    tf.print("maskss", tf.shape(masks))
-    tf.print("masks gt", tf.shape(masks_gt))
-    """
-
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
-    bbox_iou_cache = tf.squeeze(_bbox_iou(tf.expand_dims(boxes, axis=0), gt_bbox), axis=0).numpy()
+    bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox), axis=0).numpy()
 
-    # tf.print(mask_iou_cache)
-    # tf.print(bbox_iou_cache)
-
-    tf.print("maskiou:", tf.shape(mask_iou_cache))
-    tf.print("bboxiou", tf.shape(bbox_iou_cache))
-
+    """
+    tf.print("non crowd mask iou shape:", tf.shape(mask_iou_cache))
+    tf.print("non crowd bbox iou shape:", tf.shape(bbox_iou_cache))
+    """
     # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
         # resize gt mask
-        tf.print("crowd masks", tf.shape(crowd_masks))
-        crowd_masks = tf.squeeze(tf.image.resize(tf.expand_dims(crowd_masks[0], axis=-1), [h, w],
-                                                 method='bilinear'), axis=-1)
-        crowd_mask_iou_cache = _mask_iou(crowd_masks, masks_gt, is_crowd=True).numpy()
+        # should be [num_crowd, w, h]
+        gt_crowd_masks = tf.squeeze(tf.image.resize(tf.expand_dims(gt_crowd_masks[0], axis=-1), [h, w],
+                                                    method='bilinear'), axis=-1)
+        # tf.print("crowd masks", tf.shape(gt_crowd_masks))
+        crowd_mask_iou_cache = _mask_iou(masks, gt_crowd_masks, is_crowd=True).numpy()
         crowd_bbox_iou_cache = tf.squeeze(
-            _bbox_iou(tf.expand_dims(crowd_boxes, axis=0), gt_bbox, is_crowd=True)).numpy()
-        if tf.shape(crowd_masks)[0] == 1:
-            crowd_bbox_iou_cache = tf.expand_dims(crowd_bbox_iou_cache, axis=0)
-        tf.print("crowd maskiou:", tf.shape(crowd_mask_iou_cache))
-        tf.print("crowd bboxiou:", tf.shape(crowd_bbox_iou_cache))
+            _bbox_iou(boxes, gt_crowd_boxes, is_crowd=True), axis=0).numpy()
+        """
+        tf.print("gt crowd mask iou shape:", tf.shape(crowd_mask_iou_cache))
+        tf.print("gt crowd bbox iou shape:", tf.shape(crowd_bbox_iou_cache))
+        """
     else:
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
@@ -224,12 +207,11 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # avoid writing "bbox_iou_cache[row, col]" too many times, wrap it as a lambda func
     iou_types = [
         ('box', lambda row, col: bbox_iou_cache[row, col],
-         lambda i, j: crowd_bbox_iou_cache[i, j],
+         lambda row, col: crowd_bbox_iou_cache[row, col],
          lambda idx: box_scores[idx], box_indices),
         ('mask', lambda row, col: mask_iou_cache[row, col],
-         lambda i, j: crowd_mask_iou_cache[i, j],
-         lambda idx: mask_scores[idx], mask_indices)
-    ]
+         lambda row, col: crowd_mask_iou_cache[row, col],
+         lambda idx: mask_scores[idx], mask_indices)]
 
     gt_classes = list(gt_classes[0].numpy())
 
@@ -268,11 +250,11 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                     else:
                         matched_crowd = False
                         if num_crowd > 0:
-                            for j in range(len(crowd_classes)):
-                                if crowd_classes[j] != _class:
+                            for j in range(len(gt_crowd_classes)):
+                                if gt_crowd_classes[j] != _class:
                                     continue
 
-                                iou = crowd_func(j, i)
+                                iou = crowd_func(i, j)
 
                                 if iou > th:
                                     matched_crowd = True

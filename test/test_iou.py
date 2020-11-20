@@ -1,27 +1,73 @@
-def bb_intersection_over_union(boxA, boxB):
-    # determine the (x, y)-coordinates of the intersection rectangle
-    xA = max(boxA[0], boxB[0])
-    yA = max(boxA[1], boxB[1])
-    xB = min(boxA[2], boxB[2])
-    yB = min(boxA[3], boxB[3])
+import tensorflow as tf
+from utils.utils import jaccard, intersection, mask_iou, bboxes_intersection
 
-    # compute the area of intersection rectangle
-    interArea = (xB - xA + 1) * (yB - yA + 1)
+# ----------------------------------------------------------------------------------------------------------------------
+# Test intersection, jaccard, and bboxes_intersection function
+# gt [ymin, xmin, ymax, xmax]
+"""
+test_gt_bbox = tf.constant([[[2, 1, 5, 4]],
+                            [[2, 2, 7, 5]],
+                            [[4, 1, 6, 3]]], dtype=tf.float32)
 
-    # compute the area of both the prediction and ground-truth rectangles
-    boxAArea = (boxA[2] - boxA[0] + 1) * (boxA[3] - boxA[1] + 1)
-    boxBArea = (boxB[2] - boxB[0] + 1) * (boxB[3] - boxB[1] + 1)
+# pred [ymin, xmin, ymax, xmax]
+test_pred_bbox = tf.constant([[[1, 3, 3, 6]],
+                              [[3, 3, 5, 5]],
+                              [[1, 4, 3, 6]]], dtype=tf.float32)
+"""
+test_gt_bbox = tf.constant([[[2, 1, 5, 4]]], dtype=tf.float32)
 
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = interArea / float(boxAArea + boxBArea - interArea)
+# pred [ymin, xmin, ymax, xmax]
+test_pred_bbox = tf.constant([[[1, 3, 3, 6]]], dtype=tf.float32)
 
-    # return the intersection over union value
-    return iou
+tf.print(f"test gt", tf.shape(test_gt_bbox))
+tf.print(f"test pred", tf.shape(test_pred_bbox))
 
+inter = intersection(test_pred_bbox, test_gt_bbox)
+tf.print(f"test intersection shape", tf.shape(inter))
+tf.print(f"test intersection", inter)
 
-boxA = (128.090836, 21.1087971, 210.404739, 82.500267)
-boxB = (116.164017, 13.2663689, 190.477158, 75.2109833)
+jac = jaccard(test_pred_bbox, test_gt_bbox)
+tf.print(f"test jaccard shape", tf.shape(jac))
+tf.print(f"test jaccard", jac)
+# ----------------------------------------------------------------------------------------------------------------------
+# test bbox interaction for random crop
+# Todo make it clear
+test_ref_bbox = tf.constant([[0, 0, 1, 1]], dtype=tf.float32)
+test_pred_bbox = tf.constant([[0.1, 0.3, 0.3, 0.6],
+                              [0.3, 0.3, 0.5, 0.5],
+                              [0.1, 0.4, 0.3, 0.6]], dtype=tf.float32)
+bbox_iter = bboxes_intersection(test_ref_bbox, test_pred_bbox)
+tf.print(f"test bbox inter shape", tf.shape(bbox_iter))
+tf.print(f"test bbox inter", bbox_iter)
+# ----------------------------------------------------------------------------------------------------------------------
+# Test mask iou
+test_gt_masks = tf.constant([
+    [[1, 0, 0],
+     [1, 0, 0],
+     [1, 1, 1]],
 
-print(bb_intersection_over_union(boxA, boxB))
+    [[0, 1, 0],
+     [1, 1, 1],
+     [0, 1, 0]],
+
+    [[1, 0, 1],
+     [1, 1, 1],
+     [1, 0, 1]],
+], dtype=tf.float32)
+
+test_pred_masks = tf.constant([
+    [[1, 1, 1],
+     [1, 0, 0],
+     [1, 0, 0]],
+
+    [[1, 1, 1],
+     [1, 0, 1],
+     [0, 0, 0]]
+], dtype=tf.float32)
+
+tf.print(f"test gt mask", tf.shape(test_gt_masks))
+tf.print(f"test pred mask", tf.shape(test_pred_masks))
+
+m_iou = mask_iou(test_pred_masks, test_gt_masks)
+tf.print(f"test mask iou shape", tf.shape(m_iou))
+tf.print(f"test mask iou", m_iou)
