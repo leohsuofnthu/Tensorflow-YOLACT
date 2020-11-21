@@ -53,7 +53,7 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        # Todo how many category should we put in trianing
+        # Todo how many category should we put in trianing (remapping for coco)
         loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -74,11 +74,10 @@ def valid_step(model,
 
 
 def main(argv):
-
+    # -----------------------------------------------------------------
     # set fixed random seed
     tf.random.set_seed(cfg.RANDOM_SEED)
 
-    # -----------------------------------------------------------------
     # set up Grappler for graph optimization
     # Ref: https://www.tensorflow.org/guide/graph_optimization
     @contextlib.contextmanager
@@ -117,7 +116,7 @@ def main(argv):
     num_val = 0
     for _ in valid_dataset:
         num_val += 1
-    logging.info("Number of Valid data", num_val*FLAGS.batch_size)
+    logging.info("Number of Valid data", num_val * FLAGS.batch_size)
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
@@ -127,16 +126,14 @@ def main(argv):
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss()
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-    valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
     mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
     seg = tf.keras.metrics.Mean('seg_loss', dtype=tf.float32)
-    v_loc = tf.keras.metrics.Mean('vloc_loss', dtype=tf.float32)
-    v_conf = tf.keras.metrics.Mean('vconf_loss', dtype=tf.float32)
-    v_mask = tf.keras.metrics.Mean('vmask_loss', dtype=tf.float32)
-    v_seg = tf.keras.metrics.Mean('vseg_loss', dtype=tf.float32)
 
+    # Todo
+    v_bboxes_map = ...
+    v_masks_map = ...
     # -----------------------------------------------------------------
 
     # Setup the TensorBoard for better visualization
@@ -164,7 +161,7 @@ def main(argv):
     else:
         logging.info("Initializing from scratch.")
 
-    best_val = 1e10
+    best_masks_map = 0.
     iterations = checkpoint.step.numpy()
 
     for image, labels in train_dataset:
@@ -206,61 +203,28 @@ def main(argv):
             # save checkpoint
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
+
             # validation and print mAP table
-            evaluate(model, valid_dataset, num_val)
-            """
-            valid_iter = 0
-            for valid_image, valid_labels in valid_dataset:
-                if valid_iter > FLAGS.valid_iter:
-                    break
-                # calculate validation loss
-                with options({'constant_folding': True,
-                              'layout_optimize': True,
-                              'loop_optimization': True,
-                              'arithmetic_optimization': True,
-                              'remapping': True}):
-                    # Todo accumulate mAP calculation, call evaluate(model, dataset) directly and print the mAP
-                    # get the detections, saving in objects
-                    valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
-                                                                                                  criterion,
-                                                                                                  valid_loss,
-                                                                                                  valid_image,
-                                                                                                  valid_labels)
-                v_loc.update_state(valid_loc_loss)
-                v_conf.update_state(valid_conf_loss)
-                v_mask.update_state(valid_mask_loss)
-                v_seg.update_state(valid_seg_loss)
-                valid_iter += 1
+            # Todo make evaluation faster, and return bboxes mAP / masks mAP
+            bboxes_map, masks_map = evaluate(model, valid_dataset, num_val)
 
             with test_summary_writer.as_default():
-                tf.summary.scalar('V Total loss', valid_loss.result(), step=iterations)
-                tf.summary.scalar('V Loc loss', v_loc.result(), step=iterations)
-                tf.summary.scalar('V Conf loss', v_conf.result(), step=iterations)
-                tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
-                tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
-            """
+                # Todo write mAP in tensorboard
+                ...
+
             train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, ' \
-                             'Seg Loss: {} '
             logging.info(train_template.format(iterations + 1,
                                                train_loss.result(),
                                                loc.result(),
                                                conf.result(),
                                                mask.result(),
                                                seg.result()))
-            """
-            logging.info(valid_template.format(iterations + 1,
-                                               valid_loss.result(),
-                                               v_loc.result(),
-                                               v_conf.result(),
-                                               v_mask.result(),
-                                               v_seg.result()))
-            """
+
             # Todo save the best mAP
-            if valid_loss.result() < best_val:
+            if masks_map < best_masks_map:
                 # Saving the weights:
-                best_val = valid_loss.result()
-                model.save_weights('./weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
+                best_masks_map = masks_map
+                model.save_weights('./weights/weights_' + str(best_masks_map) + '.h5')
 
             # reset the metrics
             train_loss.reset_states()
@@ -268,14 +232,6 @@ def main(argv):
             conf.reset_states()
             mask.reset_states()
             seg.reset_states()
-
-            """
-            valid_loss.reset_states()
-            v_loc.reset_states()
-            v_conf.reset_states()
-            v_mask.reset_states()
-            v_seg.reset_states()
-            """
 
 
 if __name__ == '__main__':

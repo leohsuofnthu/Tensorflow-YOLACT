@@ -40,6 +40,7 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
+        # return original image for testing augmentation purpose
         original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
         original_img = tf.image.resize(original_img, [self.output_size, self.output_size])
 
@@ -83,11 +84,6 @@ class Parser(object):
 
         # number of object in training sample
         num_obj = tf.shape(classes)[0]
-        """
-        if mode != 'train':
-            tf.print("clssssssss", classes)
-            tf.print("num obj", num_obj)
-        """
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = self.num_max_padding - tf.shape(classes)[0]
