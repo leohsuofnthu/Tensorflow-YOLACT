@@ -12,7 +12,7 @@ from data import coco_tfrecord_parser
 
 class ObjectDetectionDataset:
 
-    def __init__(self, dataset_name, tfrecord_dir, anchor_instance, parser_params):
+    def __init__(self, dataset_name, tfrecord_dir, anchor_instance, **parser_params):
         self.dataset_name = dataset_name
         self.tfrecord_dir = tfrecord_dir
         self.anchor_instance = anchor_instance
@@ -25,7 +25,7 @@ class ObjectDetectionDataset:
                                              **self.parser_params)
         # get tfrecord file names
         files = tf.io.matching_files(os.path.join(self.tfrecord_dir, f"{self.dataset_name}_{subset}.*"))
-        num_shards = tf.size(files)
+        num_shards = tf.cast(tf.size(files), tf.int64)
         shards = tf.data.Dataset.from_tensor_slices(files)
 
         # apply suffle and repeat only on traininig data

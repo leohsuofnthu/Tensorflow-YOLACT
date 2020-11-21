@@ -1,5 +1,7 @@
+import os
 import tensorflow as tf
 
+ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 NUM_CLASSES = 91
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
@@ -43,14 +45,11 @@ detection_params = {
 model_parmas = {
     # choose resnet50 or resnet101
     "backbone": "resnet50",
-    "input_size": IMG_SIZE,
     "fpn_channels": 256,
-    "feature_map_size": [69, 35, 18, 9, 5],
     "num_class": NUM_CLASSES,
     "num_mask": 32,
-    "aspect_ratio": [1, 0.5, 2],
-    "scales": [24, 48, 96, 192, 384]
-
+    "anchor_params": anchor_params,
+    "detect_params": detection_params,
 }
 
 # Adding any backbone u want as long as the output size are: (28, 28), (14, 14), (7,7)

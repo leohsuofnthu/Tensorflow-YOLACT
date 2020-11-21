@@ -8,7 +8,7 @@ from absl import app
 from absl import flags
 from absl import logging
 
-import yolact
+from yolact import Yolact
 from loss import loss_yolact
 from utils import learning_rate_schedule
 from data.coco_dataset import ObjectDetectionDataset
@@ -21,9 +21,9 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('name', 'coco',
                     'name of dataset')
-flags.DEFINE_string('tfrecord_dir', './data/',
+flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
-flags.DEFINE_string('weights', './weights',
+flags.DEFINE_string('weights', 'weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 10000,
                      'iteraitons')
@@ -93,7 +93,7 @@ def main(argv):
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = yolact.Yolact(**cfg.model_parmas, **cfg.anchor_params, **cfg.detection_params)
+    model = Yolact(**cfg.model_parmas)
 
     # add weight decay
     for layer in model.layers:

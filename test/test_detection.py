@@ -16,7 +16,7 @@ import config as cfg
 from eval import prep_metrics
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
-tf.random.set_seed(1198)
+tf.random.set_seed(556)
 
 
 # Restore CheckPoints

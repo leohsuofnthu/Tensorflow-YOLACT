@@ -26,14 +26,10 @@ class Yolact(tf.keras.Model):
 
     def __init__(self,
                  backbone,
-                 input_size,
                  fpn_channels,
-                 feature_map_size,
                  num_class,
                  num_mask,
-                 aspect_ratio,
-                 scales,
-                 anchr_params,
+                 anchor_params,
                  detect_params):
 
         super(Yolact, self).__init__()
@@ -57,13 +53,13 @@ class Yolact(tf.keras.Model):
                                                             kernel_initializer=tf.keras.initializers.glorot_uniform())
 
         # instance of anchor object
-        self.anchor_instance = Anchor(**anchr_params)
+        self.anchor_instance = Anchor(**anchor_params)
         priors = self.anchor_instance.get_anchors()
-        # print("prior shape:", self.priors.shape)
-        # print("num anchor per feature map: ", self.num_anchor)
+        # print("prior shape:", priors.shape)
+        # print("num anchor per feature map: ", tf.shape(priors)[0])
 
         # shared prediction head
-        self.predictionHead = PredictionModule(256, len(aspect_ratio), num_class, num_mask)
+        self.predictionHead = PredictionModule(256, len(anchor_params["aspect_ratio"]), num_class, num_mask)
 
         # detection layer
         self.detect = Detect(anchors=priors, **detect_params)

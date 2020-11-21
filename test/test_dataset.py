@@ -1,18 +1,30 @@
+import os
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
-from data.coco_dataset import prepare_dataloader
+from data.coco_dataset import ObjectDetectionDataset
 from utils.utils import denormalize_image
 from config import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 import config as cfg
+from yolact import Yolact
 
 # set manual seed for easy debug
-# -----------------------------------------------------------------------------------------------
-train_dataloader = prepare_dataloader("../data/coco", 1, "train", **cfg.parser_params)
-print(train_dataloader)
 tf.random.set_seed(556)
-for image, labels in train_dataloader.take(1):
+NAME = 'coco'
+TFRECORD_DIR = 'data'
+BATCH_SIZE = 1
+
+# -----------------------------------------------------------------------------------------------
+model = Yolact(**cfg.model_parmas)
+dateset = ObjectDetectionDataset(dataset_name='coco',
+                                 tfrecord_dir=os.path.join(cfg.ROOT_DIR, TFRECORD_DIR, NAME),
+                                 anchor_instance=model.anchor_instance,
+                                 **cfg.parser_params)
+train_dataset = dateset.get_dataloader(subset='train', batch_size=BATCH_SIZE)
+
+# -----------------------------------------------------------------------------------------------
+for image, labels in train_dataset.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy()) * 255
     image = image.astype(np.uint8)
