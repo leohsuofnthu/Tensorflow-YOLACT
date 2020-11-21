@@ -3,6 +3,7 @@ import tensorflow as tf
 NUM_CLASSES = 91
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
+RANDOM_SEED = 1234
 
 parser_params = {
     "output_size": IMG_SIZE,
@@ -49,6 +50,7 @@ model_parmas = {
     "num_mask": 32,
     "aspect_ratio": [1, 0.5, 2],
     "scales": [24, 48, 96, 192, 384]
+
 }
 
 # Adding any backbone u want as long as the output size are: (28, 28), (14, 14), (7,7)

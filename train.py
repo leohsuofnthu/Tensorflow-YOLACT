@@ -1,7 +1,7 @@
+import os
 import datetime
 import contextlib
 import tensorflow as tf
-from tensorflow.keras.utils import Progbar
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
@@ -9,20 +9,19 @@ from absl import flags
 from absl import logging
 
 import yolact
-from data import coco_dataset, anchor
 from loss import loss_yolact
 from utils import learning_rate_schedule
+from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
-from layers.detection import Detect
 
 import config as cfg
 
-tf.random.set_seed(1234)
-
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('tfrecord_dir', './data/coco',
+flags.DEFINE_string('name', 'coco',
+                    'name of dataset')
+flags.DEFINE_string('tfrecord_dir', './data/',
                     'directory of tfrecord')
 flags.DEFINE_string('weights', './weights',
                     'path to store weights')
@@ -68,7 +67,6 @@ def valid_step(model,
                metrics,
                image,
                labels):
-    # Todo Calculate mAP here for evaluation
     output = model(image, training=False)
     loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
     metrics.update_state(total_loss)
@@ -76,6 +74,11 @@ def valid_step(model,
 
 
 def main(argv):
+
+    # set fixed random seed
+    tf.random.set_seed(cfg.RANDOM_SEED)
+
+    # -----------------------------------------------------------------
     # set up Grappler for graph optimization
     # Ref: https://www.tensorflow.org/guide/graph_optimization
     @contextlib.contextmanager
@@ -88,31 +91,9 @@ def main(argv):
             tf.config.optimizer.set_experimental_options(old_opts)
 
     # -----------------------------------------------------------------
-    # Creating dataloaders for training and validation
-    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
-    train_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
-                                                    batch_size=FLAGS.batch_size,
-                                                    subset='train',
-                                                    **cfg.parser_params)
-
-    valid_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
-                                                    batch_size=1,
-                                                    subset='val',
-                                                    **cfg.parser_params)
-    # count number of valid data for progress bar
-    num_val = 0
-    for element in valid_dataset:
-        num_val += 1
-    logging.info("Number of Valid data", num_val)
-    # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = yolact.Yolact(**cfg.model_parmas)
-
-    # Add detection Layer after model
-    # todo create singleton here
-    ar = anchor.Anchor(**cfg.anchor_params).get_anchors()
-    detection_layer = Detect(anchors=ar, **cfg.detection_params)
+    model = yolact.Yolact(**cfg.model_parmas, **cfg.anchor_params, **cfg.detection_params)
 
     # add weight decay
     for layer in model.layers:
@@ -120,6 +101,23 @@ def main(argv):
             layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
         if hasattr(layer, 'bias_regularizer') and layer.use_bias:
             layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
+
+    # -----------------------------------------------------------------
+    # Creating dataloaders for training and validation
+    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
+    dateset = ObjectDetectionDataset(dataset_name=FLAGS.name,
+                                     tfrecord_dir=os.path.join(FLAGS.tfrecord_dir, FLAGS.name),
+                                     anchor_instance=model.anchor_instance,
+                                     **cfg.parser_params)
+    train_dataset = dateset.get_dataloader(subset='train', batch_size=FLAGS.batch_size)
+    valid_dataset = dateset.get_dataloader(subset='val', batch_size=FLAGS.batch_size)
+
+    # count number of valid data for progress bar
+    # Todo any better way to do it?
+    num_val = 0
+    for _ in valid_dataset:
+        num_val += 1
+    logging.info("Number of Valid data", num_val*FLAGS.batch_size)
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
@@ -209,7 +207,7 @@ def main(argv):
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
             # validation and print mAP table
-            evaluate(model, detection_layer, valid_dataset, num_val)
+            evaluate(model, valid_dataset, num_val)
             """
             valid_iter = 0
             for valid_image, valid_labels in valid_dataset:
@@ -257,13 +255,13 @@ def main(argv):
                                                v_conf.result(),
                                                v_mask.result(),
                                                v_seg.result()))
-            
+            """
             # Todo save the best mAP
             if valid_loss.result() < best_val:
                 # Saving the weights:
                 best_val = valid_loss.result()
                 model.save_weights('./weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
-            """
+
             # reset the metrics
             train_loss.reset_states()
             loc.reset_states()
@@ -278,6 +276,7 @@ def main(argv):
             v_mask.reset_states()
             v_seg.reset_states()
             """
+
 
 if __name__ == '__main__':
     app.run(main)

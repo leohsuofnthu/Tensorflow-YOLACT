@@ -6,14 +6,15 @@ from data.coco_dataset import prepare_dataloader
 from utils.utils import denormalize_image
 from config import COCO_LABEL_MAP, COCO_CLASSES, COLORS
 import config as cfg
+
 # set manual seed for easy debug
 # -----------------------------------------------------------------------------------------------
 train_dataloader = prepare_dataloader("../data/coco", 1, "train", **cfg.parser_params)
 print(train_dataloader)
-
+tf.random.set_seed(556)
 for image, labels in train_dataloader.take(1):
     image = denormalize_image(image)
-    image = np.squeeze(image.numpy())*255
+    image = np.squeeze(image.numpy()) * 255
     image = image.astype(np.uint8)
     ori = labels['ori']
     ori = np.squeeze(labels['ori'].numpy())
@@ -35,7 +36,7 @@ for image, labels in train_dataloader.take(1):
         # prepare the class text to display
         text_str = f"{COCO_CLASSES[class_id]}"
         font_face = cv2.FONT_HERSHEY_DUPLEX
-        font_scale = 0.6
+        font_scale = 0.4
         font_thickness = 1
         text_w, text_h = cv2.getTextSize(text_str, font_face, font_scale, font_thickness)[0]
         text_pt = (int(b[1]), int(b[0] - 3))
@@ -49,10 +50,12 @@ for image, labels in train_dataloader.take(1):
 
         # create mask
         final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
+        plt.imshow(final_m)
+    plt.show()
 
-    final_m = final_m.astype('uint8')
     dst = np.zeros_like(image).astype('uint8')
-    final_m = cv2.resize(final_m, dsize=(image.shape[0], image.shape[1]), interpolation=cv2.INTER_NEAREST)
+    final_m = tf.image.resize(final_m, [image.shape[0], image.shape[1]], method=tf.image.ResizeMethod.BILINEAR)
+    final_m = (final_m+0.5).numpy().astype('uint8')
     cv2.addWeighted(final_m, 0.3, image, 0.7, 0, dst)
     cv2.imshow("check", dst)
     k = cv2.waitKey(0)
