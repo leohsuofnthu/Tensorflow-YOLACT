@@ -61,29 +61,17 @@ def train_step(model,
     return loc_loss, conf_loss, mask_loss, seg_loss
 
 
-@tf.function
-def valid_step(model,
-               loss_fn,
-               metrics,
-               image,
-               labels):
-    output = model(image, training=False)
-    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
-    metrics.update_state(total_loss)
-    return loc_loss, conf_loss, mask_loss, seg_loss
-
-
 def main(argv):
-    # -----------------------------------------------------------------
+
     # set fixed random seed
     tf.random.set_seed(cfg.RANDOM_SEED)
 
     # set up Grappler for graph optimization
     # Ref: https://www.tensorflow.org/guide/graph_optimization
     @contextlib.contextmanager
-    def options(options):
+    def options(opts):
         old_opts = tf.config.optimizer.get_experimental_options()
-        tf.config.optimizer.set_experimental_options(options)
+        tf.config.optimizer.set_experimental_options(opts)
         try:
             yield
         finally:
@@ -131,9 +119,9 @@ def main(argv):
     mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
     seg = tf.keras.metrics.Mean('seg_loss', dtype=tf.float32)
 
-    # Todo
-    v_bboxes_map = ...
-    v_masks_map = ...
+    # Todo adding to tensorboard
+    # v_bboxes_map = ...
+    # v_masks_map = ...
     # -----------------------------------------------------------------
 
     # Setup the TensorBoard for better visualization
@@ -206,7 +194,8 @@ def main(argv):
 
             # validation and print mAP table
             # Todo make evaluation faster, and return bboxes mAP / masks mAP
-            bboxes_map, masks_map = evaluate(model, valid_dataset, num_val)
+            all_map = evaluate(model, valid_dataset, num_val)
+            bboxes_map, masks_map = ...
 
             with test_summary_writer.as_default():
                 # Todo write mAP in tensorboard

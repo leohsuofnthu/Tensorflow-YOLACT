@@ -1,16 +1,13 @@
 """
 Mostly adapted from: https://github.com/dbolya/yolact/blob/master/eval.py
 """
-import os
 from collections import OrderedDict
-
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.utils import Progbar
-
 from absl import app
 from absl import flags
 from absl import logging
+
+import tensorflow as tf
+from tensorflow.keras.utils import Progbar
 
 from utils.APObject import APObject, Detections
 from utils.utils import jaccard, mask_iou, postprocess
@@ -21,7 +18,6 @@ iou_thresholds = [x / 100 for x in range(50, 100, 5)]
 print(iou_thresholds)
 
 
-# Todo write test file to check if works correctly
 # for calculating IOU between gt and detection box
 # so as to decide the TP, FP, FN
 def _bbox_iou(bbox1, bbox2, is_crowd=False):
@@ -29,7 +25,6 @@ def _bbox_iou(bbox1, bbox2, is_crowd=False):
     return ret
 
 
-# Todo write test file to check if works correctly
 # for calculating IOU between gt and detection mask
 def _mask_iou(mask1, mask2, is_crowd=False):
     ret = mask_iou(mask1, mask2, is_crowd)
@@ -76,6 +71,7 @@ def calc_map(ap_data):
     return all_maps
 
 
+# ref from original arthor
 def print_maps(all_maps):
     # Warning: hacky
     make_row = lambda vals: (' %5s |' * len(vals)) % tuple(vals)
@@ -90,6 +86,7 @@ def print_maps(all_maps):
     print()
 
 
+# ref from original arthor
 def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     """Mainly update the ap_data for validation table"""
     # get the shape of image
@@ -304,7 +301,7 @@ def evaluate(model, dataset, num_val=0, batch_size=1):
 
     # iterate the whole dataset to save TP, FP, FN
     i = 0
-    progbar = tf.keras.utils.Progbar(num_val)
+    progbar = Progbar(num_val)
     tf.print("Evaluating...")
     for image, labels in dataset:
         i += 1

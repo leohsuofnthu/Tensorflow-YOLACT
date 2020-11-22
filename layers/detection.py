@@ -2,7 +2,6 @@ import tensorflow as tf
 from utils import utils
 
 
-# Todo Optimize the detection speed
 class Detect(object):
     def __init__(self, anchors, num_cls, label_background, top_k, conf_threshold, nms_threshold):
         self.num_cls = num_cls
@@ -22,9 +21,7 @@ class Detect(object):
         proto_pred = prediction['proto_out']
         # tf.print('proto pred', tf.shape(proto_pred))
         # tf.print('anchors', tf.shape(self.anchors))
-        out = []
         num_batch = tf.shape(loc_pred)[0]
-        num_anchors = tf.shape(loc_pred)[1]
         # tf.print("num batch:", num_batch)
         # tf.print("num anchors:", num_anchors)
 
@@ -34,55 +31,42 @@ class Detect(object):
         cls_pred = tf.transpose(cls_pred, perm=[0, 2, 1])
         # tf.print("score", tf.shape(cls_pred))
 
+        out = []
         for batch_idx in tf.range(num_batch):
             # add offset to anchors
             decoded_boxes = utils.map_to_bbox(self.anchors, loc_pred[batch_idx])
-            # do detection
-            result = self._detection(batch_idx, cls_pred, decoded_boxes, mask_pred)
+            # do detection, we ignore background label 0 here
+            result = self._detection(cls_pred[batch_idx, 1:], decoded_boxes, mask_pred[batch_idx])
             if (result is not None) and (proto_pred is not None):
                 result['proto'] = proto_pred[batch_idx]
             out.append({'detection': result})
 
         return out
 
-    def _detection(self, batch_idx, cls_pred, decoded_boxes, mask_pred):
-        # we don't need to deal with background label
-        cur_score = cls_pred[batch_idx, 1:, :]
-        # tf.print("cur score:", tf.shape(cur_score))
-        conf_score = tf.math.reduce_max(cur_score, axis=0)
-        conf_score_id = tf.argmax(cur_score, axis=0)
+    def _detection(self, cls_pred, decoded_boxes, mask_pred):
+
+        # get scores and correspond class
+        conf_score = tf.math.reduce_max(cls_pred, axis=0)
+        conf_score_id = tf.argmax(cls_pred, axis=0)
         # tf.print("conf_score:", tf.shape(conf_score))
 
         # filter out the ROI that have conf score > confidence threshold
         candidate_ROI_idx = tf.squeeze(tf.where(conf_score > self.conf_threshold))
         # tf.print("candidate_ROI", candidate_ROI_idx)
 
-        # there might not have any score that over self.conf_threshold
+        # there might not have any score that over self.conf_threshold, no detection
         if tf.size(candidate_ROI_idx) == 0:
             return None
-        # tf.print('original score', tf.shape(cur_score))
-        scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
-        # scores = tf.gather(conf_score, candidate_ROI_idx)
-        classes = tf.gather(conf_score_id, candidate_ROI_idx)
-        # tf.print("scores", tf.shape(scores))
-        boxes = tf.gather(decoded_boxes, candidate_ROI_idx)
-        # tf.print("boxes", tf.shape(boxes))
-        masks = tf.gather(mask_pred[batch_idx], candidate_ROI_idx)
-        # tf.print("masks", tf.shape(masks))
-
-        """
-        #　Normal NMS
-        selected_indices = tf.image.non_max_suppression(boxes, scores, 100, 0.1)
-        boxes = tf.gather(boxes, selected_indices)
-        scores = tf.gather(scores, selected_indices)
-        masks = tf.gather(masks, selected_indices)
-        classes = tf.gather(classes, selected_indices)
-
-        tf.print("predicted boxes shape", tf.shape(boxes))
-        tf.print("predicted scores shape", tf.shape(scores))
-        tf.print("predicted masks shape", tf.shape(masks))
-        tf.print("predicted classes shape", tf.shape(classes))
-        """
+        else:
+            # tf.print('original score', tf.shape(cur_score))
+            scores = tf.gather(conf_score, candidate_ROI_idx)
+            # scores = tf.gather(conf_score, candidate_ROI_idx)
+            classes = tf.gather(conf_score_id, candidate_ROI_idx)
+            # tf.print("scores", tf.shape(scores))
+            boxes = tf.gather(decoded_boxes, candidate_ROI_idx)
+            # tf.print("boxes", tf.shape(boxes))
+            masks = tf.gather(mask_pred, candidate_ROI_idx)
+            # tf.print("masks", tf.shape(masks))
 
         # Fast NMS
         # tf.print("before fastnms score", scores)
@@ -92,10 +76,9 @@ class Detect(object):
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
+
         scores, idx = tf.math.top_k(scores, k=top_k)
-        if tf.size(idx) == 1:
-            return None, None, None, None
-        num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
+        num_classes = tf.shape(idx)[0]
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
         iou = utils.jaccard(boxes, boxes)
@@ -133,4 +116,21 @@ class Detect(object):
 
     def _cc_fast_nms(self):
         """cross class FastNMS"""
+        ...
+
+    def _nms(self):
+        """original NMS"""
+        """
+               #　Normal NMS
+               selected_indices = tf.image.non_max_suppression(boxes, scores, 100, 0.1)
+               boxes = tf.gather(boxes, selected_indices)
+               scores = tf.gather(scores, selected_indices)
+               masks = tf.gather(masks, selected_indices)
+               classes = tf.gather(classes, selected_indices)
+
+               tf.print("predicted boxes shape", tf.shape(boxes))
+               tf.print("predicted scores shape", tf.shape(scores))
+               tf.print("predicted masks shape", tf.shape(masks))
+               tf.print("predicted classes shape", tf.shape(classes))
+               """
         ...

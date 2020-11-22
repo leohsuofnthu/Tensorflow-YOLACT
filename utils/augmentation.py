@@ -315,7 +315,7 @@ class SSDAugmentation(object):
             self.augmentations = Compose([
                 ConvertFromInts(),
                 # validation no need to resize mask tp proto size
-                Resize(output_size, output_size, discard_box_width, discard_box_height),
+                Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
             ])
