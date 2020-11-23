@@ -17,6 +17,16 @@ class Parser(object):
         self.matching_params = parser_params['matching_params']
         self.augmentation_params = parser_params['augmentation_params']
 
+        if parser_params['label_map'] is not None:
+            keys = list(parser_params['label_map'].keys())
+            vals = [parser_params['label_map'][k] for k in keys]
+            keys = tf.constant(keys)
+            vals = tf.constant(vals)
+            self.dict_tensor = tf.lookup.StaticHashTable(
+                tf.lookup.KeyValueTensorInitializer(keys, vals), -1)
+        else:
+            self.dict_tensor = None
+
         if mode == "train":
             self._parse_fn = self._parse_train_data
         elif mode == "val":
@@ -40,6 +50,13 @@ class Parser(object):
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
 
+        # if label_map is not none, remapping the class label, ex: COCO datasets
+        if self.dict_tensor is not None:
+            # todo clarify tf.int32 and tf.int64 on performance
+            classes = tf.cast(classes, tf.int32)
+            classes = self.dict_tensor.lookup(classes)
+            classes = tf.cast(classes, tf.int64)
+
         # return original image for testing augmentation purpose
         original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
         original_img = tf.image.resize(original_img, [self.output_size, self.output_size])
@@ -62,11 +79,9 @@ class Parser(object):
         num_crowd = tf.reduce_sum(tf.cast(is_crowds, tf.int32))
 
         # remember to unnormalized the bbox
-        # Todo if we preserve aspecct ratio, how to deal with this
         boxes = norm_boxes * self.output_size
 
         # resized boxes for proto output size (for mask loss)
-        # Todo if we preserve aspecct ratio, how to deal with this
         boxes_norm = norm_boxes * self.proto_out_size
 
         # matching anchors

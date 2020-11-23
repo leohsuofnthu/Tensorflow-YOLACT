@@ -53,8 +53,8 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        # Todo how many category should we put in trianing (remapping for coco)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+        # Todo consider if using other dataset (make it general)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, len(cfg.COCO_CLASSES)+1)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
