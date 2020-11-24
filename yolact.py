@@ -36,10 +36,7 @@ class Yolact(tf.keras.Model):
         super(Yolact, self).__init__()
         # choose the backbone network
         try:
-            out = backbones_extracted[backbone](input_shape=(input_size, input_size, 3),
-                                                include_top=False,
-                                                layers=tf.keras.layers,
-                                                weights='imagenet')
+            out = backbones_extracted[backbone]
             base_model = backbones_objects[backbone]
         except:
             raise Exception(f'Backbone option of {backbone} is not supported yet!!!')

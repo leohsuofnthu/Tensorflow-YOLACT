@@ -15,7 +15,7 @@ from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
 
-from config import RANDOM_SEED, get_params
+from config import RANDOM_SEED, TRAIN_ITER, get_params
 
 FLAGS = flags.FLAGS
 
@@ -23,12 +23,8 @@ flags.DEFINE_string('name', 'coco',
                     'name of dataset')
 flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
-flags.DEFINE_string('config', './config/config_coco.json',
-                    'path of config file')
 flags.DEFINE_string('weights', 'weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 10000,
-                     'iteraitons')
 flags.DEFINE_integer('batch_size', 3,
                      'batch size')
 flags.DEFINE_float('momentum', 0.9,
@@ -65,7 +61,7 @@ def train_step(model,
 def main(argv):
     # set fixed random seed, load config files
     tf.random.set_seed(RANDOM_SEED)
-    input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(FLAGS.name)
+    train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(FLAGS.name)
 
     # -----------------------------------------------------------------
     # set up Grappler for graph optimization
@@ -156,7 +152,7 @@ def main(argv):
 
     for image, labels in train_dataset:
         # check iteration and change the learning rate
-        if iterations > FLAGS.train_iter:
+        if iterations > train_iter:
             break
 
         checkpoint.step.assign_add(1)
