@@ -25,7 +25,6 @@ class Yolact(tf.keras.Model):
     """
 
     def __init__(self,
-                 input_size,
                  backbone,
                  fpn_channels,
                  num_class,
@@ -42,8 +41,8 @@ class Yolact(tf.keras.Model):
             raise Exception(f'Backbone option of {backbone} is not supported yet!!!')
 
         # extract certain feature maps for FPN
-        self.backbone_resnet = tf.keras.Model(inputs=base_model.input,
-                                              outputs=[base_model.get_layer(x).output for x in out])
+        self.backbone = tf.keras.Model(inputs=base_model.input,
+                                       outputs=[base_model.get_layer(x).output for x in out])
         # create remain parts of model
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
         self.protonet = ProtoNet(num_mask)
@@ -68,17 +67,17 @@ class Yolact(tf.keras.Model):
     # Todo need to clarified
     def set_bn(self, mode='train'):
         if mode == 'train':
-            for layer in self.backbone_resnet.layers:
+            for layer in self.backbone.layers:
                 if isinstance(layer, tf.keras.layers.BatchNormalization):
                     layer.trainable = False
         else:
-            for layer in self.backbone_resnet.layers:
+            for layer in self.backbone.layers:
                 if isinstance(layer, tf.keras.layers.BatchNormalization):
                     layer.trainable = True
 
     def call(self, inputs):
         # backbone(ResNet + FPN)
-        c3, c4, c5 = self.backbone_resnet(inputs)
+        c3, c4, c5 = self.backbone(inputs)
         # print("c3: ", c3.shape)
         # print("c4: ", c4.shape)
         # print("c5: ", c5.shape)
