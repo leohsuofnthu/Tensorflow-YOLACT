@@ -97,9 +97,9 @@ def main(argv):
 
     # count number of valid data for progress bar
     # Todo any better way to do it?
-    num_val = 4953
-    # for _ in valid_dataset:
-    #     num_val += 1
+    num_val = 0
+    for _ in valid_dataset:
+        num_val += 1
     logging.info("Number of Valid data", num_val * FLAGS.batch_size)
 
     # -----------------------------------------------------------------

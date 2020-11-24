@@ -80,7 +80,13 @@ class Detect(object):
         num_classes = tf.shape(idx)[0]
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
-        iou = utils.jaccard(boxes, boxes)
+        iou = tf.squeeze(utils.jaccard(tf.expand_dims(boxes, axis=0), tf.expand_dims(boxes, axis=0)), axis=0)
+
+        tf.print(scores)
+        tf.print(idx)
+        tf.print("boxes", tf.shape(boxes))
+        tf.print("masks", tf.shape(masks))
+        tf.print("ious", tf.shape(iou))
 
         # upper trangular matrix - diagnoal
         upper_triangular = tf.linalg.band_part(iou, 0, -1)

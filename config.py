@@ -86,7 +86,7 @@ PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
 
 TRAIN_ITER = dict({
     "coco": 800000,
-    "pascal": 120000,
+    "pascal": 10000,
     "your_custom_dataset": 0
 })
 
