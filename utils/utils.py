@@ -1,5 +1,11 @@
+"""
+Ref:
+https://github.com/tensorflow/models/blob/831281cedfc8a4a0ad7c0c37173963fafb99da37/official/vision/detection/utils/object_detection/box_list_ops.py
+https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
+https://github.com/dbolya/yolact/blob/master/layers/box_utils.py
+"""
 import tensorflow as tf
-import config as cfg
+
 
 def bboxes_intersection(bbox_ref, bboxes):
     """Compute relative intersection between a reference box and a
@@ -39,9 +45,7 @@ def bboxes_intersection(bbox_ref, bboxes):
 
 
 def normalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
-    """Normalizes the image to zero mean and unit variance.
-     ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
-  """
+    """Normalizes the image to zero mean and unit variance."""
     image = tf.image.convert_image_dtype(image, dtype=tf.float32)
     offset = tf.constant(offset)
     offset = tf.expand_dims(offset, axis=0)
@@ -56,9 +60,7 @@ def normalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.
 
 
 def denormalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
-    """Normalizes the image to zero mean and unit variance.
-     ref: https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe805333d/official/vision/detection/utils/input_utils.py
-  """
+    """Normalizes the image to zero mean and unit variance."""
     scale = tf.constant(scale)
     scale = tf.expand_dims(scale, axis=0)
     scale = tf.expand_dims(scale, axis=0)
@@ -192,12 +194,6 @@ def jaccard(box_a, box_b, is_crowd=False):
 
 
 def mask_iou(masks_a, masks_b, is_crowd=False):
-    """
-       Computes the pariwise mask IoU between two sets of masks of size [a, h, w] and [b, h, w].
-       The output is of size [a, b].
-       Wait I thought this was "box_utils", why am I putting this in here?
-       """
-
     num_a = tf.shape(masks_a)[0]
     num_b = tf.shape(masks_b)[0]
     # tf.print("num a", num_a)
@@ -254,14 +250,17 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
     # tf.print("pred mask after detection", tf.shape(pred_mask))
 
-    if crop_mask:
-        # Todo need to import from config
-        masks = crop(pred_mask, boxes * float(cfg.PROTO_OUTPUT_SIZE / cfg.IMG_SIZE))
+    tf.print("proto outsize", tf.shape(pred_mask)[-1])
+    tf.print("image size", w)
 
-    # intepolate to original size (test 550*550 here)
+    if crop_mask:
+        masks = crop(pred_mask, boxes * float(tf.shape(pred_mask)[-1] / w))
+
+    # intepolate to original size
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
                             method=intepolation_mode)
 
+    # binarized the mask
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(tf.cast(masks, tf.float32))
     # tf.print("masks after postprecessing", tf.shape(masks))

@@ -6,37 +6,44 @@ ref:https://jkjung-avt.github.io/tfrecords-for-keras/
 ref:https://github.com/tensorflow/models/blob/master/research/object_detection/utils/dataset_util.py
 """
 import os
-
 import tensorflow as tf
-
-from data import anchor
 from data import coco_tfrecord_parser
 
 
-# Todo encapsulate it as a class, here is the place to get dataset(train, eval, test)
-def prepare_dataloader(tfrecord_dir, batch_size, subset="train", **parser_params):
-    # Todo Create singleton here
-    anchorobj = anchor.Anchor(img_size=550,
-                              feature_map_size=[69, 35, 18, 9, 5],
-                              aspect_ratio=[1, 0.5, 2],
-                              scale=[24, 48, 96, 192, 384])
+class ObjectDetectionDataset:
 
-    parser = coco_tfrecord_parser.Parser(anchor_instance=anchorobj,
-                                         mode=subset,
-                                         **parser_params)
+    def __init__(self, dataset_name, tfrecord_dir, anchor_instance, **parser_params):
+        self.dataset_name = dataset_name
+        self.tfrecord_dir = tfrecord_dir
+        self.anchor_instance = anchor_instance
+        self.parser_params = parser_params
 
-    files = tf.io.matching_files(os.path.join(tfrecord_dir, "coco_%s.*" % subset))
-    num_shards = tf.cast(tf.shape(files)[0], tf.int64)
-    shards = tf.data.Dataset.from_tensor_slices(files)
-    shards = shards.shuffle(num_shards)
-    shards = shards.repeat()
-    dataset = shards.interleave(tf.data.TFRecordDataset,
-                                cycle_length=num_shards,
-                                num_parallel_calls=tf.data.experimental.AUTOTUNE)
+    def get_dataloader(self, subset, batch_size):
+        # function for per-element transformation
+        parser = coco_tfrecord_parser.Parser(anchor_instance=self.anchor_instance,
+                                             mode=subset,
+                                             **self.parser_params)
+        # get tfrecord file names
+        files = tf.io.matching_files(os.path.join(self.tfrecord_dir, f"{self.dataset_name}_{subset}.*"))
+        num_shards = tf.cast(tf.size(files), tf.int64)
+        shards = tf.data.Dataset.from_tensor_slices(files)
 
-    dataset = dataset.shuffle(buffer_size=2048)
-    dataset = dataset.map(map_func=parser)
-    dataset = dataset.batch(batch_size)
-    dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+        # apply suffle and repeat only on traininig data
+        if subset == 'train':
+            shards = shards.shuffle(num_shards)
+            shards = shards.repeat()
+            dataset = shards.interleave(tf.data.TFRecordDataset,
+                                        cycle_length=num_shards,
+                                        num_parallel_calls=tf.data.experimental.AUTOTUNE)
+            dataset = dataset.shuffle(buffer_size=2048)
+        elif subset == 'val' or 'test':
+            dataset = tf.data.TFRecordDataset(shards)
+        else:
+            raise ValueError('Illegal subset name.')
 
-    return dataset
+        # apply per-element transformation
+        dataset = dataset.map(map_func=parser)
+        dataset = dataset.batch(batch_size)
+        dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
+
+        return dataset

@@ -1,37 +1,32 @@
+import os
 import datetime
 import contextlib
 import tensorflow as tf
-from tensorflow.keras.utils import Progbar
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
 from absl import flags
 from absl import logging
 
-import yolact
-from data import coco_dataset, anchor
+from yolact import Yolact
 from loss import loss_yolact
 from utils import learning_rate_schedule
+from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
-from layers.detection import Detect
 
-import config as cfg
-
-tf.random.set_seed(1234)
+from config import RANDOM_SEED, TRAIN_ITER, get_params
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('tfrecord_dir', './data/coco',
+flags.DEFINE_string('name', 'coco',
+                    'name of dataset')
+flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
-flags.DEFINE_string('weights', './weights',
+flags.DEFINE_string('weights', 'weights',
                     'path to store weights')
-flags.DEFINE_integer('train_iter', 10000,
-                     'iteraitons')
 flags.DEFINE_integer('batch_size', 3,
                      'batch size')
-flags.DEFINE_float('lr', 1e-3,
-                   'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
@@ -50,64 +45,41 @@ def train_step(model,
                metrics,
                optimizer,
                image,
-               labels):
+               labels,
+               num_cls):
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        # Todo how many category should we put in trianing
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
+        # Todo consider if using other dataset (make it general)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, num_cls)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
     return loc_loss, conf_loss, mask_loss, seg_loss
 
 
-@tf.function
-def valid_step(model,
-               loss_fn,
-               metrics,
-               image,
-               labels):
-    # Todo Calculate mAP here for evaluation
-    output = model(image, training=False)
-    loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, 91)
-    metrics.update_state(total_loss)
-    return loc_loss, conf_loss, mask_loss, seg_loss
-
-
 def main(argv):
+    # set fixed random seed, load config files
+    tf.random.set_seed(RANDOM_SEED)
+    train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
+        FLAGS.name)
+
+    # -----------------------------------------------------------------
     # set up Grappler for graph optimization
     # Ref: https://www.tensorflow.org/guide/graph_optimization
     @contextlib.contextmanager
-    def options(options):
+    def options(opts):
         old_opts = tf.config.optimizer.get_experimental_options()
-        tf.config.optimizer.set_experimental_options(options)
+        tf.config.optimizer.set_experimental_options(opts)
         try:
             yield
         finally:
             tf.config.optimizer.set_experimental_options(old_opts)
 
     # -----------------------------------------------------------------
-    # Creating dataloaders for training and validation
-    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
-    train_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
-                                                    batch_size=FLAGS.batch_size,
-                                                    subset='train',
-                                                    **cfg.parser_params)
-
-    valid_dataset = coco_dataset.prepare_dataloader(tfrecord_dir=FLAGS.tfrecord_dir,
-                                                    batch_size=1,
-                                                    subset='val',
-                                                    **cfg.parser_params)
-    # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = yolact.Yolact(**cfg.model_parmas)
-
-    # Add detection Layer after model
-    # todo create singleton here
-    ar = anchor.Anchor(**cfg.anchor_params).get_anchors()
-    detection_layer = Detect(anchors=ar, **cfg.detection_params)
+    model = Yolact(input_size, **model_params)
 
     # add weight decay
     for layer in model.layers:
@@ -117,23 +89,38 @@ def main(argv):
             layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
 
     # -----------------------------------------------------------------
+    # Creating dataloaders for training and validation
+    logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)
+    dateset = ObjectDetectionDataset(dataset_name=FLAGS.name,
+                                     tfrecord_dir=os.path.join(FLAGS.tfrecord_dir, FLAGS.name),
+                                     anchor_instance=model.anchor_instance,
+                                     **parser_params)
+    train_dataset = dateset.get_dataloader(subset='train', batch_size=FLAGS.batch_size)
+    valid_dataset = dateset.get_dataloader(subset='val', batch_size=FLAGS.batch_size)
+
+    # count number of valid data for progress bar
+    # Todo any better way to do it?
+    num_val = 4953
+    # for _ in valid_dataset:
+    #     num_val += 1
+    logging.info("Number of Valid data", num_val * FLAGS.batch_size)
+
+    # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
-                                                                     initial_lr=FLAGS.lr)
+    # Todo add config to lr schedule
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
-    criterion = loss_yolact.YOLACTLoss()
+    criterion = loss_yolact.YOLACTLoss(**loss_params)
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
-    valid_loss = tf.keras.metrics.Mean('valid_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
     mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
     seg = tf.keras.metrics.Mean('seg_loss', dtype=tf.float32)
-    v_loc = tf.keras.metrics.Mean('vloc_loss', dtype=tf.float32)
-    v_conf = tf.keras.metrics.Mean('vconf_loss', dtype=tf.float32)
-    v_mask = tf.keras.metrics.Mean('vmask_loss', dtype=tf.float32)
-    v_seg = tf.keras.metrics.Mean('vseg_loss', dtype=tf.float32)
 
+    # Todo adding to tensorboard
+    # v_bboxes_map = ...
+    # v_masks_map = ...
     # -----------------------------------------------------------------
 
     # Setup the TensorBoard for better visualization
@@ -161,12 +148,12 @@ def main(argv):
     else:
         logging.info("Initializing from scratch.")
 
-    best_val = 1e10
+    best_masks_map = 0.
     iterations = checkpoint.step.numpy()
 
     for image, labels in train_dataset:
         # check iteration and change the learning rate
-        if iterations > FLAGS.train_iter:
+        if iterations > train_iter:
             break
 
         checkpoint.step.assign_add(1)
@@ -177,7 +164,7 @@ def main(argv):
                       'arithmetic_optimization': True,
                       'remapping': True}):
             loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image,
-                                                                  labels)
+                                                                  labels, num_cls)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
@@ -190,10 +177,11 @@ def main(argv):
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
         if iterations and iterations % FLAGS.print_interval == 0:
-            logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
+            tf.print("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
                 iterations,
                 optimizer._decayed_lr(var_dtype=tf.float32),
-                train_loss.result(), loc.result(),
+                train_loss.result(),
+                loc.result(),
                 conf.result(),
                 mask.result(),
                 seg.result()
@@ -203,62 +191,22 @@ def main(argv):
             # save checkpoint
             save_path = manager.save()
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
+
             # validation and print mAP table
-            evaluate(model, detection_layer, valid_dataset)
-            """
-            valid_iter = 0
-            for valid_image, valid_labels in valid_dataset:
-                if valid_iter > FLAGS.valid_iter:
-                    break
-                # calculate validation loss
-                with options({'constant_folding': True,
-                              'layout_optimize': True,
-                              'loop_optimization': True,
-                              'arithmetic_optimization': True,
-                              'remapping': True}):
-                    # Todo accumulate mAP calculation, call evaluate(model, dataset) directly and print the mAP
-                    # get the detections, saving in objects
-                    valid_loc_loss, valid_conf_loss, valid_mask_loss, valid_seg_loss = valid_step(model,
-                                                                                                  criterion,
-                                                                                                  valid_loss,
-                                                                                                  valid_image,
-                                                                                                  valid_labels)
-                v_loc.update_state(valid_loc_loss)
-                v_conf.update_state(valid_conf_loss)
-                v_mask.update_state(valid_mask_loss)
-                v_seg.update_state(valid_seg_loss)
-                valid_iter += 1
+            # Todo make evaluation faster, and return bboxes mAP / masks mAP
+            all_map = evaluate(model, valid_dataset, num_val, num_cls, batch_size=1)
+            bboxes_map, masks_map = ...
 
             with test_summary_writer.as_default():
-                tf.summary.scalar('V Total loss', valid_loss.result(), step=iterations)
-                tf.summary.scalar('V Loc loss', v_loc.result(), step=iterations)
-                tf.summary.scalar('V Conf loss', v_conf.result(), step=iterations)
-                tf.summary.scalar('V Mask loss', v_mask.result(), step=iterations)
-                tf.summary.scalar('V Seg loss', v_seg.result(), step=iterations)
-            """
-            train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
-            valid_template = 'Iteration {}, Valid Loss: {}, V Loc Loss: {},  V Conf Loss: {}, V Mask Loss: {}, ' \
-                             'Seg Loss: {} '
-            logging.info(train_template.format(iterations + 1,
-                                               train_loss.result(),
-                                               loc.result(),
-                                               conf.result(),
-                                               mask.result(),
-                                               seg.result()))
-            """
-            logging.info(valid_template.format(iterations + 1,
-                                               valid_loss.result(),
-                                               v_loc.result(),
-                                               v_conf.result(),
-                                               v_mask.result(),
-                                               v_seg.result()))
-            
+                # Todo write mAP in tensorboard
+                ...
+
             # Todo save the best mAP
-            if valid_loss.result() < best_val:
+            if masks_map < best_masks_map:
                 # Saving the weights:
-                best_val = valid_loss.result()
-                model.save_weights('./weights/weights_' + str(valid_loss.result().numpy()) + '.h5')
-            """
+                best_masks_map = masks_map
+                model.save_weights('./weights/weights_' + str(best_masks_map) + '.h5')
+
             # reset the metrics
             train_loss.reset_states()
             loc.reset_states()
@@ -266,13 +214,6 @@ def main(argv):
             mask.reset_states()
             seg.reset_states()
 
-            """
-            valid_loss.reset_states()
-            v_loc.reset_states()
-            v_conf.reset_states()
-            v_mask.reset_states()
-            v_seg.reset_states()
-            """
 
 if __name__ == '__main__':
     app.run(main)

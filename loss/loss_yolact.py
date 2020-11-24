@@ -1,5 +1,4 @@
 import tensorflow as tf
-import time
 from utils import utils
 
 
@@ -8,13 +7,13 @@ class YOLACTLoss(object):
     def __init__(self, loss_weight_cls=1,
                  loss_weight_box=1.5,
                  loss_weight_mask=6.125,
-                 loss_seg=1,
+                 loss_weight_seg=1,
                  neg_pos_ratio=3,
                  max_masks_for_train=100):
         self._loss_weight_cls = loss_weight_cls
         self._loss_weight_box = loss_weight_box
         self._loss_weight_mask = loss_weight_mask
-        self._loss_weight_seg = loss_seg
+        self._loss_weight_seg = loss_weight_seg
         self._neg_pos_ratio = neg_pos_ratio
         self._max_masks_for_train = max_masks_for_train
 

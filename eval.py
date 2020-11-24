@@ -1,27 +1,21 @@
 """
 Mostly adapted from: https://github.com/dbolya/yolact/blob/master/eval.py
 """
-import os
 from collections import OrderedDict
-
-import numpy as np
-import tensorflow as tf
-from tensorflow.keras.utils import Progbar
-
 from absl import app
 from absl import flags
 from absl import logging
 
+import tensorflow as tf
+from tensorflow.keras.utils import Progbar
+
 from utils.APObject import APObject, Detections
 from utils.utils import jaccard, mask_iou, postprocess
-
-import config as cfg
 
 iou_thresholds = [x / 100 for x in range(50, 100, 5)]
 print(iou_thresholds)
 
 
-# Todo write test file to check if works correctly
 # for calculating IOU between gt and detection box
 # so as to decide the TP, FP, FN
 def _bbox_iou(bbox1, bbox2, is_crowd=False):
@@ -29,7 +23,6 @@ def _bbox_iou(bbox1, bbox2, is_crowd=False):
     return ret
 
 
-# Todo write test file to check if works correctly
 # for calculating IOU between gt and detection mask
 def _mask_iou(mask1, mask2, is_crowd=False):
     ret = mask_iou(mask1, mask2, is_crowd)
@@ -37,7 +30,7 @@ def _mask_iou(mask1, mask2, is_crowd=False):
 
 
 # ref from original arthor
-def calc_map(ap_data):
+def calc_map(ap_data, num_cls):
     """
 
     :param ap_data: all individual AP
@@ -49,7 +42,7 @@ def calc_map(ap_data):
     aps = [{'box': [], 'mask': []} for _ in iou_thresholds]
 
     # 　calculate Ap for every classes individually
-    for _class in range(cfg.NUM_CLASSES):
+    for _class in range(num_cls):
         # each class have multiple different iou threshold to calculate
         for iou_idx in range(len(iou_thresholds)):
             # there are 2 type of mAP we want to know (bounding box and mask)
@@ -76,6 +69,7 @@ def calc_map(ap_data):
     return all_maps
 
 
+# ref from original arthor
 def print_maps(all_maps):
     # Warning: hacky
     make_row = lambda vals: (' %5s |' * len(vals)) % tuple(vals)
@@ -89,7 +83,7 @@ def print_maps(all_maps):
     print(make_sep(len(all_maps['box']) + 1))
     print()
 
-
+# ref from original arthor
 def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     """Mainly update the ap_data for validation table"""
     # get the shape of image
@@ -175,6 +169,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
+    # todo maybe no need to squeeze
     bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox), axis=0).numpy()
 
     """
@@ -253,7 +248,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                             for j in range(len(gt_crowd_classes)):
                                 if gt_crowd_classes[j] != _class:
                                     continue
-
                                 iou = crowd_func(i, j)
 
                                 if iou > th:
@@ -284,7 +278,7 @@ def eval_video():
     ...
 
 
-def evaluate(model, detection_layer, dataset, batch_size=1):
+def evaluate(model, dataset, num_val, num_cls, batch_size=1):
     # if use fastnms
     # if use cross class nms
 
@@ -295,27 +289,29 @@ def evaluate(model, detection_layer, dataset, batch_size=1):
     # if not display or benchmark
     # For mAP evaluation, creating AP_Object for every class per iou_threshold
     ap_data = {
-        # Todo add item in config.py
-        'box': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds],
-        'mask': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds]}
+        'box': [[APObject() for _ in range(num_cls)] for _ in iou_thresholds],
+        'mask': [[APObject() for _ in range(num_cls)] for _ in iou_thresholds]}
 
-    # detection object made from prediction output
+    # detection object made from prediction output. for the purpose of creating json
     detections = Detections()
 
     # iterate the whole dataset to save TP, FP, FN
     i = 0
+    progbar = Progbar(num_val)
+    tf.print("Evaluating...")
     for image, labels in dataset:
         i += 1
         output = model(image, training=False)
-        detection = detection_layer(output)
+        dets = model.detect(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
-        prep_metrics(ap_data, detection, image, labels, detections)
+        prep_metrics(ap_data, dets, image, labels, detections)
+        progbar.update(i)
 
     # if to json
     # save detection to json
 
     # Todo if not training, save ap_data, else calc_map
-    return calc_map(ap_data)
+    return calc_map(ap_data, num_cls)
 
 
 def main(argv):

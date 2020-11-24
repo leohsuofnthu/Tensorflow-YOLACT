@@ -38,7 +38,8 @@ class RandomBrightness(object):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        if tf.random.uniform([1]) > 0.5:
+        # if tf.random.uniform([1]) > 0.5:
+        if False:
             image = tf.image.random_brightness(image, max_delta=self.delta)
         return image, masks, boxes, labels, is_crowds
 
@@ -50,7 +51,8 @@ class RandomContrast(object):
         self.upper = upper
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        if tf.random.uniform([1]) > 0.5:
+        # if tf.random.uniform([1]) > 0.5:
+        if True:
             image = tf.image.random_contrast(image, lower=self.lower, upper=self.upper)
         return image, masks, boxes, labels, is_crowds
 
@@ -62,7 +64,8 @@ class RandomSaturation(object):
         self.upper = upper
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        if tf.random.uniform([1]) > 0.5:
+        # if tf.random.uniform([1]) > 0.5:
+        if False:
             image = tf.image.random_saturation(image, lower=self.lower, upper=self.upper)
         return image, masks, boxes, labels, is_crowds
 
@@ -73,7 +76,8 @@ class RandomHue(object):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        if tf.random.uniform([1]) > 0.5:
+        # if tf.random.uniform([1]) > 0.5:
+        if False:
             image = tf.image.random_hue(image, max_delta=self.delta)
         return image, masks, boxes, labels, is_crowds
 
@@ -92,9 +96,9 @@ class PhotometricDistort(object):
         image, masks, boxes, labels, is_crowds = self.rand_brightness(image, masks, boxes, labels, is_crowds)
         # different order have different effect
         if tf.random.uniform([1]) > 0.5:
-            image, masks, boxes, labels, is_crowds = Compose(self.actions[:-1])(image, masks, boxes, labels)
+            image, masks, boxes, labels, is_crowds = Compose(self.actions[:-1])(image, masks, boxes, labels, is_crowds)
         else:
-            image, masks, boxes, labels, is_crowds = Compose(self.actions[1:])(image, masks, boxes, labels)
+            image, masks, boxes, labels, is_crowds = Compose(self.actions[1:])(image, masks, boxes, labels, is_crowds)
         return image, masks, boxes, labels, is_crowds
 
 
@@ -243,12 +247,13 @@ class Resize(object):
         # todo resize image mask while maintaining aspect ratio, also consider how to convert bbox
 
         # resize the image to output size
-        image = tf.image.resize(image, [self.output_size, self.output_size])
+        image = tf.image.resize(image, [self.output_size, self.output_size],
+                                method=tf.image.ResizeMethod.BILINEAR)
 
         # resize the mask to proto_out_size
         masks = tf.image.resize(tf.expand_dims(masks, -1), [self.proto_output_size, self.proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
-        masks = tf.cast(masks + 0.5, tf.int64)
+        masks = tf.cast(masks+0.5, tf.int64)
         masks = tf.squeeze(masks)
         masks = tf.cast(masks, tf.float32)
 
@@ -297,7 +302,7 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                # PhotometricDistort(),
+                PhotometricDistort(),
                 # Expand(mean),
                 # RandomSampleCrop(),
                 # RandomMirror(),
@@ -309,6 +314,7 @@ class SSDAugmentation(object):
             # no data augmentation for validation and test set
             self.augmentations = Compose([
                 ConvertFromInts(),
+                # validation no need to resize mask tp proto size
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
