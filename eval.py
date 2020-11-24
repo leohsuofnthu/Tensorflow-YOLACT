@@ -31,11 +31,6 @@ def _mask_iou(mask1, mask2, is_crowd=False):
 
 # ref from original arthor
 def calc_map(ap_data, num_cls):
-    """
-
-    :param ap_data: all individual AP
-    :return:
-    """
     print("Calculating mAP...")
 
     # create empty list of dict for different iou threshold
@@ -82,6 +77,7 @@ def print_maps(all_maps):
         print(make_row([iou_type] + ['%.2f' % x if x < 100 else '%.1f' % x for x in all_maps[iou_type].values()]))
     print(make_sep(len(all_maps['box']) + 1))
     print()
+
 
 # ref from original arthor
 def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):

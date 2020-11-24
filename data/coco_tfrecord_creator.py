@@ -34,19 +34,19 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean('include_masks', True,
                      'Whether to include instance segmentations masks (PNG encoded) in the result. default: False.')
-flags.DEFINE_string('train_image_dir', 'pascal_train',
+flags.DEFINE_string('train_image_dir', 'train2017',
                     'Training image directory.')
-flags.DEFINE_string('val_image_dir', 'pascal_val',
+flags.DEFINE_string('val_image_dir', 'val2017',
                     'Validation image directory.')
 flags.DEFINE_string('test_image_dir', '',
                     'Test image directory.')
-flags.DEFINE_string('train_annotations_file', 'pascal_sbd_train.json',
+flags.DEFINE_string('train_annotations_file', './annotations/instances_train2017.json',
                     'Training annotations JSON file.')
-flags.DEFINE_string('val_annotations_file', 'pascal_sbd_val.json',
+flags.DEFINE_string('val_annotations_file', './annotations/instances_val2017.json',
                     'Validation annotations JSON file.')
 flags.DEFINE_string('testdev_annotations_file', '',
                     'Test-dev annotations JSON file.')
-flags.DEFINE_string('output_dir', './pascal', 'Output data directory.')
+flags.DEFINE_string('output_dir', './coco', 'Output data directory.')
 
 logging.set_verbosity(logging.INFO)
 

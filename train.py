@@ -15,7 +15,7 @@ from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
 
-from config import RANDOM_SEED, TRAIN_ITER, get_params
+from config import RANDOM_SEED, get_params
 
 FLAGS = flags.FLAGS
 
@@ -48,7 +48,6 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
-        # Todo consider if using other dataset (make it general)
         loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, num_cls)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
@@ -105,7 +104,6 @@ def main(argv):
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    # Todo add config to lr schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
@@ -115,10 +113,6 @@ def main(argv):
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
     mask = tf.keras.metrics.Mean('mask_loss', dtype=tf.float32)
     seg = tf.keras.metrics.Mean('seg_loss', dtype=tf.float32)
-
-    # Todo adding to tensorboard
-    # v_bboxes_map = ...
-    # v_masks_map = ...
     # -----------------------------------------------------------------
 
     # Setup the TensorBoard for better visualization
@@ -191,19 +185,18 @@ def main(argv):
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
 
             # validation and print mAP table
-            # Todo make evaluation faster, and return bboxes mAP / masks mAP
             all_map = evaluate(model, valid_dataset, num_val, num_cls, batch_size=1)
-            bboxes_map, masks_map = ...
+            box_map, mask_map = all_map['box']['all'], all_map['mask']['all']
+            tf.print(f"box mAP:{box_map}, mask mAP:{mask_map}")
 
             with test_summary_writer.as_default():
-                # Todo write mAP in tensorboard
-                ...
+                tf.summary.scalar('Box mAP', box_map, step=iterations)
+                tf.summary.scalar('Mask mAP', mask_map, step=iterations)
 
-            # Todo save the best mAP
-            if masks_map < best_masks_map:
-                # Saving the weights:
-                best_masks_map = masks_map
-                model.save_weights('./weights/weights_' + str(best_masks_map) + '.h5')
+            # Saving the weights:
+            if mask_map > best_masks_map:
+                best_masks_map = mask_map
+                model.save_weights(f'./weights/weights_{FLAGS.name}_{str(best_masks_map)}.h5')
 
             # reset the metrics
             train_loss.reset_states()
