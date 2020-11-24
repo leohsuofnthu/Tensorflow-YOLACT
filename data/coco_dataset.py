@@ -24,7 +24,7 @@ class ObjectDetectionDataset:
                                              mode=subset,
                                              **self.parser_params)
         # get tfrecord file names
-        files = tf.io.matching_files(os.path.join(self.tfrecord_dir, f"{self.dataset_name}_{subset}.*"))
+        files = tf.io.matching_files(os.path.join(self.tfrecord_dir, f"{subset}.*"))
         num_shards = tf.cast(tf.size(files), tf.int64)
         shards = tf.data.Dataset.from_tensor_slices(files)
 

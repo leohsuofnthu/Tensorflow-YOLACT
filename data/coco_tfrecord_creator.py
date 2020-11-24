@@ -248,8 +248,8 @@ def main(_):
 
     if not tf.io.gfile.isdir(FLAGS.output_dir):
         tf.io.gfile.makedirs(FLAGS.output_dir)
-    train_output_path = os.path.join(FLAGS.output_dir, 'coco_train.record')
-    val_output_path = os.path.join(FLAGS.output_dir, 'coco_val.record')
+    train_output_path = os.path.join(FLAGS.output_dir, 'train.record')
+    val_output_path = os.path.join(FLAGS.output_dir, 'val.record')
     # testdev_output_path = os.path.join(FLAGS.output_dir, 'coco_testdev.record')
 
     _create_tf_record_from_coco_annotations(

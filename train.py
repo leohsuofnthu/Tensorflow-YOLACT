@@ -19,7 +19,7 @@ from config import RANDOM_SEED, TRAIN_ITER, get_params
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('name', 'coco',
+flags.DEFINE_string('name', 'pascal',
                     'name of dataset')
 flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
@@ -77,7 +77,7 @@ def main(argv):
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = Yolact(input_size, **model_params)
+    model = Yolact(**model_params)
 
     # add weight decay
     for layer in model.layers:
