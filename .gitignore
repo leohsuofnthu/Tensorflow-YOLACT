@@ -144,6 +144,8 @@ cython_debug/
 /data/train2017.zip
 /data/val2017.zip
 /data/coco
+/data/pascal_*
+/data/benchmark
 /checkpoints
 /logs
 /weights

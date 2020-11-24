@@ -35,8 +35,6 @@ flags.DEFINE_float('print_interval', 10,
                    'number of iteration between printing loss')
 flags.DEFINE_float('save_interval', 1000,
                    'number of iteration between saving model(checkpoint)')
-flags.DEFINE_float('valid_iter', 1000,
-                   'number of iteration between saving validation weights')
 
 
 @tf.function
