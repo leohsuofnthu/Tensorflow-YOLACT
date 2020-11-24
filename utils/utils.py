@@ -256,10 +256,11 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
         # Todo need to import from config
         masks = crop(pred_mask, boxes * float(cfg.PROTO_OUTPUT_SIZE / cfg.IMG_SIZE))
 
-    # intepolate to original size (test 550*550 here)
+    # intepolate to original size
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
                             method=intepolation_mode)
 
+    # binarized the mask
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(tf.cast(masks, tf.float32))
     # tf.print("masks after postprecessing", tf.shape(masks))

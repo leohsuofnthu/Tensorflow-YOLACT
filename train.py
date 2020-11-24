@@ -23,14 +23,14 @@ flags.DEFINE_string('name', 'coco',
                     'name of dataset')
 flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
+flags.DEFINE_string('config', './config/config_coco.json',
+                    'path of config file')
 flags.DEFINE_string('weights', 'weights',
                     'path to store weights')
 flags.DEFINE_integer('train_iter', 10000,
                      'iteraitons')
 flags.DEFINE_integer('batch_size', 3,
                      'batch size')
-flags.DEFINE_float('lr', 1e-3,
-                   'learning rate')
 flags.DEFINE_float('momentum', 0.9,
                    'momentum')
 flags.DEFINE_float('weight_decay', 5 * 1e-4,
@@ -54,7 +54,7 @@ def train_step(model,
     with tf.GradientTape() as tape:
         output = model(image, training=True)
         # Todo consider if using other dataset (make it general)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, len(cfg.COCO_CLASSES)+1)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, len(cfg.COCO_CLASSES) + 1)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -62,7 +62,6 @@ def train_step(model,
 
 
 def main(argv):
-
     # set fixed random seed
     tf.random.set_seed(cfg.RANDOM_SEED)
 
@@ -101,18 +100,18 @@ def main(argv):
 
     # count number of valid data for progress bar
     # Todo any better way to do it?
-    num_val = 0
-    for _ in valid_dataset:
-        num_val += 1
+    num_val = 4953
+    # for _ in valid_dataset:
+    #     num_val += 1
     logging.info("Number of Valid data", num_val * FLAGS.batch_size)
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(warmup_steps=500, warmup_lr=1e-4,
-                                                                     initial_lr=FLAGS.lr)
+    # Todo add config to lr schedule
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**cfg.lrs_chedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
-    criterion = loss_yolact.YOLACTLoss()
+    criterion = loss_yolact.YOLACTLoss(**cfg.loss_params)
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
@@ -178,10 +177,11 @@ def main(argv):
             tf.summary.scalar('Seg loss', seg.result(), step=iterations)
 
         if iterations and iterations % FLAGS.print_interval == 0:
-            logging.info("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
+            tf.print("Iteration {}, LR: {}, Total Loss: {}, B: {},  C: {}, M: {}, S:{} ".format(
                 iterations,
                 optimizer._decayed_lr(var_dtype=tf.float32),
-                train_loss.result(), loc.result(),
+                train_loss.result(),
+                loc.result(),
                 conf.result(),
                 mask.result(),
                 seg.result()
@@ -201,14 +201,6 @@ def main(argv):
                 # Todo write mAP in tensorboard
                 ...
 
-            train_template = 'Iteration {}, Train Loss: {}, Loc Loss: {},  Conf Loss: {}, Mask Loss: {}, Seg Loss: {}'
-            logging.info(train_template.format(iterations + 1,
-                                               train_loss.result(),
-                                               loc.result(),
-                                               conf.result(),
-                                               mask.result(),
-                                               seg.result()))
-
             # Todo save the best mAP
             if masks_map < best_masks_map:
                 # Saving the weights:
@@ -221,6 +213,7 @@ def main(argv):
             conf.reset_states()
             mask.reset_states()
             seg.reset_states()
+            # todo reset bbox ap, mask ap
 
 
 if __name__ == '__main__':
