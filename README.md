@@ -21,16 +21,14 @@ python -m  data.coco_tfrecord_creator -train_image_dir 'path of train2017' -val_
 ### (1) Usage
 Training procedure can be conducted directly by following command:
 ```bash
-python train.py -tfrecord_dir 'path of TFRecord files'
+python train.py -name 'coco'
+                -tfrecord_dir 'path of TFRecord files'
                 -weights 'path to store weights' 
-                -train_iter 'number of  iteration for training'
                 -batch_size 'batch_size'
-                -lr 'learning rate'
                 -momentum 'momentum for SGD'
                 -weight_decay 'weight_decay rate for SGD'
                 -print_interval 'interval for printing training result'
                 -save_interval 'interval for conducting validation'
-                -valid_iter 'number of iteration for validation'
 ```
 The default hyperparameters in train.py follows the original setting from the paper:
 * Batch size = 8, which is recommanded by paper
