@@ -5,7 +5,6 @@ https://github.com/tensorflow/models/blob/3462436c91897f885e3593f0955d24cbe80533
 https://github.com/dbolya/yolact/blob/master/layers/box_utils.py
 """
 import tensorflow as tf
-import config as cfg
 
 
 def bboxes_intersection(bbox_ref, bboxes):
@@ -195,7 +194,6 @@ def jaccard(box_a, box_b, is_crowd=False):
 
 
 def mask_iou(masks_a, masks_b, is_crowd=False):
-
     num_a = tf.shape(masks_a)[0]
     num_b = tf.shape(masks_b)[0]
     # tf.print("num a", num_a)
@@ -252,9 +250,11 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
     # tf.print("pred mask after detection", tf.shape(pred_mask))
 
+    tf.print("proto outsize", tf.shape(pred_mask)[-1])
+    tf.print("image size", w)
+
     if crop_mask:
-        # Todo need to import from config
-        masks = crop(pred_mask, boxes * float(cfg.PROTO_OUTPUT_SIZE / cfg.IMG_SIZE))
+        masks = crop(pred_mask, boxes * float(tf.shape(pred_mask)[-1] / w))
 
     # intepolate to original size
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],

@@ -1,5 +1,4 @@
 import tensorflow as tf
-import time
 from utils import utils
 
 

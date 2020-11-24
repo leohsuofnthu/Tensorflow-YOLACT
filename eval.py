@@ -12,8 +12,6 @@ from tensorflow.keras.utils import Progbar
 from utils.APObject import APObject, Detections
 from utils.utils import jaccard, mask_iou, postprocess
 
-import config as cfg
-
 iou_thresholds = [x / 100 for x in range(50, 100, 5)]
 print(iou_thresholds)
 
@@ -32,7 +30,7 @@ def _mask_iou(mask1, mask2, is_crowd=False):
 
 
 # ref from original arthor
-def calc_map(ap_data):
+def calc_map(ap_data, num_cls):
     """
 
     :param ap_data: all individual AP
@@ -44,7 +42,7 @@ def calc_map(ap_data):
     aps = [{'box': [], 'mask': []} for _ in iou_thresholds]
 
     # 　calculate Ap for every classes individually
-    for _class in range(cfg.NUM_CLASSES):
+    for _class in range(num_cls):
         # each class have multiple different iou threshold to calculate
         for iou_idx in range(len(iou_thresholds)):
             # there are 2 type of mAP we want to know (bounding box and mask)
@@ -172,6 +170,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
+    # todo maybe no need to squeeze
     bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox), axis=0).numpy()
 
     """
@@ -250,7 +249,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                             for j in range(len(gt_crowd_classes)):
                                 if gt_crowd_classes[j] != _class:
                                     continue
-
                                 iou = crowd_func(i, j)
 
                                 if iou > th:
@@ -281,7 +279,7 @@ def eval_video():
     ...
 
 
-def evaluate(model, dataset, num_val=0, batch_size=1):
+def evaluate(model, dataset, num_val, num_cls, batch_size=1):
     # if use fastnms
     # if use cross class nms
 
@@ -292,11 +290,10 @@ def evaluate(model, dataset, num_val=0, batch_size=1):
     # if not display or benchmark
     # For mAP evaluation, creating AP_Object for every class per iou_threshold
     ap_data = {
-        # Todo add item in config.py
-        'box': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds],
-        'mask': [[APObject() for _ in range(cfg.NUM_CLASSES)] for _ in iou_thresholds]}
+        'box': [[APObject() for _ in range(num_cls)] for _ in iou_thresholds],
+        'mask': [[APObject() for _ in range(num_cls)] for _ in iou_thresholds]}
 
-    # detection object made from prediction output
+    # detection object made from prediction output. for the purpose of creating json
     detections = Detections()
 
     # iterate the whole dataset to save TP, FP, FN
@@ -306,16 +303,16 @@ def evaluate(model, dataset, num_val=0, batch_size=1):
     for image, labels in dataset:
         i += 1
         output = model(image, training=False)
-        detection = model.detect(output)
+        dets = model.detect(output)
         # update ap_data or detection depends if u want to save it to json or just for validation table
-        prep_metrics(ap_data, detection, image, labels, detections)
+        prep_metrics(ap_data, dets, image, labels, detections)
         progbar.update(i)
 
     # if to json
     # save detection to json
 
     # Todo if not training, save ap_data, else calc_map
-    return calc_map(ap_data)
+    return calc_map(ap_data, num_cls)
 
 
 def main(argv):

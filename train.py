@@ -15,7 +15,7 @@ from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
 
-import config as cfg
+from config import RANDOM_SEED, get_params
 
 FLAGS = flags.FLAGS
 
@@ -49,12 +49,13 @@ def train_step(model,
                metrics,
                optimizer,
                image,
-               labels):
+               labels,
+               num_cls):
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
         # Todo consider if using other dataset (make it general)
-        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, len(cfg.COCO_CLASSES) + 1)
+        loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, num_cls)
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -62,9 +63,11 @@ def train_step(model,
 
 
 def main(argv):
-    # set fixed random seed
-    tf.random.set_seed(cfg.RANDOM_SEED)
+    # set fixed random seed, load config files
+    tf.random.set_seed(RANDOM_SEED)
+    input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(FLAGS.name)
 
+    # -----------------------------------------------------------------
     # set up Grappler for graph optimization
     # Ref: https://www.tensorflow.org/guide/graph_optimization
     @contextlib.contextmanager
@@ -79,7 +82,7 @@ def main(argv):
     # -----------------------------------------------------------------
     # Creating the instance of the model specified.
     logging.info("Creating the model instance of YOLACT")
-    model = Yolact(**cfg.model_parmas)
+    model = Yolact(input_size, **model_params)
 
     # add weight decay
     for layer in model.layers:
@@ -94,7 +97,7 @@ def main(argv):
     dateset = ObjectDetectionDataset(dataset_name=FLAGS.name,
                                      tfrecord_dir=os.path.join(FLAGS.tfrecord_dir, FLAGS.name),
                                      anchor_instance=model.anchor_instance,
-                                     **cfg.parser_params)
+                                     **parser_params)
     train_dataset = dateset.get_dataloader(subset='train', batch_size=FLAGS.batch_size)
     valid_dataset = dateset.get_dataloader(subset='val', batch_size=FLAGS.batch_size)
 
@@ -108,10 +111,10 @@ def main(argv):
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     # Todo add config to lr schedule
-    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**cfg.lrs_chedule_params)
+    lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
     optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
-    criterion = loss_yolact.YOLACTLoss(**cfg.loss_params)
+    criterion = loss_yolact.YOLACTLoss(**loss_params)
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
     conf = tf.keras.metrics.Mean('conf_loss', dtype=tf.float32)
@@ -164,7 +167,7 @@ def main(argv):
                       'arithmetic_optimization': True,
                       'remapping': True}):
             loc_loss, conf_loss, mask_loss, seg_loss = train_step(model, criterion, train_loss, optimizer, image,
-                                                                  labels)
+                                                                  labels, num_cls)
         loc.update_state(loc_loss)
         conf.update_state(conf_loss)
         mask.update_state(mask_loss)
@@ -194,7 +197,7 @@ def main(argv):
 
             # validation and print mAP table
             # Todo make evaluation faster, and return bboxes mAP / masks mAP
-            all_map = evaluate(model, valid_dataset, num_val)
+            all_map = evaluate(model, valid_dataset, num_val, num_cls, batch_size=1)
             bboxes_map, masks_map = ...
 
             with test_summary_writer.as_default():

@@ -12,7 +12,7 @@ from layers.protonet import ProtoNet
 from layers.detection import Detect
 
 from data.anchor import Anchor
-import config as cfg
+from config import backbones_objects, backbones_extracted
 
 assert tf.__version__.startswith('2')
 
@@ -25,6 +25,7 @@ class Yolact(tf.keras.Model):
     """
 
     def __init__(self,
+                 input_size,
                  backbone,
                  fpn_channels,
                  num_class,
@@ -35,8 +36,11 @@ class Yolact(tf.keras.Model):
         super(Yolact, self).__init__()
         # choose the backbone network
         try:
-            out = cfg.backbones_extracted[backbone]
-            base_model = cfg.backbones_objects[backbone]
+            out = backbones_extracted[backbone](input_shape=(input_size, input_size, 3),
+                                                include_top=False,
+                                                layers=tf.keras.layers,
+                                                weights='imagenet')
+            base_model = backbones_objects[backbone]
         except:
             raise Exception(f'Backbone option of {backbone} is not supported yet!!!')
 
