@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+MIXPRECISION = False
 BACKBONE = "mobilenetv2"
 RANDOM_SEED = 1234
 IMG_SIZE = 550

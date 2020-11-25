@@ -2,6 +2,7 @@ import os
 import datetime
 import contextlib
 import tensorflow as tf
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 # it s recommanded to use absl for tf 2.0
 from absl import app
@@ -15,7 +16,7 @@ from data.coco_dataset import ObjectDetectionDataset
 
 from eval import evaluate
 
-from config import RANDOM_SEED, get_params
+from config import RANDOM_SEED, get_params, MIXPRECISION
 
 FLAGS = flags.FLAGS
 
@@ -33,7 +34,7 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
                    'number of iteration between printing loss')
-flags.DEFINE_float('save_interval', 1000,
+flags.DEFINE_float('save_interval', 10,
                    'number of iteration between saving model(checkpoint)')
 
 
@@ -58,6 +59,13 @@ def train_step(model,
 def main(argv):
     # set fixed random seed, load config files
     tf.random.set_seed(RANDOM_SEED)
+
+    # using mix precision or not
+    if MIXPRECISION:
+        policy = mixed_precision.Policy('mixed_float16')
+        mixed_precision.set_policy(policy)
+
+    # get params for model
     train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
         FLAGS.name)
 
@@ -100,7 +108,6 @@ def main(argv):
     num_val = 0
     for _ in valid_dataset:
         num_val += 1
-    logging.info("Number of Valid data", num_val * FLAGS.batch_size)
 
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule

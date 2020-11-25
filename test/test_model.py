@@ -1,12 +1,9 @@
-import tensorflow as tf
+from config import get_params
 from yolact import Yolact
 
-IMG_SIZE = 550
-model = tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                          include_top=False,
-                                          layers=tf.keras.layers,
-                                          weights='imagenet')
-
-# model = Yolact(**cfg.model_parmas)
-model.build(input_shape=(2, IMG_SIZE, IMG_SIZE, 3))
+name = "coco"
+train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
+    name)
+model = Yolact(**model_params)
+model.build(input_shape=(2, 550, 550, 3))
 model.summary()
