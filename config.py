@@ -29,7 +29,7 @@ backbones_objects = dict({
 })
 
 # Extract the layer have following: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
-# I just randomly choose layers for efficeintNet
+# I just randomly choose layers for efficeintNet and MobilNetV2 just to get same shape
 backbones_extracted = dict({
     "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
     "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
