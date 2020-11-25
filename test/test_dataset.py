@@ -11,7 +11,7 @@ from yolact import Yolact
 # todo try to make this general, so that people can make sure their dataset is loaded correctly
 
 # set manual seed for easy debug
-tf.random.set_seed(852)
+# tf.random.set_seed(852)
 NAME = "pascal"
 train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(NAME)
 

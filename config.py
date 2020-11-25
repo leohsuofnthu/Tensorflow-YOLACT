@@ -94,6 +94,9 @@ PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
                   "dog", "horse", "motorbike", "person", "pottedplant",
                   "sheep", "sofa", "train", "tvmonitor")
 
+# Class name for your_custom_dataset
+YOUR_CUSTOM_CLASSES = ()
+
 TRAIN_ITER = dict({
     "coco": 800000,
     "pascal": 120000,
