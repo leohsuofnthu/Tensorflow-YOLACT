@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
+
 import config as cfg
 from data.anchor import Anchor
-
 
 test_bbox = tf.convert_to_tensor((np.array([[204.044, 253.8351, 487.8226, 427.06363],
                                             [0, 140.01741, 550, 290.21936],

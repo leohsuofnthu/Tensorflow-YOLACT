@@ -2,7 +2,6 @@ from itertools import product
 from math import sqrt
 
 import tensorflow as tf
-import config as cfg
 
 
 # Can generate one instance only when creating the model

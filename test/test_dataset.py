@@ -1,16 +1,20 @@
 import os
+
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
+
+from config import PASCAL_CLASSES, COLORS, get_params, ROOT_DIR
 from data.coco_dataset import ObjectDetectionDataset
 from utils.utils import denormalize_image
-from config import COCO_LABEL_MAP, COCO_CLASSES, PASCAL_CLASSES, COLORS, get_params, ROOT_DIR
 from yolact import Yolact
 
+# Todo Add your custom dataset
 NAME_OF_DATASET = "pascal"
 CLASS_NAMES = PASCAL_CLASSES
 LABEL_REMAP = None
+
 # -----------------------------------------------------------------------------------------------
 # create model and dataloader
 train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
@@ -40,13 +44,13 @@ for image, labels in train_dataset.take(1):
         # get the bbox, class_name, and random color
         b = bbox[0][idx]
         m = mask[0][idx][:, :, None]
-        # class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
+        if LABEL_REMAP:
+            class_id = LABEL_REMAP.get(cls[0][idx]) - 1
         class_id = cls[0][idx] - 1
         color_idx = (class_id * 5) % len(COLORS)
 
         # prepare the class text to display
-        # text_str = f"{COCO_CLASSES[class_id]}"
-        text_str = f"{PASCAL_CLASSES[class_id]}"
+        text_str = f"{CLASS_NAMES[class_id]}"
         font_face = cv2.FONT_HERSHEY_DUPLEX
         font_scale = 0.4
         font_thickness = 1

@@ -2,11 +2,9 @@
 Mostly adapted from: https://github.com/dbolya/yolact/blob/master/eval.py
 """
 from collections import OrderedDict
-from absl import app
-from absl import flags
-from absl import logging
 
 import tensorflow as tf
+from absl import app
 from tensorflow.keras.utils import Progbar
 
 from utils.APObject import APObject, Detections

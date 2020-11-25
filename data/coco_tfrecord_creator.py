@@ -21,7 +21,6 @@ import os
 import PIL.Image
 import contextlib2
 import numpy as np
-import tensorflow as tf
 # use absl for tf 2.0
 from absl import app
 from absl import flags

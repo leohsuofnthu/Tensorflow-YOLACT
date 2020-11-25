@@ -1,7 +1,6 @@
 """
 Adapted from https://github.com/dbolya/yolact/blob/master/eval.py
 """
-import json
 import numpy as np
 
 

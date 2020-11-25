@@ -6,7 +6,9 @@ ref:https://jkjung-avt.github.io/tfrecords-for-keras/
 ref:https://github.com/tensorflow/models/blob/master/research/object_detection/utils/dataset_util.py
 """
 import os
+
 import tensorflow as tf
+
 from data import coco_tfrecord_parser
 
 

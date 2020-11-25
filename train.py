@@ -1,22 +1,20 @@
-import os
-import datetime
 import contextlib
-import tensorflow as tf
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
+import datetime
+import os
 
+import tensorflow as tf
 # it s recommanded to use absl for tf 2.0
 from absl import app
 from absl import flags
 from absl import logging
-
-from yolact import Yolact
-from loss import loss_yolact
-from utils import learning_rate_schedule
-from data.coco_dataset import ObjectDetectionDataset
-
-from eval import evaluate
+from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 from config import RANDOM_SEED, get_params, MIXPRECISION
+from data.coco_dataset import ObjectDetectionDataset
+from eval import evaluate
+from loss import loss_yolact
+from utils import learning_rate_schedule
+from yolact import Yolact
 
 FLAGS = flags.FLAGS
 

@@ -6,13 +6,12 @@ Arthor: HSU, CHIHCHAO
 """
 import tensorflow as tf
 
+from config import backbones_objects, backbones_extracted
+from data.anchor import Anchor
+from layers.detection import Detect
 from layers.fpn import FeaturePyramidNeck
 from layers.head import PredictionModule
 from layers.protonet import ProtoNet
-from layers.detection import Detect
-
-from data.anchor import Anchor
-from config import backbones_objects, backbones_extracted
 
 assert tf.__version__.startswith('2')
 

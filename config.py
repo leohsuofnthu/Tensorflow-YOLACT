@@ -1,4 +1,5 @@
 import os
+
 import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
