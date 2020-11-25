@@ -20,7 +20,7 @@ from config import RANDOM_SEED, get_params, MIXPRECISION
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('name', 'pascal',
+flags.DEFINE_string('name', 'coco',
                     'name of dataset')
 flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
@@ -102,7 +102,6 @@ def main(argv):
                                      **parser_params)
     train_dataset = dateset.get_dataloader(subset='train', batch_size=FLAGS.batch_size)
     valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
-    tf.print(valid_dataset)
     # count number of valid data for progress bar
     # Todo any better way to do it?
     num_val = 0
