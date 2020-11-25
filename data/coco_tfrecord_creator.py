@@ -40,9 +40,9 @@ flags.DEFINE_string('val_image_dir', 'val2017',
                     'Validation image directory.')
 flags.DEFINE_string('test_image_dir', '',
                     'Test image directory.')
-flags.DEFINE_string('train_annotations_file', 'annotations/instances_train2017.json',
+flags.DEFINE_string('train_annotations_file', './annotations/instances_train2017.json',
                     'Training annotations JSON file.')
-flags.DEFINE_string('val_annotations_file', 'annotations/instances_val2017.json',
+flags.DEFINE_string('val_annotations_file', './annotations/instances_val2017.json',
                     'Validation annotations JSON file.')
 flags.DEFINE_string('testdev_annotations_file', '',
                     'Test-dev annotations JSON file.')
@@ -124,15 +124,22 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
         is_crowd.append(object_annotations['iscrowd'])
         category_id = int(object_annotations['category_id'])
         category_ids.append(category_id)
-        category_names.append(category_index[category_id]['name'].encode('utf8'))
+        # category_names.append(category_index[category_id]['name'].encode('utf8'))
         area.append(object_annotations['area'])
 
         if include_masks:
-            run_len_encoding = mask.frPyObjects(object_annotations['segmentation'],
-                                                image_height, image_width)
-            binary_mask = mask.decode(run_len_encoding)
+            try:
+                # if the seg annotation is not RLE, need to be convert
+                run_len_encoding = mask.frPyObjects(object_annotations['segmentation'],
+                                                    image_height, image_width)
+                binary_mask = mask.decode(run_len_encoding)
+            except:
+                # if the seg annotation is already RLE
+                binary_mask = mask.decode(object_annotations['segmentation'])
+
             if not object_annotations['iscrowd']:
-                binary_mask = np.amax(binary_mask, axis=2)
+                if binary_mask.ndim == 3:  # for COCO dataset
+                    binary_mask = np.amax(binary_mask, axis=2)
             pil_image = PIL.Image.fromarray(binary_mask)
             output_io = io.BytesIO()
             pil_image.save(output_io, format='PNG')
@@ -161,8 +168,8 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
             float_list_feature(ymin),
         'image/object/bbox/ymax':
             float_list_feature(ymax),
-        'image/object/class/label_text':
-            bytes_list_feature(category_names),
+        # 'image/object/class/label_text':
+        #     bytes_list_feature(category_names),
         'image/object/class/label_id':
             int64_list_feature(category_ids),
         'image/object/is_crowd':
@@ -241,17 +248,17 @@ def main(_):
 
     if not tf.io.gfile.isdir(FLAGS.output_dir):
         tf.io.gfile.makedirs(FLAGS.output_dir)
-    train_output_path = os.path.join(FLAGS.output_dir, 'coco_train.record')
-    val_output_path = os.path.join(FLAGS.output_dir, 'coco_val.record')
+    train_output_path = os.path.join(FLAGS.output_dir, 'train.record')
+    val_output_path = os.path.join(FLAGS.output_dir, 'val.record')
     # testdev_output_path = os.path.join(FLAGS.output_dir, 'coco_testdev.record')
-    """
+
     _create_tf_record_from_coco_annotations(
         FLAGS.train_annotations_file,
         FLAGS.train_image_dir,
         train_output_path,
         FLAGS.include_masks,
         num_shards=100)
-    """
+
     _create_tf_record_from_coco_annotations(
         FLAGS.val_annotations_file,
         FLAGS.val_image_dir,

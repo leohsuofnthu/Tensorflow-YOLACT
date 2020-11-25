@@ -13,7 +13,6 @@ from utils.APObject import APObject, Detections
 from utils.utils import jaccard, mask_iou, postprocess
 
 iou_thresholds = [x / 100 for x in range(50, 100, 5)]
-print(iou_thresholds)
 
 
 # for calculating IOU between gt and detection box
@@ -31,12 +30,7 @@ def _mask_iou(mask1, mask2, is_crowd=False):
 
 # ref from original arthor
 def calc_map(ap_data, num_cls):
-    """
-
-    :param ap_data: all individual AP
-    :return:
-    """
-    print("Calculating mAP...")
+    tf.print("Calculating mAP...")
 
     # create empty list of dict for different iou threshold
     aps = [{'box': [], 'mask': []} for _ in iou_thresholds]
@@ -75,13 +69,14 @@ def print_maps(all_maps):
     make_row = lambda vals: (' %5s |' * len(vals)) % tuple(vals)
     make_sep = lambda n: ('-------+' * n)
 
-    print()
-    print(make_row([''] + [('.%d ' % x if isinstance(x, int) else x + ' ') for x in all_maps['box'].keys()]))
-    print(make_sep(len(all_maps['box']) + 1))
+    tf.print()
+    tf.print(make_row([''] + [('.%d ' % x if isinstance(x, int) else x + ' ') for x in all_maps['box'].keys()]))
+    tf.print(make_sep(len(all_maps['box']) + 1))
     for iou_type in ('box', 'mask'):
-        print(make_row([iou_type] + ['%.2f' % x if x < 100 else '%.1f' % x for x in all_maps[iou_type].values()]))
-    print(make_sep(len(all_maps['box']) + 1))
-    print()
+        tf.print(make_row([iou_type] + ['%.2f' % x if x < 100 else '%.1f' % x for x in all_maps[iou_type].values()]))
+    tf.print(make_sep(len(all_maps['box']) + 1))
+    tf.print()
+
 
 # ref from original arthor
 def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
@@ -93,21 +88,18 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # Load prediction
     classes, scores, boxes, masks = postprocess(dets, w, h, 0, "bilinear")
-
     # if no detection or only one detection
     if classes is None:
         return
-    elif tf.size(scores) == 1:
+    if tf.rank(scores) == 0:
         scores = tf.expand_dims(scores, axis=0)
         masks = tf.expand_dims(masks, axis=0)
     boxes = tf.expand_dims(boxes, axis=0)
 
-    """
-    tf.print("prep classes", tf.shape(classes))
-    tf.print("prep scores", tf.shape(scores))
-    tf.print("prep boxes", tf.shape(boxes))
-    tf.print("prep masks", tf.shape(masks))
-    """
+    # tf.print("prep classes", tf.shape(classes))
+    # tf.print("prep scores", tf.shape(scores))
+    # tf.print("prep boxes", tf.shape(boxes))
+    # tf.print("prep masks", tf.shape(masks))
 
     # Load gt
     gt_bbox = labels['bbox']
@@ -116,13 +108,11 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     num_crowd = labels['num_crowd']
     num_obj = labels['num_obj']
 
-    """
-    tf.print('prep gt bbox', tf.shape(gt_bbox))
-    tf.print('prep gt classes', tf.shape(gt_classes))
-    tf.print('prep gt masks', tf.shape(gt_masks))
-    tf.print('prep num crowd', tf.shape(num_crowd))
-    tf.print("prep num obj", tf.shape(num_obj))
-    """
+    # tf.print('prep gt bbox', tf.shape(gt_bbox))
+    # tf.print('prep gt classes', tf.shape(gt_classes))
+    # tf.print('prep gt masks', tf.shape(gt_masks))
+    # tf.print('prep num crowd', tf.shape(num_crowd))
+    # tf.print("prep num obj", tf.shape(num_obj))
 
     # convert to scalar
     num_crowd = num_crowd.numpy()[0]
@@ -135,15 +125,19 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
         gt_crowd_masks, gt_masks = split(gt_masks)
         gt_crowd_classes = list(gt_crowd_classes[0].numpy())
 
-        """
-        tf.print('split gt bbox', tf.shape(gt_bbox))
-        tf.print('split gt classes', tf.shape(gt_classes))
-        tf.print('split gt masks', tf.shape(gt_masks))
+        # tf.print('split gt bbox', tf.shape(gt_bbox))
+        # tf.print('split gt classes', tf.shape(gt_classes))
+        # tf.print('split gt masks', tf.shape(gt_masks))
+        #
+        # tf.print("split crowd boxes", tf.shape(gt_crowd_boxes))
+        # tf.print("split crowd masks", tf.shape(gt_crowd_masks))
+        # tf.print("split crowd classes length", len(gt_crowd_classes))
 
-        tf.print("split crowd boxes", tf.shape(gt_crowd_boxes))
-        tf.print("split crowd masks", tf.shape(gt_crowd_masks))
-        tf.print("split crowd classes length", len(gt_crowd_classes))
-        """
+    else:
+        # get rid of the padding
+        gt_classes = gt_classes[:, :num_obj]
+        gt_bbox = gt_bbox[:, :num_obj]
+        gt_masks = gt_masks[:, :num_obj]
 
     # prepare data
     classes = list(classes.numpy())
@@ -157,10 +151,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     num_pred = len(classes)
     num_gt = num_obj - num_crowd
 
-    """
-    tf.print("num pred", num_pred)
-    tf.print("num gt", num_gt)
-    """
+    # tf.print("num pred", num_pred)
+    # tf.print("num gt", num_gt)
 
     # resize gt mask
     # should be [num_gt, w, h]
@@ -169,13 +161,13 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # calculating the IOU first
     mask_iou_cache = _mask_iou(masks, masks_gt).numpy()
-    # todo maybe no need to squeeze
-    bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox), axis=0).numpy()
+    bbox_iou_cache = tf.squeeze(_bbox_iou(boxes, gt_bbox).numpy(), axis=0)
+    # tf.print(tf.shape(boxes))
+    # tf.print(tf.shape(gt_bbox))
+    # tf.print(tf.shape(bbox_iou_cache))
+    # tf.print("non crowd mask iou shape:", tf.shape(mask_iou_cache))
+    # tf.print("non crowd bbox iou shape:", tf.shape(bbox_iou_cache))
 
-    """
-    tf.print("non crowd mask iou shape:", tf.shape(mask_iou_cache))
-    tf.print("non crowd bbox iou shape:", tf.shape(bbox_iou_cache))
-    """
     # If crowd label included, split it and calculate iou separately from non-crowd label
     if num_crowd > 0:
         # resize gt mask
@@ -186,10 +178,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
         crowd_mask_iou_cache = _mask_iou(masks, gt_crowd_masks, is_crowd=True).numpy()
         crowd_bbox_iou_cache = tf.squeeze(
             _bbox_iou(boxes, gt_crowd_boxes, is_crowd=True), axis=0).numpy()
-        """
-        tf.print("gt crowd mask iou shape:", tf.shape(crowd_mask_iou_cache))
-        tf.print("gt crowd bbox iou shape:", tf.shape(crowd_bbox_iou_cache))
-        """
+        # tf.print("gt crowd mask iou shape:", tf.shape(crowd_mask_iou_cache))
+        # tf.print("gt crowd bbox iou shape:", tf.shape(crowd_bbox_iou_cache))
     else:
         crowd_mask_iou_cache = None
         crowd_bbox_iou_cache = None
@@ -278,7 +268,7 @@ def eval_video():
     ...
 
 
-def evaluate(model, dataset, num_val, num_cls, batch_size=1):
+def evaluate(model, dataset, num_val, num_cls):
     # if use fastnms
     # if use cross class nms
 

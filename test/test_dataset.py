@@ -5,23 +5,26 @@ import numpy as np
 import tensorflow as tf
 from data.coco_dataset import ObjectDetectionDataset
 from utils.utils import denormalize_image
-from config import COCO_LABEL_MAP, COCO_CLASSES, COLORS
-import config as cfg
+from config import COCO_LABEL_MAP, COCO_CLASSES, PASCAL_CLASSES, COLORS, get_params, ROOT_DIR
 from yolact import Yolact
 
+# todo try to make this general, so that people can make sure their dataset is loaded correctly
+
 # set manual seed for easy debug
-tf.random.set_seed(556)
-NAME = 'coco'
-TFRECORD_DIR = 'data'
-BATCH_SIZE = 1
+tf.random.set_seed(852)
+NAME = "pascal"
+train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(NAME)
 
 # -----------------------------------------------------------------------------------------------
-model = Yolact(**cfg.model_parmas)
-dateset = ObjectDetectionDataset(dataset_name='coco',
-                                 tfrecord_dir=os.path.join(cfg.ROOT_DIR, TFRECORD_DIR, NAME),
+model = Yolact(**model_params)
+
+# -----------------------------------------------------------------
+dateset = ObjectDetectionDataset(dataset_name=NAME,
+                                 tfrecord_dir=os.path.join(ROOT_DIR, "data", NAME),
                                  anchor_instance=model.anchor_instance,
-                                 **cfg.parser_params)
-train_dataset = dateset.get_dataloader(subset='train', batch_size=BATCH_SIZE)
+                                 **parser_params)
+train_dataset = dateset.get_dataloader(subset='train', batch_size=1)
+valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
 
 # -----------------------------------------------------------------------------------------------
 for image, labels in train_dataset.take(1):
@@ -42,11 +45,13 @@ for image, labels in train_dataset.take(1):
         # get the bbox, class_name, and random color
         b = bbox[0][idx]
         m = mask[0][idx][:, :, None]
-        class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
+        # class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
+        class_id = cls[0][idx]-1
         color_idx = (class_id * 5) % len(COLORS)
 
         # prepare the class text to display
-        text_str = f"{COCO_CLASSES[class_id]}"
+        # text_str = f"{COCO_CLASSES[class_id]}"
+        text_str = f"{PASCAL_CLASSES[class_id]}"
         font_face = cv2.FONT_HERSHEY_DUPLEX
         font_scale = 0.4
         font_thickness = 1

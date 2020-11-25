@@ -71,16 +71,22 @@ class Detect(object):
         # Fast NMS
         # tf.print("before fastnms score", scores)
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
-        boxes, masks, classes, scores = self._fast_nms(boxes, masks, scores, self.nms_threshold, top_k)
+        boxes, masks, classes, scores = self._fast_nms(boxes, masks, classes, scores, self.nms_threshold, top_k)
 
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
-    def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
+    def _fast_nms(self, boxes, masks, classes, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
+        if tf.rank(scores) == 0:
+            scores = tf.expand_dims(scores, axis=0)
+            classes = tf.expand_dims(classes, axis=0)
+            boxes = tf.expand_dims(boxes, axis=0)
+            masks = tf.expand_dims(masks, axis=0)
+
         scores, idx = tf.math.top_k(scores, k=top_k)
-        num_classes = tf.shape(idx)[0]
+        classes = tf.gather(classes, idx, axis=0)
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
-        iou = utils.jaccard(boxes, boxes)
+        iou = tf.squeeze(utils.jaccard(tf.expand_dims(boxes, axis=0), tf.expand_dims(boxes, axis=0)), axis=0)
 
         # upper trangular matrix - diagnoal
         upper_triangular = tf.linalg.band_part(iou, 0, -1)
@@ -91,7 +97,6 @@ class Detect(object):
         iou_max = tf.reduce_max(iou, axis=1)
         idx_det = tf.where(iou_max <= iou_threshold)
 
-        classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max)) + 1
         classes = tf.gather_nd(classes, idx_det)
         boxes = tf.gather_nd(boxes, idx_det)
         masks = tf.gather_nd(masks, idx_det)
@@ -100,9 +105,6 @@ class Detect(object):
         # number of max detection = 100 (u can choose whatever u want)
         max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
-        classes = tf.gather(classes, idx)
-        boxes = tf.gather(boxes, idx)
-        masks = tf.gather(masks, idx)
 
         # second threshold
         positive_det = tf.squeeze(tf.where(scores > iou_threshold))

@@ -2,11 +2,13 @@ import os
 import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+MIXPRECISION = False
+BACKBONE = "mobilenetv2"
 RANDOM_SEED = 1234
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
 
-# Adding any backbone u want as long as the output size are: (28, 28), (14, 14), (7,7)
+# Adding any backbone u want as long as the output size are: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
 backbones_objects = dict({
     "resnet50": tf.keras.applications.ResNet50(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                include_top=False,
@@ -17,16 +19,24 @@ backbones_objects = dict({
                                                  layers=tf.keras.layers,
                                                  weights='imagenet'),
 
-    # "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-    #                                                        include_top=False,
-    #                                                        weights='imagenet')
+    "mobilenetv2": tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                                                     include_top=False,
+                                                     layers=tf.keras.layers,
+                                                     weights='imagenet'),
+
+    "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                                                            include_top=False,
+                                                            weights='imagenet')
 
 })
 
+# Extract the layer have following: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
+# I just randomly choose layers for efficeintNet and MobilNetV2 just to get same shape
 backbones_extracted = dict({
     "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
     "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
-    # "efficientNet-B0": ['block4c_add', 'block5b_add', 'block6c_add']
+    "mobilenetv2": ['block_5_add', 'block_7_add', 'block_14_add'],
+    "efficientNet-B0": ['block3b_add', 'block4c_add', 'block6d_add']
 })
 
 # RGB values of color for drawing nice bounding boxes
@@ -77,6 +87,12 @@ COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   62: 57, 63: 58, 64: 59, 65: 60, 67: 61, 70: 62, 72: 63, 73: 64,
                   74: 65, 75: 66, 76: 67, 77: 68, 78: 69, 79: 70, 80: 71, 81: 72,
                   82: 73, 84: 74, 85: 75, 86: 76, 87: 77, 88: 78, 89: 79, 90: 80}
+
+# Class names for Pascal dataset
+PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
+                  "bus", "car", "cat", "chair", "cow", "diningtable",
+                  "dog", "horse", "motorbike", "person", "pottedplant",
+                  "sheep", "sofa", "train", "tvmonitor")
 
 TRAIN_ITER = dict({
     "coco": 800000,
@@ -170,8 +186,7 @@ def get_params(dataset_name):
     anchor_params = ANCHOR[dataset_name]
 
     model_params = {
-        # choose resnet50 or resnet101
-        "backbone": "resnet50",
+        "backbone": BACKBONE,
         "fpn_channels": 256,
         "num_class": NUM_CLASSES[dataset_name],
         "num_mask": 32,

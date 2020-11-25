@@ -15,8 +15,6 @@ class Yolact_LearningRateSchedule(tf.keras.optimizers.schedules.LearningRateSche
         self.stages = [warmup_steps] + stages
         self.stages = self.stages[::-1]
         self.stage_lrs = stage_lrs[::-1]
-        tf.print(self.stages)
-        tf.print(self.stage_lrs)
 
     def __call__(self, step):
         def fn(s):
