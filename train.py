@@ -34,7 +34,7 @@ flags.DEFINE_float('weight_decay', 5 * 1e-4,
                    'weight_decay')
 flags.DEFINE_float('print_interval', 10,
                    'number of iteration between printing loss')
-flags.DEFINE_float('save_interval', 10,
+flags.DEFINE_float('save_interval', 1000,
                    'number of iteration between saving model(checkpoint)')
 
 
@@ -101,14 +101,13 @@ def main(argv):
                                      anchor_instance=model.anchor_instance,
                                      **parser_params)
     train_dataset = dateset.get_dataloader(subset='train', batch_size=FLAGS.batch_size)
-    valid_dataset = dateset.get_dataloader(subset='val', batch_size=FLAGS.batch_size)
-
+    valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
+    tf.print(valid_dataset)
     # count number of valid data for progress bar
     # Todo any better way to do it?
     num_val = 0
     for _ in valid_dataset:
         num_val += 1
-
     # -----------------------------------------------------------------
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
@@ -192,7 +191,7 @@ def main(argv):
             logging.info("Saved checkpoint for step {}: {}".format(int(checkpoint.step), save_path))
 
             # validation and print mAP table
-            all_map = evaluate(model, valid_dataset, num_val, num_cls, batch_size=1)
+            all_map = evaluate(model, valid_dataset, num_val, num_cls)
             box_map, mask_map = all_map['box']['all'], all_map['mask']['all']
             tf.print(f"box mAP:{box_map}, mask mAP:{mask_map}")
 
