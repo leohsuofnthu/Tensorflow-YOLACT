@@ -1,47 +1,145 @@
 # YOLACT Real-time Instance Segmentation
-This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture from object detection and its own idea of parallel prototype generation. In this Repo, I focus on reproducing the result by implementing one of the structure "ResNet50-FPN" on MS-COCO datasets. The part for training this model is ready, and the part for inference and mAP evaluation will be updated soon. <br/>
-[update] 2020/10/31 Back to work on this ! Estimate date for fully functioned master branch: 2020/11/31
+## Introduction
+This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture for object detection and its own idea of parallel prototype generation. In this repo, my goal is to provide a general way to use this model, let users have more flexible options (custom dataset, different backbone choice, anchor scale and learning rate schedue) for their own specific need based on idea from original paper.
+
 ## Model
 Here is the illustration of YOLACT from original paper.
 ![ad](https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/images/model.png)
 
-## Dataset and Pre-processsing
-[COCO Dataset](http://cocodataset.org/#download) is used for reproducing the experiment here.
+## A. Dataset and Pre-processsing
 
-### (1) Download the COCO 2017 Dataset
-[2017 Train images](http://images.cocodataset.org/zips/train2017.zip)  / [2017 Val images](http://images.cocodataset.org/zips/val2017.zip) / [2017 Annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip)
+### 1. Prepare the COCO 2017 TFRecord Dataset
+[2017 Train images](http://images.cocodataset.org/zips/train2017.zip)  / [2017 Val images](http://images.cocodataset.org/zips/val2017.zip) / [2017 Annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip) <br/>
 
-### (2) Create TFRecord for training 
-In this repo, we convert images and annotations into TFRecord through the */data/create_coco_tfrecord.py.* In this script, I directly resize the image to 550 * 550 and ignore the images with only crowd annotations. Using the following command to create TFRecord.
+Extract the ```/train2017```, ```/val2017```, and ```/annotations/instances_train2017.json```, ```/annotations/instances_val2017.json ```from annotation to ```./data``` folder of the repo, and run:
 
 ```bash
-python -m  data.coco_tfrecord_creator -train_image_dir 'path of train2017' -val_image_dir 'path of val2017' -train_annotations_file 'path of train annotations' -val_annotations_file 'path of val annotations' -output_dir 'path for output TFRecord'
+python -m  data.coco_tfrecord_creator -train_image_dir './data/train2017' 
+                                      -val_image_dir './data/val2017' 
+                                      -train_annotations_file './data/instances_train2017.json' 
+                                      -val_annotations_file './instances_val2017.json' 
+                                      -output_dir './data/coco'
 ```
-## Train
-### (1) Usage
-Training procedure can be conducted directly by following command:
+### 2. Prepare the Pascal SBD Dataset
+[benchmark.tgz](http://www.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/semantic_contours/benchmark.tgz)  /
+[Pascal SBD annotation](https://drive.google.com/file/d/1ExrRSPVctHW8Nxrn0SofU1lVhK5Wn0_S/view) (Here is the COCO-style annotation from original yolact repo)  <br/>
+
+Extract the ```/benchmark/dataset/img ``` folder from benchmark.tgz, and ```pascal_sbd_train.json```, ```pascal_sbd_valid.json``` from annotation to ```./data``` folder of the repo. Divinding images into 2 folders (```/pascal_train``` for training, ```/pascal_val``` for validation images.) and run:
+
+```bash
+python -m  data.coco_tfrecord_creator -train_image_dir './data/pascal_train' 
+                                      -val_image_dir './data/pascal_val' 
+                                      -train_annotations_file './data/pascal_sbd_train.json' 
+                                      -val_annotations_file './pascal_sbd_valid.json' 
+                                      -output_dir './data/pascal'
+```
+
+### 3. Prepare your Custom Dataset
+Create a folder of training images, a folder of validation images, and a COCO-style annotation like above for your dataset in ```./data``` folder of the repo, and run:
+
+```bash
+python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training images' 
+                                      -val_image_dir   'path to your validaiton images'  
+                                      -train_annotations_file 'path to your training annotations' 
+                                      -val_annotations_file 'path to your validation annotations' 
+                                      -output_dir './data/name of the dataset'
+```
+
+### 4. Check the Dataset Sample (to be updated)
+```bash
+
+
+
+
+```
+## Training
+### 1. Configuration for COCO, Pascal SBD
+The configuration for experiment can be adjust in ```config.py```. The default hyperparameters from original paper are already written as example for you to know how to customize it. You can adjust following parameters:
+```bash
+
+
+
+
+```
+
+### 2. Configuration for Custom Dataset (to be updated)
+
+### 3. Training Script
+-> Training for COCO:
 ```bash
 python train.py -name 'coco'
-                -tfrecord_dir 'path of TFRecord files'
+                -tfrecord_dir './data'
+                -weights './weights' 
+                -batch_size '8'
+                -momentum '0.9'
+                -weight_decay '5 * 1e-4'
+                -print_interval '10'
+                -save_interval '5000'
+```
+-> Training for Pascal SBD:
+```bash
+python train.py -name 'pascal'
+                -tfrecord_dir './data'
+                -weights './weights' 
+                -batch_size '8'
+                -momentum '0.9'
+                -weight_decay '5 * 1e-4'
+                -print_interval '10'
+                -save_interval '5000'
+```
+-> Training for custom dataset:
+```bash
+python train.py -name 'name of your dataset'
+                -tfrecord_dir './data'
                 -weights 'path to store weights' 
                 -batch_size 'batch_size'
                 -momentum 'momentum for SGD'
                 -weight_decay 'weight_decay rate for SGD'
                 -print_interval 'interval for printing training result'
-                -save_interval 'interval for conducting validation'
+                -save_interval 'interval for evaluation'
 ```
-The default hyperparameters in train.py follows the original setting from the paper:
-* Batch size = 8, which is recommanded by paper
-* SGD optimizer with learning rate 1e-3 and divided by 10 at iterations 280K, 600K, 700K and 750K, using a momentum 0.9, a weight decay 5* 1e-4. In the original implementation of paper, a warm up learning rate 1e-4 and warm up iterations 500 are used, I put all those setting in a learning schedule object in *utils/learning_rate_schedule.py*.
-* Random photometrics distortion, horizontal flip(mirroring) and crop are used here for data augmentation.
-
-### (2) Multi-GPU & TPU support
-In Tensorflow 2.0, distibuted training with multiple GPU and TPU are straighforward to use by adding different strategy scopes, the info can be find here [Distributed training with TensorFlow](https://www.tensorflow.org/guide/distributed_training)
+## Inference (to be updated)
+There are serval evaluation scenario.
+```bash
 
 
-## Inference (To Be Updated)
-## mAP evaluation (To Be Updated)
 
+
+```
+### Test Detection
+```bash
+
+
+
+
+```
+### Evaluation
+```bash
+
+
+
+
+```
+### Images
+```bash
+
+
+
+
+```
+### Videos 
+```bash
+
+
+
+
+```
+
+## Pretrain Weights (to be updated)
+First Header | Second Header
+------------ | -------------
+Content from cell 1 | Content from cell 2
+Content in the first column | Content in the second column
 ## Authors
 
 * **HSU, CHIH-CHAO** - *Professional Machine Learning Master Student at [Mila](https://mila.quebec/)* 
