@@ -55,12 +55,17 @@ python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training im
 ## Training
 ### 1. Configuration for COCO, Pascal SBD
 The configuration for experiment can be adjust in ```config.py```. The default hyperparameters from original paper are already written as example for you to know how to customize it. You can adjust following parameters:
+```bash
 
+
+
+
+```
 
 ### 2. Configuration for Custom Dataset (to be updated)
 
 ### 3. Training Script
-Training for COCO:
+-> Training for COCO:
 ```bash
 python train.py -name 'coco'
                 -tfrecord_dir './data'
@@ -71,7 +76,7 @@ python train.py -name 'coco'
                 -print_interval '10'
                 -save_interval '5000'
 ```
-Training for Pascal SBD:
+-> Training for Pascal SBD:
 ```bash
 python train.py -name 'pascal'
                 -tfrecord_dir './data'
@@ -82,7 +87,7 @@ python train.py -name 'pascal'
                 -print_interval '10'
                 -save_interval '5000'
 ```
-Training for custom dataset:
+-> Training for custom dataset:
 ```bash
 python train.py -name 'name of your dataset'
                 -tfrecord_dir './data'
@@ -95,10 +100,40 @@ python train.py -name 'name of your dataset'
 ```
 ## Inference (to be updated)
 There are serval evaluation scenario.
+```bash
+
+
+
+
+```
 ### Test Detection
+```bash
+
+
+
+
+```
 ### Evaluation
-### Images 
+```bash
+
+
+
+
+```
+### Images
+```bash
+
+
+
+
+```
 ### Videos 
+```bash
+
+
+
+
+```
 
 ## Pretrain Weights (to be updated)
 
