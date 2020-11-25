@@ -8,30 +8,25 @@ from utils.utils import denormalize_image
 from config import COCO_LABEL_MAP, COCO_CLASSES, PASCAL_CLASSES, COLORS, get_params, ROOT_DIR
 from yolact import Yolact
 
-# todo try to make this general, so that people can make sure their dataset is loaded correctly
-
-# set manual seed for easy debug
-# tf.random.set_seed(852)
-NAME = "pascal"
-train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(NAME)
-
+NAME_OF_DATASET = "pascal"
+CLASS_NAMES = PASCAL_CLASSES
+LABEL_REMAP = None
 # -----------------------------------------------------------------------------------------------
+# create model and dataloader
+train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
+    NAME_OF_DATASET)
 model = Yolact(**model_params)
-
-# -----------------------------------------------------------------
-dateset = ObjectDetectionDataset(dataset_name=NAME,
-                                 tfrecord_dir=os.path.join(ROOT_DIR, "data", NAME),
+dateset = ObjectDetectionDataset(dataset_name=NAME_OF_DATASET,
+                                 tfrecord_dir=os.path.join(ROOT_DIR, "data", NAME_OF_DATASET),
                                  anchor_instance=model.anchor_instance,
                                  **parser_params)
 train_dataset = dateset.get_dataloader(subset='train', batch_size=1)
 valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
-
 # -----------------------------------------------------------------------------------------------
 for image, labels in train_dataset.take(1):
     image = denormalize_image(image)
     image = np.squeeze(image.numpy()) * 255
     image = image.astype(np.uint8)
-    ori = labels['ori']
     ori = np.squeeze(labels['ori'].numpy())
     plt.imshow(ori)
     plt.show()
@@ -46,7 +41,7 @@ for image, labels in train_dataset.take(1):
         b = bbox[0][idx]
         m = mask[0][idx][:, :, None]
         # class_id = COCO_LABEL_MAP.get(cls[0][idx]) - 1
-        class_id = cls[0][idx]-1
+        class_id = cls[0][idx] - 1
         color_idx = (class_id * 5) % len(COLORS)
 
         # prepare the class text to display
@@ -72,13 +67,14 @@ for image, labels in train_dataset.take(1):
 
     dst = np.zeros_like(image).astype('uint8')
     final_m = tf.image.resize(final_m, [image.shape[0], image.shape[1]], method=tf.image.ResizeMethod.BILINEAR)
-    final_m = (final_m+0.5).numpy().astype('uint8')
+    final_m = (final_m + 0.5).numpy().astype('uint8')
     cv2.addWeighted(final_m, 0.3, image, 0.7, 0, dst)
     cv2.imshow("check", dst)
     k = cv2.waitKey(0)
 # ---------------------------------------------------------------------------------------------------------------
+# for visualizing a crowd example
 """
-# visualize the crowd training sample
+# visualize the first crowd training sample
 for image, labels in train_dataloader:
     if labels['num_crowd'] > 0:
         image = denormalize_image(image)
