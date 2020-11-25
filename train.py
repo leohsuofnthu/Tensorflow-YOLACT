@@ -23,8 +23,6 @@ flags.DEFINE_string('name', 'pascal',
                     'name of dataset')
 flags.DEFINE_string('tfrecord_dir', 'data',
                     'directory of tfrecord')
-flags.DEFINE_string('backbone', 'resnet50',
-                    'backbone model')
 flags.DEFINE_string('weights', 'weights',
                     'path to store weights')
 flags.DEFINE_integer('batch_size', 3,
@@ -61,7 +59,7 @@ def main(argv):
     # set fixed random seed, load config files
     tf.random.set_seed(RANDOM_SEED)
     train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
-        FLAGS.name, 'mobilenetv2')
+        FLAGS.name)
 
     # -----------------------------------------------------------------
     # set up Grappler for graph optimization

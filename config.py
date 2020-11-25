@@ -2,6 +2,7 @@ import os
 import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKBONE = "mobilenetv2"
 RANDOM_SEED = 1234
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
@@ -141,7 +142,7 @@ LABEL_MAP = dict({
 })
 
 
-def get_params(dataset_name, backbone="resnet50"):
+def get_params(dataset_name):
     parser_params = {
         "output_size": IMG_SIZE,
         "proto_out_size": PROTO_OUTPUT_SIZE,
@@ -184,8 +185,7 @@ def get_params(dataset_name, backbone="resnet50"):
     anchor_params = ANCHOR[dataset_name]
 
     model_params = {
-        # choose resnet50 or resnet101
-        "backbone": backbone,
+        "backbone": BACKBONE,
         "fpn_channels": 256,
         "num_class": NUM_CLASSES[dataset_name],
         "num_mask": 32,
