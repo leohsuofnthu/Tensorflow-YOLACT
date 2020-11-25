@@ -155,9 +155,10 @@ class Expand(object):
         return image, masks, new_boxes, labels, is_crowds
 
 
+# Todo I did a slightly different way for crop
 class RandomSampleCrop(object):
     def __init__(self):
-        self.min_iou = tf.constant([0, 0.1, 0.3, 0.7, 0.9, 1])
+        self.min_iou = tf.constant([0.5, 0.6, 0.7, 0.8, 0.9, 1])
 
     def __call__(self, image, masks, boxes, labels, is_crowds):
         # choose the min_object_covered value in self.sample_options
@@ -249,7 +250,7 @@ class Resize(object):
         # resize the mask to proto_out_size
         masks = tf.image.resize(tf.expand_dims(masks, -1), [self.proto_output_size, self.proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
-        masks = tf.cast(masks+0.5, tf.int64)
+        masks = tf.cast(masks + 0.5, tf.int64)
         masks = tf.squeeze(masks)
         masks = tf.cast(masks, tf.float32)
 
