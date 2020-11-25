@@ -34,12 +34,11 @@ class ConvertFromInts(object):
 
 class RandomBrightness(object):
     # input image range: [0 ~ 1]
-    def __init__(self, delta=0.05):
+    def __init__(self, delta=0.01):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        # if tf.random.uniform([1]) > 0.5:
-        if False:
+        if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_brightness(image, max_delta=self.delta)
         return image, masks, boxes, labels, is_crowds
 
@@ -51,8 +50,7 @@ class RandomContrast(object):
         self.upper = upper
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        # if tf.random.uniform([1]) > 0.5:
-        if True:
+        if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_contrast(image, lower=self.lower, upper=self.upper)
         return image, masks, boxes, labels, is_crowds
 
@@ -64,8 +62,7 @@ class RandomSaturation(object):
         self.upper = upper
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        # if tf.random.uniform([1]) > 0.5:
-        if False:
+        if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_saturation(image, lower=self.lower, upper=self.upper)
         return image, masks, boxes, labels, is_crowds
 
@@ -76,8 +73,7 @@ class RandomHue(object):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
-        # if tf.random.uniform([1]) > 0.5:
-        if False:
+        if tf.random.uniform([1]) > 0.5:
             image = tf.image.random_hue(image, max_delta=self.delta)
         return image, masks, boxes, labels, is_crowds
 
@@ -303,11 +299,10 @@ class SSDAugmentation(object):
             self.augmentations = Compose([
                 ConvertFromInts(),
                 PhotometricDistort(),
-                # Expand(mean),
-                # RandomSampleCrop(),
-                # RandomMirror(),
+                Expand(mean),
+                RandomSampleCrop(),
+                RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
-                # preserve aspect ratio or not?
                 BackboneTransform(mean, std)
             ])
         else:
