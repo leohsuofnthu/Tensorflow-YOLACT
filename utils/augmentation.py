@@ -162,16 +162,17 @@ class RandomSampleCrop(object):
 
     def __call__(self, image, masks, boxes, labels, is_crowds):
         # choose the min_object_covered value in self.sample_options
-        idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
-        min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
-        if min_iou == 1:
-            return image, masks, boxes, labels, is_crowds
+        # idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
+        # min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
+        # if min_iou == 1:
+        #     return image, masks, boxes, labels, is_crowds
 
         # Geometric Distortions (img, bbox, mask)
+        boxes = tf.clip_by_value(boxes, clip_value_min=0, clip_value_max=1)  # just in case
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
             tf.shape(image),
             bounding_boxes=tf.expand_dims(boxes, 0),
-            min_object_covered=min_iou,
+            min_object_covered=1,
             aspect_ratio_range=(0.5, 2),
             area_range=(0.1, 1.0),
             max_attempts=50)
