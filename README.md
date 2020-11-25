@@ -6,19 +6,55 @@ Here is the illustration of YOLACT from original paper.
 ![ad](https://github.com/leohsuofnthu/Tensorflow-YOLACT/blob/master/images/model.png)
 
 ## Dataset and Pre-processsing
-[COCO Dataset](http://cocodataset.org/#download) is used for reproducing the experiment here.
 
-### (1) Download the COCO 2017 Dataset
-[2017 Train images](http://images.cocodataset.org/zips/train2017.zip)  / [2017 Val images](http://images.cocodataset.org/zips/val2017.zip) / [2017 Annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip)
+### Prepare the COCO 2017 TFRecord Dataset
+[2017 Train images](http://images.cocodataset.org/zips/train2017.zip)  / [2017 Val images](http://images.cocodataset.org/zips/val2017.zip) / [2017 Annotations](http://images.cocodataset.org/annotations/annotations_trainval2017.zip) <br/>
 
-### (2) Create TFRecord for training 
-In this repo, we convert images and annotations into TFRecord through the */data/create_coco_tfrecord.py.* In this script, I directly resize the image to 550 * 550 and ignore the images with only crowd annotations. Using the following command to create TFRecord.
+Extract the ```/train2017```, ```/val2017```, and ```/annotations/instances_train2017.json```, ```/annotations/instances_val2017.json ```from annotation to ```./data``` folder of the repo, and run:
 
 ```bash
-python -m  data.coco_tfrecord_creator -train_image_dir 'path of train2017' -val_image_dir 'path of val2017' -train_annotations_file 'path of train annotations' -val_annotations_file 'path of val annotations' -output_dir 'path for output TFRecord'
+python -m  data.coco_tfrecord_creator -train_image_dir './data/train2017' 
+                                      -val_image_dir './data/val2017' 
+                                      -train_annotations_file './data/instances_train2017.json' 
+                                      -val_annotations_file './instances_val2017.json' 
+                                      -output_dir './data/coco'
 ```
-## Train
-### (1) Usage
+### Prepare the Pascal SBD Dataset
+[benchmark.tgz](http://www.eecs.berkeley.edu/Research/Projects/CS/vision/grouping/semantic_contours/benchmark.tgz)  /
+[Pascal SBD annotation](https://drive.google.com/file/d/1ExrRSPVctHW8Nxrn0SofU1lVhK5Wn0_S/view) (Here is the COCO-style annotation from original yolact repo)  <br/>
+
+Extract the ```/benchmark/dataset/img ``` folder from benchmark.tgz, and ```pascal_sbd_train.json```, ```pascal_sbd_valid.json``` from annotation to ```./data``` folder of the repo. Divinding images into 2 folders (```/pascal_train``` for training, ```/pascal_val``` for validation images.) and run:
+
+```bash
+python -m  data.coco_tfrecord_creator -train_image_dir './data/pascal_train' 
+                                      -val_image_dir './data/pascal_val' 
+                                      -train_annotations_file './data/pascal_sbd_train.json' 
+                                      -val_annotations_file './pascal_sbd_valid.json' 
+                                      -output_dir './data/pascal'
+```
+
+### Prepare your Custom Dataset
+Create a folder of training images, a folder of validation images, and a COCO-style annotation like above for your dataset in ```./data``` folder of the repo, and run:
+
+```bash
+python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training images' 
+                                      -val_image_dir   'path to your validaiton images'  
+                                      -train_annotations_file 'path to your training annotations' 
+                                      -val_annotations_file 'path to your validation annotations' 
+                                      -output_dir './data/name of the dataset'
+```
+
+### Check and Load the Dataset
+```bash
+
+
+
+
+```
+## Training
+### Configuration
+
+### Training Script
 Training procedure can be conducted directly by following command:
 ```bash
 python train.py -name 'coco'
@@ -35,12 +71,13 @@ The default hyperparameters in train.py follows the original setting from the pa
 * SGD optimizer with learning rate 1e-3 and divided by 10 at iterations 280K, 600K, 700K and 750K, using a momentum 0.9, a weight decay 5* 1e-4. In the original implementation of paper, a warm up learning rate 1e-4 and warm up iterations 500 are used, I put all those setting in a learning schedule object in *utils/learning_rate_schedule.py*.
 * Random photometrics distortion, horizontal flip(mirroring) and crop are used here for data augmentation.
 
-### (2) Multi-GPU & TPU support
-In Tensorflow 2.0, distibuted training with multiple GPU and TPU are straighforward to use by adding different strategy scopes, the info can be find here [Distributed training with TensorFlow](https://www.tensorflow.org/guide/distributed_training)
 
+## Inference 
+### Evaluation
+### Images [Soon]
+### Videos [Soon]
 
-## Inference (To Be Updated)
-## mAP evaluation (To Be Updated)
+## Pretrain Weights [Soon]
 
 ## Authors
 
