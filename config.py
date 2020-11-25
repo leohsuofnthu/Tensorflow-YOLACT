@@ -6,7 +6,7 @@ RANDOM_SEED = 1234
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
 
-# Adding any backbone u want as long as the output size are: (28, 28), (14, 14), (7,7)
+# Adding any backbone u want as long as the output size are: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
 backbones_objects = dict({
     "resnet50": tf.keras.applications.ResNet50(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                include_top=False,
@@ -17,16 +17,24 @@ backbones_objects = dict({
                                                  layers=tf.keras.layers,
                                                  weights='imagenet'),
 
+    "mobilenetv2": tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
+                                                     include_top=False,
+                                                     layers=tf.keras.layers,
+                                                     weights='imagenet'),
+
     "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                             include_top=False,
                                                             weights='imagenet')
 
 })
 
+# Extract the layer have following: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
+# I just randomly choose layers for efficeintNet
 backbones_extracted = dict({
     "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
     "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
-    "efficientNet-B0": ['block4c_add', 'block5b_add', 'block6c_add']
+    "mobilenetv2": ['block_5_add', 'block_7_add', 'block_14_add'],
+    "efficientNet-B0": ['block3b_add', 'block4c_add', 'block6d_add']
 })
 
 # RGB values of color for drawing nice bounding boxes
@@ -133,7 +141,7 @@ LABEL_MAP = dict({
 })
 
 
-def get_params(dataset_name):
+def get_params(dataset_name, backbone="resnet50"):
     parser_params = {
         "output_size": IMG_SIZE,
         "proto_out_size": PROTO_OUTPUT_SIZE,
@@ -177,7 +185,7 @@ def get_params(dataset_name):
 
     model_params = {
         # choose resnet50 or resnet101
-        "backbone": "resnet50",
+        "backbone": backbone,
         "fpn_channels": 256,
         "num_class": NUM_CLASSES[dataset_name],
         "num_mask": 32,
