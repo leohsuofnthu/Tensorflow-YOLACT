@@ -1,6 +1,8 @@
 # YOLACT Real-time Instance Segmentation
 ## Introduction
-This is a Tensorflow 2.0 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture for object detection and its own idea of parallel prototype generation. In this repo, my goal is to provide a general way to use this model, let users have more flexible options (custom dataset, different backbone choice, anchor scale and learning rate schedue) for their own specific need based on idea from original paper.
+This is a Tensorflow 2 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture for object detection and its own idea of parallel prototype generation. In this repo, my goal is to provide a general way to use this model, let users have more flexible options (custom dataset, different backbone choice, anchor scale and learning rate schedue) for their own specific need based on idea from original paper.
+
+[UPDATE] 2020/11/25 this repo will be containerized soon 
 
 ## Model
 Here is the illustration of YOLACT from original paper.
@@ -44,14 +46,6 @@ python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training im
                                       -val_annotations_file 'path to your validation annotations' 
                                       -output_dir './data/name of the dataset'
 ```
-
-### 4. Check the Dataset Sample (to be updated)
-```bash
-
-
-
-
-```
 ## Training
 ### 1. Configuration for COCO, Pascal SBD
 The configuration for experiment can be adjust in ```config.py```. The default hyperparameters from original paper are already written as example for you to know how to customize it. You can adjust following parameters:
@@ -63,8 +57,21 @@ The configuration for experiment can be adjust in ```config.py```. The default h
 ```
 
 ### 2. Configuration for Custom Dataset (to be updated)
+```bash
 
-### 3. Training Script
+
+
+
+```
+### 3. Check the Dataset Sample 
+```bash
+
+
+
+
+```
+
+### 4. Training Script
 -> Training for COCO:
 ```bash
 python train.py -name 'coco'
