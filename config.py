@@ -4,7 +4,7 @@ import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 MIXPRECISION = False
-BACKBONE = "mobilenetv2"
+BACKBONE = "resnet50"
 RANDOM_SEED = 1234
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
