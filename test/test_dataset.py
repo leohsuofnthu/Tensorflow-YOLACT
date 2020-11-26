@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tensorflow as tf
 
-from config import PASCAL_CLASSES, COLORS, get_params, ROOT_DIR
+from config import PASCAL_CLASSES, COCO_CLASSES, COCO_LABEL_MAP, COLORS, get_params, ROOT_DIR
 from data.coco_dataset import ObjectDetectionDataset
 from utils.utils import denormalize_image
 from yolact import Yolact

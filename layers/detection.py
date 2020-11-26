@@ -127,7 +127,7 @@ class Detect(object):
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
         # tf.print(scores)
         # second threshold
-        positive_det = tf.squeeze(tf.where(scores > 0.1))
+        positive_det = tf.squeeze(tf.where(scores > iou_threshold))
         # tf.print(positive_det)
         scores = tf.gather(scores, positive_det)
         classes = classes[:tf.size(scores)]
