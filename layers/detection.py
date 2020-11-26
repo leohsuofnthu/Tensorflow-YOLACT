@@ -53,7 +53,7 @@ class Detect(object):
 
         # filter out the ROI that have conf score > confidence threshold
         candidate_ROI_idx = tf.squeeze(tf.where(conf_score > self.conf_threshold))
-        # tf.print("candidate_ROI", candidate_ROI_idx)
+        # tf.print("candidate_ROI:", tf.size(candidate_ROI_idx))
 
         # there might not have any score that over self.conf_threshold, no detection
         if tf.size(candidate_ROI_idx) == 0:
@@ -72,11 +72,16 @@ class Detect(object):
         # Fast NMS
         # tf.print("before fastnms score", scores)
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
+        # tf.print("top k", top_k)
         boxes, masks, classes, scores = self._fast_nms(boxes, masks, classes, scores, self.nms_threshold, top_k)
 
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _fast_nms(self, boxes, masks, classes, scores, iou_threshold=0.5, top_k=200, second_threshold=False):
+        # tf.print("before nms boxes", tf.shape(boxes))
+        # tf.print("before nms masks", tf.shape(masks))
+        # tf.print("before nms classes", tf.shape(classes))
+        # tf.print("before nms scores", tf.shape(scores))
         if tf.rank(scores) == 0:
             scores = tf.expand_dims(scores, axis=0)
             classes = tf.expand_dims(classes, axis=0)
@@ -87,7 +92,14 @@ class Detect(object):
         classes = tf.gather(classes, idx, axis=0)
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
+        # tf.print("topk boxes", tf.shape(boxes))
+        # tf.print("topk masks", tf.shape(masks))
+        # tf.print("topk classes", tf.shape(classes))
+        # tf.print("topk scores", tf.shape(scores))
+
         iou = tf.squeeze(utils.jaccard(tf.expand_dims(boxes, axis=0), tf.expand_dims(boxes, axis=0)), axis=0)
+        # tf.print("iou", tf.shape(iou))
+        # tf.print(iou)
 
         # upper trangular matrix - diagnoal
         upper_triangular = tf.linalg.band_part(iou, 0, -1)
@@ -96,19 +108,27 @@ class Detect(object):
 
         # fitler out the unwanted ROI
         iou_max = tf.reduce_max(iou, axis=1)
-        idx_det = tf.where(iou_max <= iou_threshold)
+        idx_det = tf.squeeze(tf.where(iou_max <= iou_threshold), axis=-1)
+        # tf.print("idx_det", idx_det)
+        # tf.print(tf.shape(idx_det))
+        classes = tf.gather(classes, idx_det)
+        boxes = tf.gather(boxes, idx_det)
+        masks = tf.gather(masks, idx_det)
+        scores = tf.gather(scores, idx_det)
 
-        classes = tf.gather_nd(classes, idx_det)
-        boxes = tf.gather_nd(boxes, idx_det)
-        masks = tf.gather_nd(masks, idx_det)
-        scores = tf.gather_nd(scores, idx_det)
+        # tf.print("after iou boxes", tf.shape(boxes))
+        # tf.print("after iou masks", tf.shape(masks))
+        # tf.print("after iou classes", tf.shape(classes))
+        # tf.print("after iou scores", tf.shape(scores))
 
         # number of max detection = 100 (u can choose whatever u want)
         max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
+        # tf.print("max_num_detection", max_num_detection)
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
-
+        # tf.print(scores)
         # second threshold
-        positive_det = tf.squeeze(tf.where(scores > iou_threshold))
+        positive_det = tf.squeeze(tf.where(scores > 0.1))
+        # tf.print(positive_det)
         scores = tf.gather(scores, positive_det)
         classes = classes[:tf.size(scores)]
         boxes = boxes[:tf.size(scores)]

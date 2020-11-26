@@ -300,10 +300,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                PhotometricDistort(),
-                Expand(mean),
-                RandomSampleCrop(),
-                RandomMirror(),
+                # PhotometricDistort(),
+                # Expand(mean),
+                # RandomSampleCrop(),
+                # RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 BackboneTransform(mean, std)
             ])

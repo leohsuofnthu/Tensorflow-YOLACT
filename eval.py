@@ -86,6 +86,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # Load prediction
     classes, scores, boxes, masks = postprocess(dets, w, h, 0, "bilinear")
+
     # if no detection or only one detection
     if classes is None:
         return
@@ -93,7 +94,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
         scores = tf.expand_dims(scores, axis=0)
         masks = tf.expand_dims(masks, axis=0)
     boxes = tf.expand_dims(boxes, axis=0)
-
+    #
     # tf.print("prep classes", tf.shape(classes))
     # tf.print("prep scores", tf.shape(scores))
     # tf.print("prep boxes", tf.shape(boxes))
@@ -105,12 +106,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     gt_masks = labels['mask_target']
     num_crowd = labels['num_crowd']
     num_obj = labels['num_obj']
-
-    # tf.print('prep gt bbox', tf.shape(gt_bbox))
-    # tf.print('prep gt classes', tf.shape(gt_classes))
-    # tf.print('prep gt masks', tf.shape(gt_masks))
-    # tf.print('prep num crowd', tf.shape(num_crowd))
-    # tf.print("prep num obj", tf.shape(num_obj))
 
     # convert to scalar
     num_crowd = num_crowd.numpy()[0]
@@ -151,6 +146,12 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # tf.print("num pred", num_pred)
     # tf.print("num gt", num_gt)
+    #
+    # tf.print('prep gt bbox', tf.shape(gt_bbox))
+    # tf.print('prep gt classes', tf.shape(gt_classes))
+    # tf.print('prep gt masks', tf.shape(gt_masks))
+    # tf.print('prep num crowd', tf.shape(num_crowd))
+    # tf.print("prep num obj", tf.shape(num_obj))
 
     # resize gt mask
     # should be [num_gt, w, h]
