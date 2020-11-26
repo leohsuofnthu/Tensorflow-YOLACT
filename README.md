@@ -55,7 +55,12 @@ The configuration for experiment can be adjust in ```config.py```. The default h
 ```
 
 ### 2. Configuration for Custom Dataset (to be updated)
+```bash
 
+
+
+
+```
 ### 3. Check the Dataset Sample 
 ```bash
 
