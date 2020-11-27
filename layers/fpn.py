@@ -65,4 +65,5 @@ class FeaturePyramidNeck(tf.keras.layers.Layer):
         offsets = [0, (x1_shape[1] - x2_shape[1]) // 2, (x1_shape[2] - x2_shape[2]) // 2, 0]
         size = [-1, x2_shape[1], x2_shape[2], -1]
         x1_crop = tf.slice(x1, offsets, size)
+        x1_crop = tf.cast(x1_crop, x2.dtype)
         return tf.add(x1_crop, x2)
