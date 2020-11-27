@@ -11,6 +11,7 @@ from utils.utils import postprocess, denormalize_image
 from yolact import Yolact
 
 # Todo Add your custom dataset
+tf.random.set_seed(1234)
 NAME_OF_DATASET = "pascal"
 CLASS_NAMES = PASCAL_CLASSES
 
@@ -34,9 +35,14 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=0.9)
 ckpt_dir = os.path.join(ROOT_DIR, "checkpoints")
 latest = tf.train.latest_checkpoint(ckpt_dir)
 
+"""
 checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
 status = checkpoint.restore(tf.train.latest_checkpoint(ckpt_dir))
 print("Restore Ckpt Sucessfully!!")
+"""
+model(np.zeros((1, 550, 550, 3)))
+model.load_weights('../weights/weights_pascal.h5')
+print("Load weights Sucessfully!!")
 
 # -----------------------------------------------------------------------------------------------
 # Load Validation Images and do Detection
@@ -47,7 +53,7 @@ for image, labels in valid_dataset.take(1):
     output = model(image, training=False)
     detection = model.detect(output)
     # postprocessing
-    cls, scores, bbox, masks = postprocess(detection, tf.shape(image)[0], tf.shape(image)[1], 0, "bilinear")
+    cls, scores, bbox, masks = postprocess(detection, tf.shape(image)[1], tf.shape(image)[2], 0, "bilinear")
     cls, scores, bbox, masks = cls.numpy(), scores.numpy(), bbox.numpy(), masks.numpy()
     # visualize the detection (un-transform the image)
     image = denormalize_image(image)
