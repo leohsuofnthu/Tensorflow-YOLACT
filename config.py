@@ -3,12 +3,89 @@ import os
 import tensorflow as tf
 
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# -----------------------------------------------------------------
+# Todo Set the hyperparameter you preferred
 MIXPRECISION = False
-BACKBONE = "resnet50"
 RANDOM_SEED = 1234
+
+# Parser
+NUM_MAX_PAD = 100
+THRESHOLD_POS = 0.5
+THRESHOLD_NEG = 0.4
+THRESHOLD_CROWD = 0.7
+
+# Model
+BACKBONE = "resnet50"
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
+FPN_CHANNELS = 256
+NUM_MASK = 32
+
+# Loss
+LOSS_WEIGHT_CLS = 1
+LOSS_WEIGHT_BOX = 1.5
+LOSS_WEIGHT_MASK = 6.125
+LOSS_WEIGHT_SEG = 1
+NEG_POS_RATIO = 3
+MAX_MASKS_FOR_TRAIN = 100
+
+# Detection
+TOP_K = 200
+CONF_THRESHOLD = 0.05
+NMS_THRESHOLD = 0.5
 MAX_NUM_DETECTION = 100
+
+# Todo Add custom dataset label dictionary if you need
+YOUR_CUSTOM_CLASSES = ()
+
+# Todo Add the training iteration for your dataset
+TRAIN_ITER = dict({
+    "coco": 800000,
+    "pascal": 120000,
+    "your_custom_dataset": 0
+})
+
+# Todo Add the number of classes in your dataset
+NUM_CLASSES = dict({
+    "coco": 81,
+    "pascal": 21,
+    "your_custom_dataset": 0
+})
+
+# Todo Design your own learning rate schedule
+LR_STAGE = dict({
+    "coco": {'warmup_steps': 500,
+             'warmup_lr': 1e-4,
+             'initial_lr': 1e-3,
+             'stages': [280000, 600000, 700000, 750000],
+             'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]},
+
+    "pascal": {'warmup_steps': 500,
+               'warmup_lr': 1e-4,
+               'initial_lr': 1e-3,
+               'stages': [60000, 100000],
+               'stage_lrs': [1e-3, 1e-4, 1e-5]},
+
+    "your_custom_dataset": {}
+})
+
+# Todo Design your own anchors
+ANCHOR = dict({
+    "coco": {"img_size": IMG_SIZE,
+             "feature_map_size": [69, 35, 18, 9, 5],
+             "aspect_ratio": [1, 0.5, 2],
+             "scale": [24, 48, 96, 192, 384]},
+
+    "pascal": {"img_size": IMG_SIZE,
+               "feature_map_size": [69, 35, 18, 9, 5],
+               "aspect_ratio": [1, 0.5, 2],
+               "scale": [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)]},
+
+    "your_custom_dataset": {}
+})
+
+# -----------------------------------------------------------------
 
 # Adding any backbone u want as long as the output size are: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
 backbones_objects = dict({
@@ -96,51 +173,7 @@ PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
                   "dog", "horse", "motorbike", "person", "pottedplant",
                   "sheep", "sofa", "train", "tvmonitor")
 
-# Class name for your_custom_dataset
-YOUR_CUSTOM_CLASSES = ()
-
-TRAIN_ITER = dict({
-    "coco": 800000,
-    "pascal": 120000,
-    "your_custom_dataset": 0
-})
-
-NUM_CLASSES = dict({
-    "coco": 81,
-    "pascal": 21,
-    "your_custom_dataset": 0
-})
-
-LR_STAGE = dict({
-    "coco": {'warmup_steps': 500,
-             'warmup_lr': 1e-4,
-             'initial_lr': 1e-3,
-             'stages': [280000, 600000, 700000, 750000],
-             'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]},
-
-    "pascal": {'warmup_steps': 500,
-               'warmup_lr': 1e-4,
-               'initial_lr': 1e-3,
-               'stages': [60000, 100000],
-               'stage_lrs': [1e-3, 1e-4, 1e-5]},
-
-    "your_custom_dataset": {}
-})
-
-ANCHOR = dict({
-    "coco": {"img_size": IMG_SIZE,
-             "feature_map_size": [69, 35, 18, 9, 5],
-             "aspect_ratio": [1, 0.5, 2],
-             "scale": [24, 48, 96, 192, 384]},
-
-    "pascal": {"img_size": IMG_SIZE,
-               "feature_map_size": [69, 35, 18, 9, 5],
-               "aspect_ratio": [1, 0.5, 2],
-               "scale": [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)]},
-
-    "your_custom_dataset": {}
-})
-
+# Only coco need it to map 90 to 80 classes
 LABEL_MAP = dict({
     "coco": COCO_LABEL_MAP,
     "pascal": None,
@@ -152,20 +185,20 @@ def get_params(dataset_name):
     parser_params = {
         "output_size": IMG_SIZE,
         "proto_out_size": PROTO_OUTPUT_SIZE,
-        "num_max_padding": 100,
+        "num_max_padding": NUM_MAX_PAD,
         "augmentation_params": {
-            # These are in RGB and are for ImageNet
+            # These are in RGB and for ImageNet
             "mean": (0.407, 0.457, 0.485),
             "std": (0.225, 0.224, 0.229),
             "output_size": IMG_SIZE,
             "proto_output_size": PROTO_OUTPUT_SIZE,
-            "discard_box_width": 4. / 550.,
-            "discard_box_height": 4. / 550.,
+            "discard_box_width": 4. / float(IMG_SIZE),
+            "discard_box_height": 4. / float(IMG_SIZE),
         },
         "matching_params": {
-            "threshold_pos": 0.5,
-            "threshold_neg": 0.4,
-            "threshold_crowd": 0.7
+            "threshold_pos": THRESHOLD_POS,
+            "threshold_neg": THRESHOLD_NEG,
+            "threshold_crowd": THRESHOLD_CROWD
         },
         "label_map": LABEL_MAP[dataset_name]
     }
@@ -173,19 +206,19 @@ def get_params(dataset_name):
     detection_params = {
         "num_cls": NUM_CLASSES[dataset_name],
         "label_background": 0,
-        "top_k": 200,
-        "conf_threshold": 0.05,
-        "nms_threshold": 0.5,
-        "max_num_detection": 100
+        "top_k": TOP_K,
+        "conf_threshold": CONF_THRESHOLD,
+        "nms_threshold": NMS_THRESHOLD,
+        "max_num_detection": MAX_NUM_DETECTION
     }
 
     loss_params = {
-        "loss_weight_cls": 1,
-        "loss_weight_box": 1.5,
-        "loss_weight_mask": 6.125,
-        "loss_weight_seg": 1,
-        "neg_pos_ratio": 3,
-        "max_masks_for_train": 100
+        "loss_weight_cls": LOSS_WEIGHT_CLS,
+        "loss_weight_box": LOSS_WEIGHT_BOX,
+        "loss_weight_mask": LOSS_WEIGHT_MASK,
+        "loss_weight_seg": LOSS_WEIGHT_SEG,
+        "neg_pos_ratio": NEG_POS_RATIO,
+        "max_masks_for_train": MAX_MASKS_FOR_TRAIN
     }
 
     lrs_schedule_params = LR_STAGE[dataset_name]
@@ -193,9 +226,9 @@ def get_params(dataset_name):
 
     model_params = {
         "backbone": BACKBONE,
-        "fpn_channels": 256,
+        "fpn_channels": FPN_CHANNELS,
         "num_class": NUM_CLASSES[dataset_name],
-        "num_mask": 32,
+        "num_mask": NUM_MASK,
         "anchor_params": anchor_params,
         "detect_params": detection_params,
     }
