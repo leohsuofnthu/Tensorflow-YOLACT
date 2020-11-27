@@ -199,7 +199,7 @@ def main(argv):
             # Saving the weights:
             if mask_map > best_masks_map:
                 best_masks_map = mask_map
-                model.save_weights(f'./weights/weights_{FLAGS.name}_{str(best_masks_map)}.h5')
+                model.save_weights(f'{FLAGS.weights}/weights_{FLAGS.name}_{str(best_masks_map)}.h5')
 
             # reset the metrics
             train_loss.reset_states()
