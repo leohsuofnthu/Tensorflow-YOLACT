@@ -4,13 +4,14 @@ from utils import utils
 
 
 class Detect(object):
-    def __init__(self, anchors, num_cls, label_background, top_k, conf_threshold, nms_threshold):
+    def __init__(self, anchors, num_cls, label_background, top_k, conf_threshold, nms_threshold, max_num_detection):
         self.num_cls = num_cls
         self.label_background = label_background
         self.top_k = top_k
         self.nms_threshold = nms_threshold
         self.conf_threshold = conf_threshold
         self.anchors = anchors
+        self.max_num_detection = max_num_detection
 
     def __call__(self, prediction):
         loc_pred = prediction['pred_offset']
@@ -91,8 +92,7 @@ class Detect(object):
 
         # tf.print("topk boxes", tf.shape(boxes))
         # tf.print("topk masks", tf.shape(masks))
-        tf.print("topk scores", tf.shape(scores))
-        tf.print(scores)
+        # tf.print("topk scores", tf.shape(scores))
 
         iou = utils.jaccard(boxes, boxes)
         # tf.print("iou", tf.shape(iou))
@@ -102,24 +102,15 @@ class Detect(object):
         diag = tf.linalg.band_part(iou, 0, 0)
         iou = upper_triangular - diag
 
-        tf.print(iou[0])
-
         # fitler out the unwanted ROI
         iou_max = tf.reduce_max(iou, axis=1)
-        idx_det = tf.where(iou_max <= iou_threshold)
-
-        tf.print(iou_max[0])
-        tf.print(idx_det)
+        idx_det = (iou_max <= iou_threshold)
 
         # second threshold
-        keep = tf.where(scores > self.conf_threshold)
-        tf.print(keep)
+        second_threshold = (scores > self.conf_threshold)
+        idx_det = tf.where(tf.logical_and(idx_det, second_threshold) == True)
 
-        tf.print("intern", tf.sets.intersection(idx_det, keep))
-
-        # +1 cuz we ignore background in the begining, every class label idx are already be - 1
-        classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max)) + 1
-        tf.print(classes[0])
+        classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max))
         classes = tf.gather_nd(classes, idx_det)
         boxes = tf.gather_nd(boxes, idx_det)
         masks = tf.gather_nd(masks, idx_det)
@@ -131,14 +122,12 @@ class Detect(object):
         # tf.print("after iou scores", tf.shape(scores))
 
         # number of max detection = 100 (u can choose whatever u want)
-        max_num_detection = tf.math.minimum(self.top_k, tf.size(scores))
+        max_num_detection = tf.math.minimum(self.max_num_detection, tf.size(scores))
         # tf.print("max_num_detection", max_num_detection)
         scores, idx = tf.math.top_k(scores, k=max_num_detection)
         # tf.print(scores)
         # second threshold
-        positive_det = tf.squeeze(tf.where(scores > self.conf_threshold))
         # tf.print(positive_det)
-        scores = tf.gather(scores, positive_det)
         classes = classes[:tf.size(scores)]
         boxes = boxes[:tf.size(scores)]
         masks = masks[:tf.size(scores)]

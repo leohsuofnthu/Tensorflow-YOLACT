@@ -35,14 +35,13 @@ optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=0.9)
 ckpt_dir = os.path.join(ROOT_DIR, "checkpoints")
 latest = tf.train.latest_checkpoint(ckpt_dir)
 
-"""
 checkpoint = tf.train.Checkpoint(optimizer=optimizer, model=model)
 status = checkpoint.restore(tf.train.latest_checkpoint(ckpt_dir))
 print("Restore Ckpt Sucessfully!!")
-"""
-model(np.zeros((1, 550, 550, 3)))
-model.load_weights('../weights/weights_pascal.h5')
-print("Load weights Sucessfully!!")
+
+# model(np.zeros((1, 550, 550, 3)))
+# model.load_weights('../weights/weights_pascal.h5')
+# print("Load weights Sucessfully!!")
 
 # -----------------------------------------------------------------------------------------------
 # Load Validation Images and do Detection

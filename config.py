@@ -8,6 +8,7 @@ BACKBONE = "resnet50"
 RANDOM_SEED = 1234
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
+MAX_NUM_DETECTION = 100
 
 # Adding any backbone u want as long as the output size are: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
 backbones_objects = dict({
@@ -175,6 +176,7 @@ def get_params(dataset_name):
         "top_k": 200,
         "conf_threshold": 0.05,
         "nms_threshold": 0.5,
+        "max_num_detection": 100
     }
 
     loss_params = {
