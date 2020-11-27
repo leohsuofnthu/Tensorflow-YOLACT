@@ -65,10 +65,9 @@ class YOLACTLoss(object):
         num_pos = tf.shape(gt_offset)[0]
         smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
 
-        gt_offset = tf.cast(gt_offset, pred_offset.dtype)
-        num_pos = tf.cast(num_pos, pred_offset.dtype)
-
-        loss_loc = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset)) / num_pos
+        l1loss = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
+        l1loss = tf.cast(l1loss, pred_offset.dtype)
+        loss_loc = l1loss / tf.cast(num_pos, l1loss.dtype)
 
         return loss_loc
 
@@ -135,6 +134,9 @@ class YOLACTLoss(object):
         loss_mask = 0.
         total_pos = 0
 
+        loss_mask = tf.cast(loss_mask, pred_mask_coef.dtype)
+        total_pos = tf.cast(total_pos, pred_mask_coef.dtype)
+
         for idx in tf.range(num_batch):
             # extract randomly postive sample in prejd_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -159,7 +161,7 @@ class YOLACTLoss(object):
             else:
                 ...
 
-            total_pos += tf.size(pos_indices)
+            total_pos += tf.cast(tf.size(pos_indices), total_pos.dtype)
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
@@ -185,7 +187,7 @@ class YOLACTLoss(object):
             loss = tf.reduce_sum(s, axis=[1, 2]) / area
             loss_mask += tf.reduce_sum(loss)
 
-        total_pos = tf.cast(total_pos, pred_mask_coef.dtype)
+        total_pos = tf.cast(total_pos, loss_mask.dtype)
         loss_mask /= total_pos
         return loss_mask
 
@@ -195,6 +197,7 @@ class YOLACTLoss(object):
         num_batch = shape_mask[0]
         seg_shape = tf.shape(pred_seg)[1]
         loss_seg = 0.
+        loss_seg = tf.cast(loss_seg, pred_seg.dtype)
 
         for idx in tf.range(num_batch):
             seg = pred_seg[idx]
