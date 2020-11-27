@@ -66,7 +66,6 @@ class YOLACTLoss(object):
         smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
 
         l1loss = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
-        l1loss = tf.cast(l1loss, pred_offset.dtype)
         loss_loc = l1loss / tf.cast(num_pos, l1loss.dtype)
 
         return loss_loc
@@ -134,9 +133,6 @@ class YOLACTLoss(object):
         loss_mask = 0.
         total_pos = 0
 
-        loss_mask = tf.cast(loss_mask, pred_mask_coef.dtype)
-        total_pos = tf.cast(total_pos, pred_mask_coef.dtype)
-
         for idx in tf.range(num_batch):
             # extract randomly postive sample in prejd_mask_coef, gt_cls, gt_offset according to positive_indices
             proto = proto_output[idx]
@@ -171,9 +167,6 @@ class YOLACTLoss(object):
             gt = tf.gather(mask_gt, pos_max_id)
             bbox = tf.gather(bbox_norm, pos_max_id)
 
-            gt = tf.cast(gt, pred_mask_coef.dtype)
-            bbox = tf.cast(bbox, pred_mask_coef.dtype)
-
             bbox_center = utils.map_to_center_form(bbox)
             area = bbox_center[:, -1] * bbox_center[:, -2]
 
@@ -181,14 +174,14 @@ class YOLACTLoss(object):
             # crop the pred (not real crop, zero out the area outside the gt box)
             pred_mask = utils.crop(pred_mask, bbox)
             pred_mask = tf.clip_by_value(pred_mask, clip_value_min=1e-8, clip_value_max=1)
+            gt = tf.cast(gt, pred_mask.dtype)
             s = gt * -tf.math.log(pred_mask) + (1 - gt) * -tf.math.log(1 - pred_mask)
             # s = tf.nn.sigmoid_cross_entropy_with_logits(gt, tf.clip_by_value(pred_mask, clip_value_min=0,
             # clip_value_max=1))
             loss = tf.reduce_sum(s, axis=[1, 2]) / area
             loss_mask += tf.reduce_sum(loss)
 
-        total_pos = tf.cast(total_pos, loss_mask.dtype)
-        loss_mask /= total_pos
+        loss_mask /= tf.cast(total_pos, loss_mask.dtype)
         return loss_mask
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
@@ -197,7 +190,6 @@ class YOLACTLoss(object):
         num_batch = shape_mask[0]
         seg_shape = tf.shape(pred_seg)[1]
         loss_seg = 0.
-        loss_seg = tf.cast(loss_seg, pred_seg.dtype)
 
         for idx in tf.range(num_batch):
             seg = pred_seg[idx]
@@ -210,7 +202,7 @@ class YOLACTLoss(object):
             masks = tf.expand_dims(masks, axis=-1)
             masks = tf.image.resize(masks, [seg_shape, seg_shape], method=tf.image.ResizeMethod.BILINEAR)
             masks = tf.cast(masks + 0.5, tf.int64)
-            masks = tf.squeeze(tf.cast(masks, pred_seg.dtype))
+            masks = tf.squeeze(tf.cast(masks, seg.dtype))
 
             # obj_mask shape (objects, 138, 138)
             obj_mask = masks[:objects]
@@ -221,7 +213,6 @@ class YOLACTLoss(object):
             seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
             seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
             seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
-            seg_gt = tf.cast(seg_gt, pred_seg.dtype)
             loss_seg += tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(seg_gt, seg))
         loss_seg = loss_seg / tf.cast(seg_shape, pred_seg.dtype) ** 2 / tf.cast(num_batch, pred_seg.dtype)
 
