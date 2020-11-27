@@ -90,7 +90,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # if no detection or only one detection
     if classes is None:
         return
-    if tf.rank(scores) == 0:
+    if tf.size(scores) == 1:
         scores = tf.expand_dims(scores, axis=0)
         masks = tf.expand_dims(masks, axis=0)
     boxes = tf.expand_dims(boxes, axis=0)
