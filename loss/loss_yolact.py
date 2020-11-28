@@ -181,7 +181,7 @@ class YOLACTLoss(object):
             # resize masks from (100, 138, 138) to (100, 69, 69)
             masks = tf.expand_dims(masks, axis=-1)
             masks = tf.image.resize(masks, [seg_shape, seg_shape], method=tf.image.ResizeMethod.BILINEAR)
-            masks = tf.cast(masks + 0.5, tf.int64)
+            masks = tf.cast(masks + 0.5, tf.int32)
             masks = tf.squeeze(tf.cast(masks, seg.dtype))
 
             # obj_mask shape (objects, 138, 138)
