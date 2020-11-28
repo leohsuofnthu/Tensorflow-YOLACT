@@ -166,7 +166,7 @@ class YOLACTLoss(object):
             mask_loss = tf.reduce_sum(s, axis=[1, 2]) / area
 
             if old_num_pos > num_pos:
-                mask_loss *= old_num_pos / num_pos
+                mask_loss = mask_loss * tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
 
         return loss_mask / tf.cast(total_pos, loss_mask.dtype)
