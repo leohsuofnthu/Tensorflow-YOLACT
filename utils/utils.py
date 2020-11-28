@@ -114,7 +114,7 @@ def crop(pred, boxes):
                                     tf.math.logical_and(mask_bottom, mask_top))
     crop_mask = tf.cast(crop_mask, tf.float32)
 
-    return pred * tf.cast(crop_mask, pred.dtype)
+    return pred * crop_mask
 
 
 # decode the offset back to center form bounding box when evaluation and prediction
