@@ -74,50 +74,33 @@ class YOLACTLoss(object):
         pred_cls_max = tf.reduce_max(tf.reduce_max(pred_cls, axis=-1))
         logsumexp_pred_cls = tf.math.log(
             tf.reduce_sum(tf.math.exp(pred_cls - pred_cls_max), -1)) + pred_cls_max - pred_cls[:, 0]
-        # reshape gt_cls from [batch, num_anchor] => [batch * num_anchor, 1]
-        gt_cls = tf.expand_dims(gt_cls, axis=-1)
-        gt_cls = tf.reshape(gt_cls, [-1, 1])
 
-        # reshape positiveness to [batch*num_anchor, 1]
-        positiveness = tf.expand_dims(positiveness, axis=-1)
-        positiveness = tf.reshape(positiveness, [-1, 1])
-        pos_indices = tf.where(positiveness == 1)
-        neg_indices = tf.where(positiveness == 0)
+        logsumexp_pred_cls = tf.reshape(logsumexp_pred_cls, [tf.shape(gt_cls)[0], -1])
+        non_neg_mask = tf.cast(tf.logical_not(gt_cls != 0), tf.float32)
+        logsumexp_pred_cls = logsumexp_pred_cls * non_neg_mask
 
-        # gather pos data, neg data separately
-        pos_pred_cls = tf.gather(pred_cls, pos_indices[:, 0])
-        pos_gt = tf.gather(gt_cls, pos_indices[:, 0])
+        idx = tf.argsort(logsumexp_pred_cls, axis=1, direction="DESCENDING")
+        idx_rank = tf.argsort(idx, axis=1)
 
-        # calculate the needed amount of negative sample
-        num_pos = tf.shape(pos_gt)[0]
-        num_neg_needed = num_pos * self._neg_pos_ratio
+        num_pos = tf.expand_dims(
+            tf.reduce_sum(tf.cast((positiveness == 1), tf.int32), axis=-1), axis=-1)
+        num_neg = tf.clip_by_value(num_pos * self._neg_pos_ratio, clip_value_min=0,
+                                   clip_value_max=tf.shape(positiveness)[-1] - 1)
 
-        # sort and find negative samples
-        neg_pred_cls = tf.gather(pred_cls, neg_indices[:, 0])
-        neg_gt = tf.gather(gt_cls, neg_indices[:, 0])
+        negative_bool = tf.broadcast_to((idx_rank < num_neg), tf.shape(idx_rank))
+        negative_bool = tf.cast(negative_bool, logsumexp_pred_cls.dtype) * non_neg_mask
 
-        # sort of -log(softmax class 0)
-        neg_log_prob = tf.gather(logsumexp_pred_cls, neg_indices[:, 0])
-        neg_minus_log_class0_sort = tf.argsort(neg_log_prob, direction="DESCENDING")
+        idx_pos = tf.where(positiveness == 1)
+        idx_neg = tf.where(negative_bool == 1)
+        idxes = tf.concat([idx_pos, idx_neg], axis=0)
 
-        # take the first num_neg_needed idx in sort result and handle the situation if there are not enough neg
-        neg_indices_for_loss = neg_minus_log_class0_sort[:num_neg_needed]
+        pred_cls = tf.reshape(pred_cls, [-1, tf.shape(positiveness)[-1], num_cls])
+        pred_selected = tf.gather_nd(pred_cls, idxes)
+        gt_selected = tf.gather_nd(gt_cls, idxes)
+        gt_selected = tf.one_hot(tf.cast(gt_selected, tf.int32), depth=num_cls)
 
-        # combine the indices of pos and neg sample, create the label for them
-        neg_pred_cls_for_loss = tf.gather(neg_pred_cls, neg_indices_for_loss)
-        neg_gt_for_loss = tf.gather(neg_gt, neg_indices_for_loss)
-
-        # calculate Cross entropy loss and return
-        # concat positive and negtive data
-        target_logits = tf.concat([pos_pred_cls, neg_pred_cls_for_loss], axis=0)
-        target_labels = tf.cast(tf.concat([pos_gt, neg_gt_for_loss], axis=0), tf.int64)
-        target_labels = tf.one_hot(tf.squeeze(target_labels), depth=num_cls)
-
-        # loss
-        # Todo change to logsoftmax and manual cross-entropy
-        target_labels = tf.cast(target_labels, target_logits.dtype)
-        num_pos = tf.cast(num_pos, target_logits.dtype)
-        loss_conf = tf.reduce_sum(tf.nn.softmax_cross_entropy_with_logits(target_labels, target_logits)) / num_pos
+        loss_conf = tf.nn.softmax_cross_entropy_with_logits(gt_selected, pred_selected)
+        loss_conf = tf.reduce_sum(loss_conf) / tf.cast(tf.reduce_sum(num_pos), loss_conf.dtype)
         return loss_conf
 
     def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
