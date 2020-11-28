@@ -5,7 +5,8 @@ from utils import utils
 
 class YOLACTLoss(object):
 
-    def __init__(self, loss_weight_cls=1,
+    def __init__(self,
+                 loss_weight_cls=1,
                  loss_weight_box=1.5,
                  loss_weight_mask=6.125,
                  loss_weight_seg=1,
@@ -19,13 +20,6 @@ class YOLACTLoss(object):
         self._max_masks_for_train = max_masks_for_train
 
     def __call__(self, pred, label, num_classes):
-        """
-        :param num_classes:
-        :param anchors:
-        :param label: labels dict from dataset
-        :param pred:
-        :return:
-        """
         # all prediction component
         pred_cls = pred['pred_cls']
         pred_offset = pred['pred_offset']
@@ -63,10 +57,13 @@ class YOLACTLoss(object):
 
         # calculate the smoothL1(positive_pred, positive_gt) and return
         num_pos = tf.shape(gt_offset)[0]
-        smoothl1loss = tf.keras.losses.Huber(delta=1., reduction=tf.losses.Reduction.NONE)
 
-        l1loss = tf.reduce_sum(smoothl1loss(gt_offset, pred_offset))
+        # calculate smoothL1 loss
+        diff = tf.abs(gt_offset - pred_offset)
+        less_than_one = tf.cast(tf.less(diff, 1.0), tf.float32)
+        l1loss = (less_than_one * 0.5 * diff ** 2) + (1.0 - less_than_one) * (diff - 0.5)
         loss_loc = l1loss / tf.cast(num_pos, l1loss.dtype)
+        loss_loc = tf.reduce_sum(loss_loc)
 
         return loss_loc
 
