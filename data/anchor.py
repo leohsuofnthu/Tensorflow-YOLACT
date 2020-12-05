@@ -37,11 +37,14 @@ class Anchor(object):
                     w = scale[idx] * a / img_size
                     h = scale[idx] / a / img_size
 
+                    # original author make all priors squre
+                    h = w
+
                     # directly use point form here => [ymin, xmin, ymax, xmax]
-                    ymin = y - (h / 2)
-                    xmin = x - (w / 2)
-                    ymax = y + (h / 2)
-                    xmax = x + (w / 2)
+                    ymin = y - (h / 2.)
+                    xmin = x - (w / 2.)
+                    ymax = y + (h / 2.)
+                    xmax = x + (w / 2.)
                     prior_boxes += [ymin * img_size, xmin * img_size, ymax * img_size, xmax * img_size]
                 count_anchor += 1
             num_anchors += count_anchor
