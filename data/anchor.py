@@ -154,7 +154,7 @@ class Anchor(object):
         forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
         # make sure the it won't be filtered even if under negative threshold
         forced_update_iou += (2-forced_update_iou)
-        tf.print("forced_update_iou", forced_update_iou)
+        # tf.print("forced_update_iou", forced_update_iou)
         forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
 
         # assign the pair (the gt for priors to predict)
