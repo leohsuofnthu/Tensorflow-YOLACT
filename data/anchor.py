@@ -68,8 +68,14 @@ class Anchor(object):
         all_pairs_min_xmax = tf.math.minimum(tf.expand_dims(xmax_anchor, axis=-1), tf.expand_dims(xmax_gt, axis=0))
         all_pairs_max_ymin = tf.math.maximum(tf.expand_dims(ymin_anchor, axis=-1), tf.expand_dims(ymin_gt, axis=0))
         all_pairs_min_ymax = tf.math.minimum(tf.expand_dims(ymax_anchor, axis=-1), tf.expand_dims(ymax_gt, axis=0))
+        # tf.print("all max xmin", all_pairs_max_xmin)
+        # tf.print("all max xmax", all_pairs_min_xmax)
+        # tf.print("all max ymin", all_pairs_max_ymin)
+        # tf.print("all max ymax", all_pairs_min_ymax)
         intersect_heights = tf.math.maximum(0.0, all_pairs_min_ymax - all_pairs_max_ymin)
         intersect_widths = tf.math.maximum(0.0, all_pairs_min_xmax - all_pairs_max_xmin)
+        # tf.print("intersect_heights", intersect_heights)
+        # tf.print("intersect_widths", intersect_widths)
 
         return intersect_heights * intersect_widths
 
@@ -82,16 +88,19 @@ class Anchor(object):
         # A ∩ B / A ∪ B = A ∩ B / (areaA + areaB - A ∩ B)
         # calculate A ∩ B (pairwise)
         pairwise_inter = self._pairwise_intersection(gt_bbox=gt_bbox)
-
+        # tf.print("pairwaise inter", pairwise_inter)
         # calculate areaA, areaB
         ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(self.anchors, axis=-1)
         ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(gt_bbox, axis=-1)
 
         area_anchor = (xmax_anchor - xmin_anchor) * (ymax_anchor - ymin_anchor)
         area_gt = (xmax_gt - xmin_gt) * (ymax_gt - ymin_gt)
+        # tf.print("area anchor", area_anchor)
+        # tf.print("area gt", area_gt)
 
         # create same shape of matrix as intersection
         pairwise_area = tf.expand_dims(area_anchor, axis=-1) + tf.expand_dims(area_gt, axis=0)
+        # tf.print("pairwise area", pairwise_area)
 
         # calculate A ∪ B, consider crowd situation
         if is_crowd:
@@ -105,7 +114,7 @@ class Anchor(object):
     def get_anchors(self):
         return self.anchors
 
-    def matching(self, gt_bbox, gt_labels, num_crowd=None, threshold_pos=0.5, threshold_neg=0.4, threshold_crowd=0.7):
+    def matching(self, gt_bbox, gt_labels, num_crowd=0, threshold_pos=0.5, threshold_neg=0.4, threshold_crowd=0.7):
         """
         :param gt_bbox:
         :param gt_labels:
@@ -133,7 +142,7 @@ class Anchor(object):
         # tf.print("num gt", num_gt)
         # pairwise IoU
         pairwise_iou = self._pairwise_iou(gt_bbox=gt_bbox, is_crowd=False)
-
+        # tf.print("pairwise_iou", tf.shape(pairwise_iou))
         # assign the max overlap gt index for each anchor
         max_iou_for_anchors = tf.reduce_max(pairwise_iou, axis=-1)
         max_id_for_anchors = tf.math.argmax(pairwise_iou, axis=-1)
@@ -143,7 +152,12 @@ class Anchor(object):
 
         # force the iou over threshold for not wasting any training data
         forced_update_iou = tf.reduce_max(pairwise_iou, axis=0)
+        # make sure the it won't be filtered even if under negative threshold
+        forced_update_iou += (2-forced_update_iou)
+        tf.print("forced_update_iou", forced_update_iou)
         forced_update_indice = tf.expand_dims(tf.math.argmax(pairwise_iou, axis=0), axis=-1)
+
+        # assign the pair (the gt for priors to predict)
         max_iou_for_anchors = tf.tensor_scatter_nd_update(max_iou_for_anchors, forced_update_indice, forced_update_iou)
         max_id_for_anchors = tf.tensor_scatter_nd_update(max_id_for_anchors, forced_update_indice, forced_update_id)
 
