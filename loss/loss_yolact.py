@@ -188,8 +188,8 @@ class YOLACTLoss(object):
             # resize masks from (100, 138, 138) to (100, 69, 69)
             masks = tf.expand_dims(masks, axis=-1)
             masks = tf.image.resize(masks, [seg_shape, seg_shape], method=tf.image.ResizeMethod.BILINEAR)
-            masks = tf.cast(masks + 0.5, tf.int32)
-            masks = tf.squeeze(tf.cast(masks, seg.dtype))
+            masks = tf.cast((masks > 0.5), seg.dtype)
+            masks = tf.squeeze(masks)
 
             # obj_mask shape (objects, 138, 138)
             obj_mask = masks[:objects]
@@ -198,7 +198,7 @@ class YOLACTLoss(object):
             # create empty ground truth (138, 138, num_cls)
             seg_gt = tf.zeros_like(seg)
             seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
-            seg_gt = tf.tensor_scatter_nd_update(seg_gt, indices=obj_cls, updates=obj_mask)
+            seg_gt = tf.tensor_scatter_nd_add(seg_gt, indices=obj_cls, updates=obj_mask)
             seg_gt = tf.transpose(seg_gt, perm=(1, 2, 0))
             loss_seg += tf.reduce_sum(tf.nn.sigmoid_cross_entropy_with_logits(seg_gt, seg))
         loss_seg = loss_seg / tf.cast(seg_shape, pred_seg.dtype) ** 2 / tf.cast(num_batch, pred_seg.dtype)
