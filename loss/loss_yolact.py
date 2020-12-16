@@ -153,10 +153,9 @@ class YOLACTLoss(object):
 
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            # pred_mask = tf.nn.sigmoid(pred_mask)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
-            # s = utils.crop(s, bbox)
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
+            s = utils.crop(s, bbox)
 
             # calculating loss for each mask coef correspond to each postitive anchor
             bbox_center = utils.map_to_center_form(tf.cast(bbox, tf.float32))
