@@ -106,9 +106,9 @@ def crop(pred, boxes):
     xmax = tf.broadcast_to(tf.reshape(boxes[:, 3], [-1, 1, 1]), pred_shape)
 
     mask_left = (cols >= tf.cast(xmin, cols.dtype))
-    mask_right = (cols <=  tf.cast(xmax, cols.dtype))
-    mask_bottom = (rows >=  tf.cast(ymin, rows.dtype))
-    mask_top = (rows <=  tf.cast(ymax, rows.dtype))
+    mask_right = (cols <= tf.cast(xmax, cols.dtype))
+    mask_bottom = (rows >= tf.cast(ymin, rows.dtype))
+    mask_top = (rows <= tf.cast(ymax, rows.dtype))
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
