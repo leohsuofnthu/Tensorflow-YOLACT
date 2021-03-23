@@ -2,7 +2,7 @@
 ## Introduction
 This is a Tensorflow 2 implementation of the paper [YOLACT: Real-time Instance Segmentation](https://arxiv.org/abs/1904.02689) accepted in ICCV2019. The paper presents a fully-convolutional model for real-instance segmentation based on extending the existing architecture for object detection and its own idea of parallel prototype generation. In this repo, my goal is to provide a general way to use this model, let users have more flexible options (custom dataset, different backbone choice, anchor scale and learning rate schedue) for their own specific need based on idea from original paper.
 
-[UPDATE] 2020/11/25 this repo will be containerized soon 
+[UPDATE] 2021/03/23 Back to work on this seriously !
 
 ## Model
 Here is the illustration of YOLACT from original paper.
