@@ -91,16 +91,13 @@ ANCHOR = dict({
 backbones_objects = dict({
     "resnet50": tf.keras.applications.ResNet50(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                include_top=False,
-                                               layers=tf.keras.layers,
                                                weights='imagenet'),
     "resnet101": tf.keras.applications.ResNet101(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                  include_top=False,
-                                                 layers=tf.keras.layers,
                                                  weights='imagenet'),
 
     "mobilenetv2": tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
                                                      include_top=False,
-                                                     layers=tf.keras.layers,
                                                      weights='imagenet'),
 
     "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),

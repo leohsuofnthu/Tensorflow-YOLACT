@@ -28,6 +28,8 @@ class ConvertFromInts(object):
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         # convert to tf.float32, in range [0 ~ 1]
+        # image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        # Todo Convert accroding to backbone
         image = tf.image.convert_image_dtype(image, dtype=tf.float32)
         return image, masks, boxes, labels, is_crowds
 
@@ -282,16 +284,19 @@ class BackboneTransform(object):
 
     def __call__(self, image, masks=None, boxes=None, labels=None, is_crowds=None):
         # normalize image (for Resnet), some model might only subtract mean, so modified for ur own need
-        offset = tf.constant(self.mean)
-        offset = tf.expand_dims(offset, axis=0)
-        offset = tf.expand_dims(offset, axis=0)
-        image -= offset
-
-        scale = tf.constant(self.std)
-        scale = tf.expand_dims(scale, axis=0)
-        scale = tf.expand_dims(scale, axis=0)
-        image /= scale
+        # offset = tf.constant(self.mean)
+        # offset = tf.expand_dims(offset, axis=0)
+        # offset = tf.expand_dims(offset, axis=0)
+        # image -= offset
+        #
+        # scale = tf.constant(self.std)
+        # scale = tf.expand_dims(scale, axis=0)
+        # scale = tf.expand_dims(scale, axis=0)
+        # image /= scale
         # image = tf.image.convert_image_dtype(image, dtype=tf.float32)
+        image = tf.image.convert_image_dtype(image, dtype=tf.uint8)
+        image = tf.cast(image, dtype=tf.float32)
+        image = tf.keras.applications.resnet50.preprocess_input(image)
         return image, masks, boxes, labels, is_crowds
 
 
@@ -305,7 +310,7 @@ class SSDAugmentation(object):
                 RandomSampleCrop(),
                 RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
-                BackboneTransform(mean, std)
+                # BackboneTransform(mean, std)
             ])
         else:
             # no data augmentation for validation and test set
@@ -314,7 +319,7 @@ class SSDAugmentation(object):
                 # validation no need to resize mask tp proto size
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # preserve aspect ratio or not?
-                BackboneTransform(mean, std)
+                # BackboneTransform(mean, std)
             ])
 
     def __call__(self, image, masks, boxes, labels, is_crowds):

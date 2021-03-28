@@ -11,9 +11,9 @@ from utils.utils import denormalize_image
 from yolact import Yolact
 
 # Todo Add your custom dataset
-NAME_OF_DATASET = "pascal"
-CLASS_NAMES = PASCAL_CLASSES
-LABEL_REMAP = None
+NAME_OF_DATASET = "coco"
+CLASS_NAMES = COCO_CLASSES
+LABEL_REMAP = COCO_LABEL_MAP
 
 # -----------------------------------------------------------------------------------------------
 # create model and dataloader
