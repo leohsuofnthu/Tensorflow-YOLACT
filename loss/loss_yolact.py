@@ -58,13 +58,19 @@ class YOLACTLoss(object):
         # calculate the smoothL1(positive_pred, positive_gt) and return
         num_pos = tf.shape(gt_offset)[0]
 
+        # use huber loss from tensorflow
+        loss_fn = tf.keras.losses.huber(reduction=tf.keras.losses.Reduction.SUM)
+        h = loss_fn(gt_offset, pred_offset)
+        loss_loc = h / tf.cast(num_pos, h.dtype)
+
+        """
         # calculate smoothL1 loss
         diff = tf.abs(gt_offset - pred_offset)
         less_than_one = tf.cast(tf.less(diff, 1.0), tf.float32)
         l1loss = (less_than_one * 0.5 * diff ** 2) + (1.0 - less_than_one) * (diff - 0.5)
         loss_loc = l1loss / tf.cast(num_pos, l1loss.dtype)
         loss_loc = tf.reduce_sum(loss_loc)
-
+        """
         return loss_loc
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):

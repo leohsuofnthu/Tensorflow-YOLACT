@@ -29,7 +29,7 @@ test_labels = tf.convert_to_tensor((np.array([[1],
                                               [5]])), dtype=tf.float32)
 
 anchorobj = model.anchor_instance
-print(anchorobj.get_anchors())
+print("Priors:", anchorobj.get_anchors())
 
 target_cls, target_loc, max_id_for_anchors, match_positiveness = anchorobj.matching(threshold_pos=0.5,
                                                                                     threshold_neg=0.4,
@@ -37,3 +37,4 @@ target_cls, target_loc, max_id_for_anchors, match_positiveness = anchorobj.match
                                                                                     gt_labels=test_labels)
 
 print(max_id_for_anchors)
+print(target_cls)
