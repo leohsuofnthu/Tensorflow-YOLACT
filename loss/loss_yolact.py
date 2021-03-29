@@ -59,7 +59,7 @@ class YOLACTLoss(object):
         num_pos = tf.shape(gt_offset)[0]
 
         # use huber loss from tensorflow
-        loss_fn = tf.keras.losses.huber()
+        loss_fn = tf.keras.losses.Huber()
         h = loss_fn(gt_offset, pred_offset)
         loss_loc = h / tf.cast(num_pos, h.dtype)
 
