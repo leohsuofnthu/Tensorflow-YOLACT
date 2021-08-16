@@ -48,8 +48,7 @@ class Yolact(tf.keras.Model):
 
         # semantic segmentation branch to boost feature richness
         # predict num_class - 1
-        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class - 1, (1, 1), 1, padding="same",
-                                                            kernel_initializer=tf.keras.initializers.glorot_uniform())
+        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class - 1, 1, 1, padding="same")
 
         # instance of anchor object
         self.anchor_instance = Anchor(**anchor_params)
@@ -63,29 +62,30 @@ class Yolact(tf.keras.Model):
         # detection layer
         self.detect = Detect(anchors=priors, **detect_params)
 
-    # Todo need to clarified
-    def set_bn(self, mode='train'):
-        if mode == 'train':
-            for layer in self.backbone.layers:
-                if isinstance(layer, tf.keras.layers.BatchNormalization):
-                    layer.trainable = False
-        else:
-            for layer in self.backbone.layers:
-                if isinstance(layer, tf.keras.layers.BatchNormalization):
-                    layer.trainable = True
+    def init_weights(self):
+        """
+        Initial all Conv layers with xavier (except the conv layer in backbone),
+        Tensorflow conv layer already have default settings
+
+        # tf.keras.layers.Conv2D(
+        #     filters, kernel_size, strides=(1, 1), padding='valid',
+        #     data_format=None, dilation_rate=(1, 1), groups=1, activation=None,
+        #     use_bias=True, kernel_initializer='glorot_uniform',
+        #     bias_initializer='zeros', kernel_regularizer=None,
+        #     bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
+        #     bias_constraint=None, **kwargs)
+
+        """
+        return None
 
     def call(self, inputs):
         # backbone(ResNet + FPN)
         c3, c4, c5 = self.backbone(inputs)
-        # print("c3: ", c3.shape)
-        # print("c4: ", c4.shape)
-        # print("c5: ", c5.shape)
         fpn_out = self.backbone_fpn(c3, c4, c5)
 
         # Protonet branch
         p3 = fpn_out[0]
         protonet_out = self.protonet(p3)
-        # print("protonet: ", protonet_out.shape)
 
         # semantic segmentation branch
         seg = self.semantic_segmentation(p3)
@@ -106,7 +106,7 @@ class Yolact(tf.keras.Model):
         pred_offset = tf.concat(pred_offset, axis=1)
         pred_mask_coef = tf.concat(pred_mask_coef, axis=1)
 
-        pred = {
+        outs = {
             'pred_cls': pred_cls,
             'pred_offset': pred_offset,
             'pred_mask_coef': pred_mask_coef,
@@ -114,4 +114,4 @@ class Yolact(tf.keras.Model):
             'seg': seg
         }
 
-        return pred
+        return outs
