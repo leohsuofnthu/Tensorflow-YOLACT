@@ -30,5 +30,4 @@ class ProtoNet(tf.keras.layers.Layer):
 
         # final convolution
         proto = tf.nn.relu(self.finalConv(proto))
-        print(proto.shape)
         return proto
