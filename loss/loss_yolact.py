@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from utils import utils
+from utils.utils import crop, map_to_center_form
 
 
 class YOLACTLoss(object):
@@ -58,20 +58,15 @@ class YOLACTLoss(object):
         # calculate the smoothL1(positive_pred, positive_gt) and return
         num_pos = tf.shape(gt_offset)[0]
 
-        # use huber loss from tensorflow
-        loss_fn = tf.keras.losses.Huber()
-        h = loss_fn(gt_offset, pred_offset)
-        loss_loc = h / tf.cast(num_pos, h.dtype)
-
-        """
         # calculate smoothL1 loss
-        diff = tf.abs(gt_offset - pred_offset)
-        less_than_one = tf.cast(tf.less(diff, 1.0), tf.float32)
-        l1loss = (less_than_one * 0.5 * diff ** 2) + (1.0 - less_than_one) * (diff - 0.5)
-        loss_loc = l1loss / tf.cast(num_pos, l1loss.dtype)
-        loss_loc = tf.reduce_sum(loss_loc)
-        """
-        return loss_loc
+        regression_diff = tf.abs(gt_offset - pred_offset)
+        regression_loss = tf.where(
+            tf.less(regression_diff, 1.0),
+            0.5 * tf.pow(regression_diff, 2),
+            regression_diff - 0.5
+        )
+
+        return tf.reduce_sum(regression_loss) / tf.cast(num_pos, regression_loss.dtype)
 
     def _loss_class(self, pred_cls, gt_cls, num_cls, positiveness):
 
@@ -90,7 +85,7 @@ class YOLACTLoss(object):
 
         num_pos = tf.expand_dims(
             tf.reduce_sum(tf.cast((positiveness == 1), tf.int32), axis=-1), axis=-1)
-        num_neg = tf.clip_by_value(num_pos * self._neg_pos_ratio, clip_value_min=0,
+        num_neg = tf.clip_by_value(num_pos * 3, clip_value_min=0,
                                    clip_value_max=tf.shape(positiveness)[-1] - 1)
 
         negative_bool = tf.broadcast_to((idx_rank < num_neg), tf.shape(idx_rank))
@@ -127,19 +122,18 @@ class YOLACTLoss(object):
             bbox_norm = gt_bbox_norm[idx]  # [100, 4] -> [num_obj, 4]
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
-
             pos_indices = tf.squeeze(tf.where(pos == 1))
 
             # If exceeds the number of masks for training, select a random subset
             old_num_pos = tf.size(pos_indices)
             # print("pos indices", pos_indices.shape)
-            if old_num_pos > max_masks_for_train:
+            if old_num_pos > 10000:
                 perm = tf.random.shuffle(pos_indices)
                 pos_indices = perm[:max_masks_for_train]
 
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
-
+            # print("pos max id", pos_max_id)
             # if only 1 positive or no positive
             if tf.size(pos_indices) == 1:
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
@@ -152,7 +146,8 @@ class YOLACTLoss(object):
             # [num_pos, k]
             gt = tf.gather(mask_gt, pos_max_id)
             bbox = tf.gather(bbox_norm, pos_max_id)
-            # print(bbox[:5])
+
+            # print(bbox)
             num_pos = tf.size(pos_indices)
             # print('gt_me', gt.shape)
             total_pos += num_pos
@@ -160,19 +155,21 @@ class YOLACTLoss(object):
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
-            s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
-            s = utils.crop(s, bbox)
+
+            s = tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=gt, logits=pred_mask)
+            # s = crop(s, bbox)
 
             # calculating loss for each mask coef correspond to each postitive anchor
-            bbox_center = utils.map_to_center_form(tf.cast(bbox, tf.float32))
+            bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
             area = bbox_center[:, -1] * bbox_center[:, -2]
-            mask_loss = tf.reduce_sum(s, axis=[1, 2]) / area
-
+            mask_loss = tf.reduce_sum(s, axis=[-1, -2]) / area
             if old_num_pos > num_pos:
                 mask_loss = mask_loss * tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
 
-        return loss_mask / tf.cast(total_pos, loss_mask.dtype)
+        return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
+                                                                                                           loss_mask.dtype)
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
