@@ -1,18 +1,7 @@
-r"""Convert raw COCO dataset to TFRecord for object_detection.
-
-Please note that this tool creates sharded output files.
-
-Example usage:
-    python coco_tfrecord_create.py --logtostderr \
-      --train_image_dir="${TRAIN_IMAGE_DIR}" \
-      --val_image_dir="${VAL_IMAGE_DIR}" \
-      --test_image_dir="${TEST_IMAGE_DIR}" \
-      --train_annotations_file="${TRAIN_ANNOTATIONS_FILE}" \
-      --val_annotations_file="${VAL_ANNOTATIONS_FILE}" \
-      --testdev_annotations_file="${TESTDEV_ANNOTATIONS_FILE}" \
-      --output_dir="${OUTPUT_DIR}"
-Adapted from: https://github.com/tensorflow/models/blob/master/research/object_detection/dataset_tools/create_coco_tf_record.py
 """
+https://github.com/tensorflow/models/blob/master/research/object_detection/dataset_tools/create_coco_tf_record.py
+"""
+
 import hashlib
 import io
 import json
@@ -21,7 +10,7 @@ import os
 import PIL.Image
 import contextlib2
 import numpy as np
-# use absl for tf 2.0
+
 from absl import app
 from absl import flags
 from absl import logging
@@ -33,15 +22,15 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean('include_masks', True,
                      'Whether to include instance segmentations masks (PNG encoded) in the result. default: False.')
-flags.DEFINE_string('train_image_dir', 'train2017',
+flags.DEFINE_string('train_image_dir', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/train2017',
                     'Training image directory.')
-flags.DEFINE_string('val_image_dir', 'val2017',
+flags.DEFINE_string('val_image_dir', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/val2017',
                     'Validation image directory.')
 flags.DEFINE_string('test_image_dir', '',
                     'Test image directory.')
-flags.DEFINE_string('train_annotations_file', './annotations/instances_train2017.json',
+flags.DEFINE_string('train_annotations_file', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/annotations/instances_train2017.json',
                     'Training annotations JSON file.')
-flags.DEFINE_string('val_annotations_file', './annotations/instances_val2017.json',
+flags.DEFINE_string('val_annotations_file', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/annotations/instances_val2017.json',
                     'Validation annotations JSON file.')
 flags.DEFINE_string('testdev_annotations_file', '',
                     'Test-dev annotations JSON file.')
@@ -51,35 +40,8 @@ logging.set_verbosity(logging.INFO)
 
 
 def create_tf_example(image, annotations_list, image_dir, category_index, include_masks=True):
-    """Converts image and annotations to a tf.Example proto.
+    """Converts image and annotations to a tf.Example proto."""
 
-    Args:
-      image: dict with keys:
-        [u'license', u'file_name', u'coco_url', u'height', u'width',
-        u'date_captured', u'flickr_url', u'id']
-      annotations_list:
-        list of dicts with keys:
-        [u'segmentation', u'area', u'iscrowd', u'image_id',
-        u'bbox', u'category_id', u'id']
-        Notice that bounding box coordinates in the official COCO dataset are
-        given as [x, y, width, height] tuples using absolute coordinates where
-        x, y represent the top-left (0-indexed) corner.  This function converts
-        to the format expected by the Tensorflow Object Detection API (which is
-        which is [ymin, xmin, ymax, xmax] with coordinates normalized relative
-        to image size).
-      image_dir: directory containing the image files.
-      category_index: a dict containing COCO category information keyed
-        by the 'id' field of each category.  See the
-        label_map_util.create_category_index function.
-      include_masks: Whether to include instance segmentations masks
-        (PNG encoded) in the result. default: False.
-    Returns:
-      example: The converted tf.Example
-      num_annotations_skipped: Number of (invalid) annotations that were ignored.
-
-    Raises:
-      ValueError: if the image pointed to by data['filename'] is not a valid JPEG
-    """
     image_height = image['height']
     image_width = image['width']
     filename = image['file_name']
@@ -92,10 +54,7 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
     image = PIL.Image.open(encoded_jpg_io)
     key = hashlib.sha256(encoded_jpg).hexdigest()
 
-    xmin = []
-    xmax = []
-    ymin = []
-    ymax = []
+    xmin, xmax, ymin, ymax = [], [], [], []
     is_crowd = []
     category_names = []
     category_ids = []
@@ -119,26 +78,19 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
         ymin.append(float(y) / image_height)
         ymax.append(float(y + height) / image_height)
 
-        # other attribute
+        # other attributes
         is_crowd.append(object_annotations['iscrowd'])
         category_id = int(object_annotations['category_id'])
         category_ids.append(category_id)
-        # category_names.append(category_index[category_id]['name'].encode('utf8'))
+        category_names.append(category_index[category_id]['name'].encode('utf8'))
         area.append(object_annotations['area'])
 
         if include_masks:
-            try:
-                # if the seg annotation is not RLE, need to be convert
-                run_len_encoding = mask.frPyObjects(object_annotations['segmentation'],
-                                                    image_height, image_width)
-                binary_mask = mask.decode(run_len_encoding)
-            except:
-                # if the seg annotation is already RLE
-                binary_mask = mask.decode(object_annotations['segmentation'])
-
+            run_len_encoding = mask.frPyObjects(object_annotations['segmentation'],
+                                                image_height, image_width)
+            binary_mask = mask.decode(run_len_encoding)
             if not object_annotations['iscrowd']:
-                if binary_mask.ndim == 3:  # for COCO dataset
-                    binary_mask = np.amax(binary_mask, axis=2)
+                binary_mask = np.amax(binary_mask, axis=2)
             pil_image = PIL.Image.fromarray(binary_mask)
             output_io = io.BytesIO()
             pil_image.save(output_io, format='PNG')
@@ -167,10 +119,8 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
             float_list_feature(ymin),
         'image/object/bbox/ymax':
             float_list_feature(ymax),
-        # 'image/object/class/label_text':
-        #     bytes_list_feature(category_names),
-        'image/object/class/label_id':
-            int64_list_feature(category_ids),
+        'image/object/class/text':
+            bytes_list_feature(category_names),
         'image/object/is_crowd':
             int64_list_feature(is_crowd),
         'image/object/area':
@@ -184,16 +134,8 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
 
 
 def _create_tf_record_from_coco_annotations(annotations_file, image_dir, output_path, include_masks, num_shards):
-    """Loads COCO annotation json files and converts to tf.Record format.
+    """Loads COCO annotation json files and converts to tf.Record format."""
 
-    Args:
-      annotations_file: JSON file containing bounding box annotations.
-      image_dir: Directory containing the image files.
-      output_path: Path to output tf.Record file.
-      include_masks: Whether to include instance segmentations masks
-        (PNG encoded) in the result. default: False.
-      num_shards: number of output file shards.
-    """
     with contextlib2.ExitStack() as tf_record_close_stack, \
             tf.io.gfile.GFile(annotations_file, 'r') as fid:
         output_tfrecords = open_sharded_output_tfrecords(tf_record_close_stack, output_path, num_shards)
@@ -231,8 +173,6 @@ def _create_tf_record_from_coco_annotations(annotations_file, image_dir, output_
                 shard_idx = idx % num_shards
                 if tf_example:
                     output_tfrecords[shard_idx].write(tf_example.SerializeToString())
-            else:
-                logging.info('Ignore Image with no annotations')
         logging.info('Finished writing, skipped %d annotations.',
                      total_num_annotations_skipped)
 
