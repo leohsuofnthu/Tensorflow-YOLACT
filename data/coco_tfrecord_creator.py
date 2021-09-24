@@ -121,6 +121,8 @@ def create_tf_example(image, annotations_list, image_dir, category_index, includ
             float_list_feature(ymax),
         'image/object/class/text':
             bytes_list_feature(category_names),
+        'image/object/class/label_id':
+            int64_list_feature(category_ids),
         'image/object/is_crowd':
             int64_list_feature(is_crowd),
         'image/object/area':
