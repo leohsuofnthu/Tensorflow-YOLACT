@@ -104,33 +104,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     gt_bbox = labels['bbox']
     gt_classes = labels['classes']
     gt_masks = labels['mask_target']
-    num_crowd = labels['num_crowd']
-    num_obj = labels['num_obj']
-
-    # convert to scalar
-    num_crowd = num_crowd.numpy()[0]
-    num_obj = num_obj.numpy()[0]
-
-    if num_crowd > 0:
-        split = lambda x: (x[:, num_obj - num_crowd:num_obj], x[:, :num_obj - num_crowd])
-        gt_crowd_boxes, gt_bbox = split(gt_bbox)
-        gt_crowd_classes, gt_classes = split(gt_classes)
-        gt_crowd_masks, gt_masks = split(gt_masks)
-        gt_crowd_classes = list(gt_crowd_classes[0].numpy())
-
-        # tf.print('split gt bbox', tf.shape(gt_bbox))
-        # tf.print('split gt classes', tf.shape(gt_classes))
-        # tf.print('split gt masks', tf.shape(gt_masks))
-        #
-        # tf.print("split crowd boxes", tf.shape(gt_crowd_boxes))
-        # tf.print("split crowd masks", tf.shape(gt_crowd_masks))
-        # tf.print("split crowd classes length", len(gt_crowd_classes))
-
-    else:
-        # get rid of the padding
-        gt_classes = gt_classes[:, :num_obj]
-        gt_bbox = gt_bbox[:, :num_obj]
-        gt_masks = gt_masks[:, :num_obj]
 
     # prepare data
     classes = list(classes.numpy())
@@ -142,8 +115,7 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # else
     num_pred = len(classes)
-    num_gt = num_obj - num_crowd
-
+    num_gt = tf.size(gt_classes)
     # tf.print("num pred", num_pred)
     # tf.print("num gt", num_gt)
     #
@@ -167,21 +139,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     # tf.print("non crowd mask iou shape:", tf.shape(mask_iou_cache))
     # tf.print("non crowd bbox iou shape:", tf.shape(bbox_iou_cache))
 
-    # If crowd label included, split it and calculate iou separately from non-crowd label
-    if num_crowd > 0:
-        # resize gt mask
-        # should be [num_crowd, w, h]
-        gt_crowd_masks = tf.squeeze(tf.image.resize(tf.expand_dims(gt_crowd_masks[0], axis=-1), [h, w],
-                                                    method='bilinear'), axis=-1)
-        # tf.print("crowd masks", tf.shape(gt_crowd_masks))
-        crowd_mask_iou_cache = _mask_iou(masks, gt_crowd_masks, is_crowd=True).numpy()
-        crowd_bbox_iou_cache = tf.squeeze(
-            _bbox_iou(boxes, gt_crowd_boxes, is_crowd=True), axis=0).numpy()
-        # tf.print("gt crowd mask iou shape:", tf.shape(crowd_mask_iou_cache))
-        # tf.print("gt crowd bbox iou shape:", tf.shape(crowd_bbox_iou_cache))
-    else:
-        crowd_mask_iou_cache = None
-        crowd_bbox_iou_cache = None
+    crowd_mask_iou_cache = None
+    crowd_bbox_iou_cache = None
 
     # get the sorted index of scores (descending order)
     box_indices = sorted(range(num_pred), key=lambda idx: -box_scores[idx])
@@ -231,20 +190,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                     if max_match_idx >= 0:
                         gt_used[max_match_idx] = True
                         ap_obj.push(score_func(i), True)
-                    else:
-                        matched_crowd = False
-                        if num_crowd > 0:
-                            for j in range(len(gt_crowd_classes)):
-                                if gt_crowd_classes[j] != _class:
-                                    continue
-                                iou = crowd_func(i, j)
-
-                                if iou > th:
-                                    matched_crowd = True
-                                    break
-                        # for crowd annotation, if no, push as false positive
-                        if not matched_crowd:
-                            ap_obj.push(score_func(i), False)
 
 
 def prep_benchmarks():
