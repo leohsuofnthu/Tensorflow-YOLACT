@@ -152,7 +152,7 @@ class YOLACTLoss(object):
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
 
-            loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True)
+            loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
             # s = crop(s, bbox)
             s = loss_fn(gt, pred_mask)
 
