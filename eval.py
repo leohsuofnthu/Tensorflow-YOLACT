@@ -104,7 +104,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
     gt_bbox = labels['bbox']
     gt_classes = labels['classes']
     gt_masks = labels['mask_target']
-
+    num_obj = labels['num_obj']
+    num_gt = num_obj.numpy()[0]
     # prepare data
     classes = list(classes.numpy())
     scores = list(scores.numpy())
@@ -115,7 +116,6 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
 
     # else
     num_pred = len(classes)
-    num_gt = tf.size(gt_classes)
     # tf.print("num pred", num_pred)
     # tf.print("num gt", num_gt)
     #

@@ -49,6 +49,7 @@ class Parser(object):
         boxes = data['gt_bboxes']  # [xmin, ymin, xmax, ymax], normalized (0~1)
         masks = data['gt_masks']
         is_crowds = data['gt_is_crowd']
+        num_obj = tf.shape(classes)[0]
 
         # if label_map is not none, remapping the class label, ex: COCO datasets
         if self.dict_tensor is not None:
@@ -89,7 +90,8 @@ class Parser(object):
             'classes': classes,
             'positiveness': match_positiveness,
             'max_id_for_anchors': max_id_for_anchors,
-            'max_gt_for_anchors': max_gt_for_anchors
+            'max_gt_for_anchors': max_gt_for_anchors,
+            'num_obj': num_obj
         }
         return image, labels
 
