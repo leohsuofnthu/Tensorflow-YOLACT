@@ -127,6 +127,8 @@ class YOLACTLoss(object):
 
             if tf.size(pos_indices) == 0:
                 continue
+            else:
+                tf.print(tf.size(pos_indices))
 
             # If exceeds the number of masks for training, select a random subset
             old_num_pos = tf.size(pos_indices)
@@ -154,7 +156,7 @@ class YOLACTLoss(object):
 
             loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
             # s = crop(s, bbox)
-            s = loss_fn(gt, pred_mask)
+            s = tf.squeeze(loss_fn(gt, pred_mask), axis=0)
 
             # calculating loss for each mask coef correspond to each postitive anchor
             bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
