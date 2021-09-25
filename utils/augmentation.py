@@ -277,7 +277,6 @@ class Resize(object):
         w_keep_idxs = tf.cast(w > self.discard_w, tf.int32)
         h_keep_idxs = tf.cast(h > self.discard_h, tf.int32)
         keep_idxs = w_keep_idxs * h_keep_idxs
-        tf.print(keep_idxs)
         boxes = tf.boolean_mask(boxes, keep_idxs)
         masks = tf.boolean_mask(masks, keep_idxs)
         labels = tf.boolean_mask(labels, keep_idxs)

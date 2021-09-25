@@ -31,18 +31,20 @@ class YOLACTLoss(object):
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
         positiveness = label['positiveness']
-        bbox_norm = label['bbox_for_norm']
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
-        classes = label['classes']
-        num_obj = label['num_obj']
+        max_gt_for_anchors = label['max_gt_for_anchors']
+        # classes = label['classes']
+        # num_obj = label['num_obj']
 
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
-                                    max_masks_for_train=100) * self._loss_weight_mask
-        seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
+        # mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,max_gt_for_anchors
+        #                             max_masks_for_train=100) * self._loss_weight_mask
+        # seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
+        mask_loss = 0.
+        seg_loss = 0.
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
 
