@@ -40,9 +40,11 @@ class YOLACTLoss(object):
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
-                                    max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
-        seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
+        # mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
+        #                             max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
+        # seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
+        mask_loss = 0.
+        seg_loss = 0.
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
 
@@ -144,7 +146,7 @@ class YOLACTLoss(object):
             pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
             pos_max_id = tf.expand_dims(pos_max_id, axis=0)
             # [num_pos, k]
-            gt = tf.gather(mask_gt, pos_max_id)
+            gt = tf.gather(mask_gt, pos_max_id)[0]
             bbox = pos_anchor_gt
 
             num_pos = tf.size(pos_indices)
@@ -156,7 +158,11 @@ class YOLACTLoss(object):
 
             loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
             # s = crop(s, bbox)
-            s = tf.squeeze(loss_fn(gt, pred_mask), axis=0)
+            # tf.print(gt.shape)
+            # tf.print(pred_mask.shape)
+            s = loss_fn(gt, pred_mask)
+            # tf.print(s.shape)
+            # tf.print(tf.reduce_sum(s, axis=[-1, -2]))
 
             # calculating loss for each mask coef correspond to each postitive anchor
             bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
@@ -165,7 +171,7 @@ class YOLACTLoss(object):
             if old_num_pos > num_pos:
                 mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-
+        tf.print(loss_mask)
         return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
                                                                                                            loss_mask.dtype)
 
