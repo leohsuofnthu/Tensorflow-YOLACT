@@ -156,7 +156,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
          lambda row, col: crowd_mask_iou_cache[row, col],
          lambda idx: mask_scores[idx], mask_indices)]
 
-    gt_classes = list(gt_classes[0].numpy())
+    # Because we ignore 0 (classified as background) need to fix it here
+    gt_classes = list(gt_classes[0].numpy() - 1)
 
     # starting to update the ap_data from this batch
     for _class in set(classes + gt_classes):
