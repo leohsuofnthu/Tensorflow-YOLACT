@@ -123,10 +123,10 @@ def map_to_bbox(anchors, loc_pred):
     variances = [0.1, 0.2]
 
     # convert anchor to center_form
-    anchor_h = anchors[:, 2] - anchors[:, 0]
-    anchor_w = anchors[:, 3] - anchors[:, 1]
-    anchor_cx = anchors[:, 1] + (anchor_w / 2)
-    anchor_cy = anchors[:, 0] + (anchor_h / 2)
+    anchor_h = anchors[:, 3] - anchors[:, 1]
+    anchor_w = anchors[:, 2] - anchors[:, 0]
+    anchor_cx = anchors[:, 0] + (anchor_w / 2)
+    anchor_cy = anchors[:, 1] + (anchor_h / 2)
     # tf.print("cx", tf.shape(anchor_cx))
 
     pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
@@ -141,7 +141,7 @@ def map_to_bbox(anchors, loc_pred):
     ymax = new_cy + (new_h / 2)
     xmax = new_cx + (new_w / 2)
 
-    decoded_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+    decoded_boxes = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
     # tf.print(tf.shape(decoded_boxes))
 
     # tf.print("anchor", tf.shape(anchors))
