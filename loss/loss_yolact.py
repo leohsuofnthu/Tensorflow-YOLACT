@@ -148,6 +148,9 @@ class YOLACTLoss(object):
             gt = tf.gather(mask_gt, pos_max_id)[0]
             bbox = pos_anchor_gt
 
+            if tf.rank(bbox) == 1:
+                bbox = tf.expand_dims(bbox, axis=0)
+
             num_pos = tf.size(pos_indices)
             total_pos += num_pos
 
