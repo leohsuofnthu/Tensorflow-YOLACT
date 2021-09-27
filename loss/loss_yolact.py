@@ -40,11 +40,9 @@ class YOLACTLoss(object):
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
-        # mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
-        #                             max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
-        # seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
-        mask_loss = 0.
-        seg_loss = 0.
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
+                                    max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
+        seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
 
@@ -156,11 +154,13 @@ class YOLACTLoss(object):
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
             pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
 
-            loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+            s = tf.nn.sigmoid_cross_entropy_with_logits(
+                labels=gt, logits=pred_mask)
+            # loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
             # s = crop(s, bbox)
             # tf.print(gt.shape)
             # tf.print(pred_mask.shape)
-            s = loss_fn(gt, pred_mask)
+            # s = loss_fn(gt, pred_mask)
             # tf.print(s.shape)
             # tf.print(tf.reduce_sum(s, axis=[-1, -2]))
 
@@ -171,7 +171,6 @@ class YOLACTLoss(object):
             if old_num_pos > num_pos:
                 mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-        tf.print(loss_mask)
         return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
                                                                                                            loss_mask.dtype)
 
