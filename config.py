@@ -13,7 +13,6 @@ RANDOM_SEED = 1234
 NUM_MAX_PAD = 100
 THRESHOLD_POS = 0.5
 THRESHOLD_NEG = 0.4
-THRESHOLD_CROWD = 0.7
 
 # Model
 BACKBONE = "resnet50"
@@ -115,6 +114,14 @@ backbones_extracted = dict({
     "efficientNet-B0": ['block3b_add', 'block4c_add', 'block6d_add']
 })
 
+# corresponded backbone preprocess
+backbones_preprocess = dict({
+    "resnet50": tf.keras.applications.resnet50.preprocess_input,
+    "resnet101": tf.keras.applications.resnet50.preprocess_input,
+    "mobilenetv2": tf.keras.applications.mobilenet_v2.preprocess_input,
+    "efficientNet-B0": tf.keras.applications.efficientnet.preprocess_input
+})
+
 # RGB values of color for drawing nice bounding boxes
 COLORS = ((244, 67, 54),
           (233, 30, 99),
@@ -184,6 +191,7 @@ def get_params(dataset_name):
         "proto_out_size": PROTO_OUTPUT_SIZE,
         "num_max_padding": NUM_MAX_PAD,
         "augmentation_params": {
+            "preprocess_func": backbones_preprocess[BACKBONE],
             # These are in RGB and for ImageNet
             "mean": (0.407, 0.457, 0.485),
             "std": (0.225, 0.224, 0.229),
@@ -194,8 +202,7 @@ def get_params(dataset_name):
         },
         "matching_params": {
             "threshold_pos": THRESHOLD_POS,
-            "threshold_neg": THRESHOLD_NEG,
-            "threshold_crowd": THRESHOLD_CROWD
+            "threshold_neg": THRESHOLD_NEG
         },
         "label_map": LABEL_MAP[dataset_name]
     }

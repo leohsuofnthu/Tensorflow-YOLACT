@@ -30,13 +30,12 @@ class TfExampleDecoder(object):
         return image
 
     def _decode_boxes(self, parsed_tensors):
-        # pass the bbox in the order [ymin, xmin, ymax, xmax]
-        # which is preferred by tensorflow
-        ymin = parsed_tensors['image/object/bbox/ymin']
+        # pass the bbox in the order [xmin, ymin, xmax, ymax]
         xmin = parsed_tensors['image/object/bbox/xmin']
-        ymax = parsed_tensors['image/object/bbox/ymax']
+        ymin = parsed_tensors['image/object/bbox/ymin']
         xmax = parsed_tensors['image/object/bbox/xmax']
-        return tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+        ymax = parsed_tensors['image/object/bbox/ymax']
+        return tf.stack([xmin, ymin, xmax, ymax], axis=-1)
 
     def _decode_masks(self, parsed_tensors):
         def _decode_png_mask(png_bytes):
@@ -84,7 +83,8 @@ class TfExampleDecoder(object):
             'gt_classes': parsed_tensors['image/object/class/label_id'],
             'gt_is_crowd': is_crowds,
             'gt_bboxes': boxes,
-            'gt_masks': masks
+            'gt_masks': masks,
+            'gt_masks_png': parsed_tensors['image/object/mask']
         }
 
         return decoded_tensors

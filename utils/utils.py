@@ -7,6 +7,9 @@ https://github.com/dbolya/yolact/blob/master/layers/box_utils.py
 import tensorflow as tf
 
 
+# -----------------------------------------------------------------------------------------
+# Functions used by utils/augmentation.py
+
 def bboxes_intersection(bbox_ref, bboxes):
     """Compute relative intersection between a reference box and a
     collection of bounding boxes. Namely, compute the quotient between
@@ -44,66 +47,44 @@ def bboxes_intersection(bbox_ref, bboxes):
         tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
 
 
-def normalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
-    """Normalizes the image to zero mean and unit variance."""
-    image = tf.image.convert_image_dtype(image, dtype=tf.float32)
-    offset = tf.constant(offset)
-    offset = tf.expand_dims(offset, axis=0)
-    offset = tf.expand_dims(offset, axis=0)
-    image -= offset
+# -----------------------------------------------------------------------------------------
+# Functions used by loss/loss_yolact.py (mask loss)
 
-    scale = tf.constant(scale)
-    scale = tf.expand_dims(scale, axis=0)
-    scale = tf.expand_dims(scale, axis=0)
-    image /= scale
-    return image
-
-
-def denormalize_image(image, offset=(0.407, 0.457, 0.485), scale=(0.225, 0.224, 0.229)):
-    """Normalizes the image to zero mean and unit variance."""
-    scale = tf.constant(scale)
-    scale = tf.expand_dims(scale, axis=0)
-    scale = tf.expand_dims(scale, axis=0)
-    image *= scale
-
-    offset = tf.constant(offset)
-    offset = tf.expand_dims(offset, axis=0)
-    offset = tf.expand_dims(offset, axis=0)
-    image += offset
-    return image
-
-
-# mapping from [ymin, xmin, ymax, xmax] to [cx, cy, w, h]
+# mapping from [xmin, ymin, xmax, ymax] to [cx, cy, w, h]
 def map_to_center_form(x):
-    h = x[:, 2] - x[:, 0]
-    w = x[:, 3] - x[:, 1]
-    cy = x[:, 0] + (h / 2)
-    cx = x[:, 1] + (w / 2)
+    h = x[:, 3] - x[:, 1]
+    w = x[:, 2] - x[:, 0]
+    cx = x[:, 0] + (w / 2.)
+    cy = x[:, 1] + (h / 2.)
     return tf.stack([cx, cy, w, h], axis=-1)
 
 
-# encode the gt and anchors to offset
-def map_to_offset(x):
-    g_hat_cx = (x[0, 0] - x[0, 1]) / x[2, 1]
-    g_hat_cy = (x[1, 0] - x[1, 1]) / x[3, 1]
-    g_hat_w = tf.math.log(x[2, 0] / x[2, 1])
-    g_hat_h = tf.math.log(x[3, 0] / x[3, 1])
-    return tf.stack([g_hat_cx, g_hat_cy, g_hat_w, g_hat_h])
+def sanitize_coordinates(x1, x2, img_size, padding=0):
+    x1 = tf.minimum(x1, x2)
+    x2 = tf.maximum(x1, x2)
+    x1 = tf.clip_by_value(x1 - padding, clip_value_min=0., clip_value_max=1000000.)
+    x2 = tf.clip_by_value(x2 + padding, clip_value_min=0., clip_value_max=tf.cast(img_size, tf.float32))
+    return x1, x2
 
 
 # crop the prediction of mask so as to calculate the linear combination mask loss
 def crop(pred, boxes):
-    pred_shape = tf.shape(pred)
-    w = tf.cast(tf.range(pred_shape[1]), tf.float32)
-    h = tf.expand_dims(tf.cast(tf.range(pred_shape[2]), tf.float32), axis=-1)
+    # pred [num_obj, 138, 138], gt [num_bboxes, 4]
+    # sanitize coordination (make sure the bboxes are in range 0 <= x, y <= image size)
+    shape_pred = tf.shape(pred)
+    pred_w = shape_pred[1]
+    pred_h = shape_pred[2]
 
-    cols = tf.broadcast_to(w, pred_shape)
-    rows = tf.broadcast_to(h, pred_shape)
+    xmin, xmax = sanitize_coordinates(boxes[:, 0], boxes[:, 2], pred_w, padding=1)
+    ymin, ymax = sanitize_coordinates(boxes[:, 1], boxes[:, 3], pred_h, padding=1)
 
-    ymin = tf.broadcast_to(tf.reshape(boxes[:, 0], [-1, 1, 1]), pred_shape)
-    xmin = tf.broadcast_to(tf.reshape(boxes[:, 1], [-1, 1, 1]), pred_shape)
-    ymax = tf.broadcast_to(tf.reshape(boxes[:, 2], [-1, 1, 1]), pred_shape)
-    xmax = tf.broadcast_to(tf.reshape(boxes[:, 3], [-1, 1, 1]), pred_shape)
+    cols = tf.broadcast_to(tf.range(pred_h), shape_pred)
+    rows = tf.broadcast_to(tf.range(pred_w)[..., None], shape_pred)
+
+    xmin = tf.broadcast_to(tf.reshape(xmin, [-1, 1, 1]), shape_pred)
+    ymin = tf.broadcast_to(tf.reshape(ymin, [-1, 1, 1]), shape_pred)
+    xmax = tf.broadcast_to(tf.reshape(xmax, [-1, 1, 1]), shape_pred)
+    ymax = tf.broadcast_to(tf.reshape(ymax, [-1, 1, 1]), shape_pred)
 
     mask_left = (cols >= tf.cast(xmin, cols.dtype))
     mask_right = (cols <= tf.cast(xmax, cols.dtype))
@@ -112,10 +93,11 @@ def crop(pred, boxes):
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
-    crop_mask = tf.cast(crop_mask, tf.float32)
+    return pred * tf.cast(crop_mask, tf.float32)
 
-    return pred * crop_mask
 
+# -----------------------------------------------------------------------------------------
+# Functions used by layers/detection.py
 
 # decode the offset back to center form bounding box when evaluation and prediction
 def map_to_bbox(anchors, loc_pred):
@@ -123,10 +105,10 @@ def map_to_bbox(anchors, loc_pred):
     variances = [0.1, 0.2]
 
     # convert anchor to center_form
-    anchor_h = anchors[:, 2] - anchors[:, 0]
-    anchor_w = anchors[:, 3] - anchors[:, 1]
-    anchor_cx = anchors[:, 1] + (anchor_w / 2)
-    anchor_cy = anchors[:, 0] + (anchor_h / 2)
+    anchor_h = anchors[:, 3] - anchors[:, 1]
+    anchor_w = anchors[:, 2] - anchors[:, 0]
+    anchor_cx = anchors[:, 0] + (anchor_w / 2)
+    anchor_cy = anchors[:, 1] + (anchor_h / 2)
     # tf.print("cx", tf.shape(anchor_cx))
 
     pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
@@ -141,13 +123,16 @@ def map_to_bbox(anchors, loc_pred):
     ymax = new_cy + (new_h / 2)
     xmax = new_cx + (new_w / 2)
 
-    decoded_boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+    decoded_boxes = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
     # tf.print(tf.shape(decoded_boxes))
 
     # tf.print("anchor", tf.shape(anchors))
     # tf.print("pred", tf.shape(loc_pred))
     return decoded_boxes
 
+
+# -----------------------------------------------------------------------------------------
+# Functions used by eval.py
 
 def intersection(box_a, box_b):
     # unstack the ymin, xmin, ymax, xmax
@@ -221,7 +206,7 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
 
 def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
     """post process after detection layer"""
-    # Todo: If scorethreshold is not zero
+    # Todo: If score threshold is not zero
     """
     if score_threshold > 0:
         keep = detection['score'] > score_threshold

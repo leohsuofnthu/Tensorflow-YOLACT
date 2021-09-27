@@ -31,17 +31,16 @@ class YOLACTLoss(object):
         cls_targets = label['cls_targets']
         box_targets = label['box_targets']
         positiveness = label['positiveness']
-        bbox_norm = label['bbox_for_norm']
         masks = label['mask_target']
         max_id_for_anchors = label['max_id_for_anchors']
+        max_gt_for_anchors = label['max_gt_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
-
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, bbox_norm, masks, positiveness, max_id_for_anchors,
-                                    max_masks_for_train=100) * self._loss_weight_mask
+        mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
+                                    max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
         seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
@@ -104,9 +103,8 @@ class YOLACTLoss(object):
         loss_conf = tf.reduce_sum(loss_conf) / tf.cast(tf.reduce_sum(num_pos), loss_conf.dtype)
         return loss_conf
 
-    def _loss_mask(self, proto_output, pred_mask_coef, gt_bbox_norm, gt_masks, positiveness,
-                   max_id_for_anchors, max_masks_for_train):
-
+    def _loss_mask(self, proto_output, pred_mask_coef, gt_masks, positiveness,
+                   max_id_for_anchors, max_gt_for_anchors, max_masks_for_train):
         shape_proto = tf.shape(proto_output)
         num_batch = shape_proto[0]
         proto_h = shape_proto[1]
@@ -119,57 +117,62 @@ class YOLACTLoss(object):
             proto = proto_output[idx]
             mask_coef = pred_mask_coef[idx]
             mask_gt = gt_masks[idx]
-            bbox_norm = gt_bbox_norm[idx]  # [100, 4] -> [num_obj, 4]
+            # bbox_norm = gt_bbox_norm[idx]  # [100, 4] -> [num_obj, 4]
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
+            anchor_max_gt = max_gt_for_anchors[idx]
             pos_indices = tf.squeeze(tf.where(pos == 1))
 
             # If exceeds the number of masks for training, select a random subset
             old_num_pos = tf.size(pos_indices)
             # print("pos indices", pos_indices.shape)
-            if old_num_pos > 10000:
+            if old_num_pos > max_masks_for_train:
                 perm = tf.random.shuffle(pos_indices)
                 pos_indices = perm[:max_masks_for_train]
 
             pos_mask_coef = tf.gather(mask_coef, pos_indices)
             pos_max_id = tf.gather(max_id, pos_indices)
-            # print("pos max id", pos_max_id)
-            # if only 1 positive or no positive
-            if tf.size(pos_indices) == 1:
+            pos_anchor_gt = tf.gather(anchor_max_gt, pos_indices)
+
+            pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
+            pos_max_id = tf.expand_dims(pos_max_id, axis=0)
+
+            if tf.size(pos_indices) == 0:
+                continue
+            elif tf.size(pos_indices) == 1:
                 pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
-            elif tf.size(pos_indices) == 0:
-                continue
-            else:
-                ...
 
             # [num_pos, k]
-            gt = tf.gather(mask_gt, pos_max_id)
-            bbox = tf.gather(bbox_norm, pos_max_id)
+            gt = tf.gather(mask_gt, pos_max_id)[0]
+            bbox = pos_anchor_gt
 
-            # print(bbox)
+            if tf.rank(bbox) == 1:
+                bbox = tf.expand_dims(bbox, axis=0)
+
             num_pos = tf.size(pos_indices)
-            # print('gt_me', gt.shape)
             total_pos += num_pos
 
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
+            pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))  # [num_pos, 138, 138]
+            pred_mask = tf.nn.sigmoid(pred_mask)
 
-            s = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=gt, logits=pred_mask)
-            # s = crop(s, bbox)
+            # crop
+            pred_mask = crop(pred_mask, bbox)
 
-            # calculating loss for each mask coef correspond to each postitive anchor
+            # calculating binary cross-entropy
+            loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+            s = loss_fn(gt, pred_mask)
+
+            # calculating loss for each mask coef correspond to each positive anchor
             bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
             area = bbox_center[:, -1] * bbox_center[:, -2]
             mask_loss = tf.reduce_sum(s, axis=[-1, -2]) / area
             if old_num_pos > num_pos:
-                mask_loss = mask_loss * tf.cast((old_num_pos / num_pos), mask_loss.dtype)
+                mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-
-        return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
-                                                                                                           loss_mask.dtype)
+        return loss_mask / tf.cast(total_pos, loss_mask.dtype)
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
