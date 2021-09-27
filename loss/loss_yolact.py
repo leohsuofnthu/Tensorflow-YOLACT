@@ -125,9 +125,6 @@ class YOLACTLoss(object):
             anchor_max_gt = max_gt_for_anchors[idx]
             pos_indices = tf.squeeze(tf.where(pos == 1))
 
-            if tf.size(pos_indices) == 0:
-                continue
-
             # If exceeds the number of masks for training, select a random subset
             old_num_pos = tf.size(pos_indices)
             # print("pos indices", pos_indices.shape)
@@ -141,8 +138,15 @@ class YOLACTLoss(object):
 
             pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
             pos_max_id = tf.expand_dims(pos_max_id, axis=0)
+
+            if tf.size(pos_indices) == 0:
+                continue
+            elif tf.size(pos_indices) == 1:
+                pos_mask_coef = tf.expand_dims(pos_mask_coef, axis=0)
+                pos_max_id = tf.expand_dims(pos_max_id, axis=0)
+
             # [num_pos, k]
-            gt = tf.gather(mask_gt, pos_max_id)[0]
+            gt = tf.gather(mask_gt, pos_max_id)
             bbox = pos_anchor_gt
 
             num_pos = tf.size(pos_indices)
