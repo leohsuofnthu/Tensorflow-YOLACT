@@ -51,6 +51,10 @@ class Parser(object):
         is_crowds = data['gt_is_crowd']
         num_obj = tf.shape(classes)[0]
 
+        # return original image for testing augmentation purpose
+        original_img = tf.image.convert_image_dtype(tf.identity(image), tf.float32)
+        original_img = tf.image.resize(original_img, [self.output_size, self.output_size])
+
         # if label_map is not none, remapping the class label, ex: COCO datasets
         if self.dict_tensor is not None:
             classes = self.dict_tensor.lookup(classes)
@@ -64,13 +68,13 @@ class Parser(object):
 
         # Data Augmentation, Normalization, and Resize
         augmentor = SSDAugmentation(mode=mode, **self.augmentation_params)
-        image, masks, norm_boxes, classes = augmentor(image, masks, boxes, classes)
+        image, masks, boxes, classes = augmentor(image, masks, boxes, classes)
 
         # matching anchors
         boxes = boxes * self.output_size
         cls_targets, box_targets, max_id_for_anchors, match_positiveness = self._anchor_instance.matching(
             boxes, classes, **self.matching_params)
-        max_gt_for_anchors = tf.gather(boxes / self.output_size, max_id_for_anchors)
+        max_gt_for_anchors = tf.gather(boxes * (self.proto_out_size / self.output_size), max_id_for_anchors)
 
         # Padding classes and mask to fix length [batch_size, num_max_fix_padding, ...]
         num_padding = self.num_max_padding - tf.shape(classes)[0]
@@ -91,7 +95,8 @@ class Parser(object):
             'positiveness': match_positiveness,
             'max_id_for_anchors': max_id_for_anchors,
             'max_gt_for_anchors': max_gt_for_anchors,
-            'num_obj': num_obj
+            'num_obj': num_obj,
+            'ori': original_img
         }
         return image, labels
 
