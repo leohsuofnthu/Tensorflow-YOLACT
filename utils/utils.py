@@ -48,14 +48,14 @@ def bboxes_intersection(bbox_ref, bboxes):
 
 
 # -----------------------------------------------------------------------------------------
-# Functions used by loss/loss_yolact.py
+# Functions used by loss/loss_yolact.py (mask loss)
 
 # mapping from [xmin, ymin, xmax, ymax] to [cx, cy, w, h]
 def map_to_center_form(x):
-    h = x[:, 2] - x[:, 0]
-    w = x[:, 3] - x[:, 1]
-    cy = x[:, 0] + (h / 2)
-    cx = x[:, 1] + (w / 2)
+    h = x[:, 3] - x[:, 1]
+    w = x[:, 2] - x[:, 0]
+    cx = x[:, 0] + (w / 2.)
+    cy = x[:, 1] + (h / 2.)
     return tf.stack([cx, cy, w, h], axis=-1)
 
 
