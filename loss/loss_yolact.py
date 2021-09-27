@@ -36,8 +36,6 @@ class YOLACTLoss(object):
         max_gt_for_anchors = label['max_gt_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
-        plt.figure()
-        plt.imshow(label['ori'].numpy()[0])
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
