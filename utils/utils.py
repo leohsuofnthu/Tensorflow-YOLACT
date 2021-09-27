@@ -59,19 +59,32 @@ def map_to_center_form(x):
     return tf.stack([cx, cy, w, h], axis=-1)
 
 
+def sanitize_coordinates(x1, x2, img_size, padding=0):
+    x1 = tf.minimum(x1, x2)
+    x2 = tf.maximum(x1, x2)
+    x1 = tf.clip_by_value(x1 - padding, clip_value_min=0., clip_value_max=1000000.)
+    x2 = tf.clip_by_value(x2 + padding, clip_value_min=0., clip_value_max=tf.cast(img_size, tf.float32))
+    return x1, x2
+
+
 # crop the prediction of mask so as to calculate the linear combination mask loss
 def crop(pred, boxes):
-    pred_shape = tf.shape(pred)
-    w = tf.cast(tf.range(pred_shape[1]), tf.float32)
-    h = tf.expand_dims(tf.cast(tf.range(pred_shape[2]), tf.float32), axis=-1)
+    # pred [num_obj, 138, 138], gt [num_bboxes, 4]
+    # sanitize coordination (make sure the bboxes are in range 0 <= x, y <= image size)
+    shape_pred = tf.shape(pred)
+    pred_w = shape_pred[1]
+    pred_h = shape_pred[2]
 
-    cols = tf.broadcast_to(w, pred_shape)
-    rows = tf.broadcast_to(h, pred_shape)
+    xmin, xmax = sanitize_coordinates(boxes[:, 0], boxes[:, 2], pred_w, padding=1)
+    ymin, ymax = sanitize_coordinates(boxes[:, 1], boxes[:, 3], pred_h, padding=1)
 
-    ymin = tf.broadcast_to(tf.reshape(boxes[:, 0], [-1, 1, 1]), pred_shape)
-    xmin = tf.broadcast_to(tf.reshape(boxes[:, 1], [-1, 1, 1]), pred_shape)
-    ymax = tf.broadcast_to(tf.reshape(boxes[:, 2], [-1, 1, 1]), pred_shape)
-    xmax = tf.broadcast_to(tf.reshape(boxes[:, 3], [-1, 1, 1]), pred_shape)
+    cols = tf.broadcast_to(tf.range(pred_h), shape_pred)
+    rows = tf.broadcast_to(tf.range(pred_w)[..., None], shape_pred)
+
+    xmin = tf.broadcast_to(tf.reshape(xmin, [-1, 1, 1]), shape_pred)
+    ymin = tf.broadcast_to(tf.reshape(ymin, [-1, 1, 1]), shape_pred)
+    xmax = tf.broadcast_to(tf.reshape(xmax, [-1, 1, 1]), shape_pred)
+    ymax = tf.broadcast_to(tf.reshape(ymax, [-1, 1, 1]), shape_pred)
 
     mask_left = (cols >= tf.cast(xmin, cols.dtype))
     mask_right = (cols <= tf.cast(xmax, cols.dtype))
@@ -80,9 +93,7 @@ def crop(pred, boxes):
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
-    crop_mask = tf.cast(crop_mask, tf.float32)
-
-    return pred * crop_mask
+    return pred * tf.cast(crop_mask, tf.float32)
 
 
 # -----------------------------------------------------------------------------------------
