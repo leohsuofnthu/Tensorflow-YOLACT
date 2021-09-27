@@ -9,8 +9,8 @@ from data.coco_dataset import ObjectDetectionDataset
 from yolact import Yolact
 
 # Todo Add your custom dataset
-NAME_OF_DATASET = "coco"
-CLASS_NAMES = COCO_CLASSES
+NAME_OF_DATASET = "pascal"
+CLASS_NAMES = PASCAL_CLASSES
 # -----------------------------------------------------------------------------------------------
 # create model and dataloader
 train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
@@ -25,7 +25,7 @@ valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
 
 # Visualize one image from training set
 for image, labels in train_dataset.take(1):
-    image = np.array(image, dtype=np.uint8)[0]
+    image = labels['ori'].numpy()[0]
     plt.figure(figsize=(7, 7))
     plt.axis("off")
     plt.imshow(image)
