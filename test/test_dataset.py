@@ -25,10 +25,11 @@ valid_dataset = dateset.get_dataloader(subset='val', batch_size=1)
 
 # Visualize one image from training set
 for image, labels in train_dataset.take(1):
-    image = labels['ori'].numpy()[0]
+    ori = labels['ori'].numpy()[0]
+    image = image.numpy()[0].astype(np.uint8)
     plt.figure(figsize=(7, 7))
     plt.axis("off")
-    plt.imshow(image)
+    plt.imshow(ori)
     ax = plt.gca()
     boxes = labels['bbox'].numpy()[0]
     classes = labels['classes'].numpy()[0]
