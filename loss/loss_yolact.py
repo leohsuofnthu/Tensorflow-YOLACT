@@ -127,8 +127,6 @@ class YOLACTLoss(object):
 
             if tf.size(pos_indices) == 0:
                 continue
-            else:
-                tf.print(tf.size(pos_indices))
 
             # If exceeds the number of masks for training, select a random subset
             old_num_pos = tf.size(pos_indices)
