@@ -36,7 +36,8 @@ class YOLACTLoss(object):
         max_gt_for_anchors = label['max_gt_for_anchors']
         classes = label['classes']
         num_obj = label['num_obj']
-
+        plt.figure()
+        plt.imshow(label['ori'].numpy()[0])
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
@@ -146,7 +147,7 @@ class YOLACTLoss(object):
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
 
             # [num_pos, k]
-            gt = tf.gather(mask_gt, pos_max_id)
+            gt = tf.gather(mask_gt, pos_max_id)[0]
             bbox = pos_anchor_gt
 
             num_pos = tf.size(pos_indices)
@@ -154,27 +155,24 @@ class YOLACTLoss(object):
 
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
+            pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))  # [num_pos, 138, 138]
+            pred_mask = tf.nn.sigmoid(pred_mask)
 
-            s = tf.nn.sigmoid_cross_entropy_with_logits(
-                labels=gt, logits=pred_mask)
-            # loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
-            # s = crop(s, bbox)
-            # tf.print(gt.shape)
-            # tf.print(pred_mask.shape)
-            # s = loss_fn(gt, pred_mask)
-            # tf.print(s.shape)
-            # tf.print(tf.reduce_sum(s, axis=[-1, -2]))
+            # crop
+            pred_mask = crop(pred_mask, bbox)
 
-            # calculating loss for each mask coef correspond to each postitive anchor
+            # calculating binary cross-entropy
+            loss_fn = tf.keras.losses.BinaryCrossentropy(from_logits=True, reduction=tf.keras.losses.Reduction.NONE)
+            s = loss_fn(gt, pred_mask)
+
+            # calculating loss for each mask coef correspond to each positive anchor
             bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
             area = bbox_center[:, -1] * bbox_center[:, -2]
             mask_loss = tf.reduce_sum(s, axis=[-1, -2]) / area
             if old_num_pos > num_pos:
                 mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-        return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
-                                                                                                           loss_mask.dtype)
+        return loss_mask / tf.cast(total_pos, loss_mask.dtype)
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
