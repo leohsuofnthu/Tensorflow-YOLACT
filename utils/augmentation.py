@@ -110,8 +110,12 @@ class PhotometricDistort(object):
 
 
 class Expand(object):
-    def __init__(self, mean):
-        self.mean = mean
+    """
+    From https://github.com/FurkanOM/tf-ssd/blob/734bfd0cd1343b424bfad59c4b8c3cbef4775d86/utils/bbox_utils.py#L178
+    """
+
+    def __init__(self):
+        ...
 
     def __call__(self, image, masks, boxes, labels):
         # exapnd the image with probability 0.5
@@ -122,48 +126,29 @@ class Expand(object):
         width = tf.cast(tf.shape(image)[1], tf.float32)
 
         # expand 4 times at most
-        ratio = tf.squeeze(tf.random.uniform([1], minval=1, maxval=4))
+        expansion_ratio = tf.random.uniform((), minval=1, maxval=4, dtype=tf.float32)
+        final_height, final_width = tf.round(height * expansion_ratio), tf.round(width * expansion_ratio)
+        pad_left = tf.round(tf.random.uniform((), minval=0, maxval=final_width - width, dtype=tf.float32))
+        pad_top = tf.round(tf.random.uniform((), minval=0, maxval=final_height - height, dtype=tf.float32))
+        pad_right = final_width - (width + pad_left)
+        pad_bottom = final_height - (height + pad_top)
 
-        # define the leftmost, topmost coordinate for putting original image to expanding image
-        left = tf.squeeze(tf.random.uniform([1], minval=0, maxval=(width * ratio - width)))
-        top = tf.squeeze(tf.random.uniform([1], minval=0, maxval=(height * ratio - height)))
-
-        # padding the image, mask according to the left and top
-        left_padding = tf.cast(left, tf.int32)
-        top_padding = tf.cast(top, tf.int32)
-        expand_width = tf.cast(width * ratio, tf.int32)
-        expand_height = tf.cast(height * ratio, tf.int32)
-
-        image = tf.image.pad_to_bounding_box(image,
-                                             top_padding,
-                                             left_padding,
-                                             expand_height,
-                                             expand_width)
-
-        masks = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(masks, -1),
-                                                        top_padding,
-                                                        left_padding,
-                                                        expand_height,
-                                                        expand_width), -1)
-
-        # fill mean value of image
-        offset = tf.constant(self.mean)
-        offset = tf.expand_dims(offset, axis=0)
-        offset = tf.expand_dims(offset, axis=0)
-        mean_mask = tf.cast((image == 0), image.dtype) * offset
-        image = image + mean_mask
-
+        mean, _ = tf.nn.moments(image, [0, 1])
+        expanded_image = tf.pad(image, ((pad_top, pad_bottom), (pad_left, pad_right), (0, 0)), constant_values=-1)
+        expanded_image = tf.where(expanded_image == -1, mean, expanded_image)
+        expanded_masks = tf.squeeze(tf.image.pad_to_bounding_box(tf.expand_dims(masks, -1),
+                                                                 tf.cast(pad_top, tf.int32),
+                                                                 tf.cast(pad_left, tf.int32),
+                                                                 tf.cast(final_height, tf.int32),
+                                                                 tf.cast(final_width, tf.int32)), -1)
         # recalculate the bbox [xmin, ymin, xmax, ymax]
-        top = tf.cast(top, tf.float32)
-        left = tf.cast(left, tf.float32)
-        expand_height = tf.cast(expand_height, tf.float32)
-        expand_width = tf.cast(expand_width, tf.float32)
-        xmin = ((boxes[:, 0] * height) + top) / expand_width
-        ymin = ((boxes[:, 1] * width) + left) / expand_height
-        xmax = ((boxes[:, 2] * height) + top) / expand_width
-        ymax = ((boxes[:, 3] * width) + left) / expand_height
-        new_boxes = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
-        return image, masks, new_boxes, labels
+        min_max = tf.stack([-pad_left, -pad_top, pad_right + width, pad_bottom + height], -1) / [width, height, width,
+                                                                                                 height]
+        x_min, y_min, x_max, y_max = tf.split(min_max, 4)
+        renomalized_bboxes = boxes - tf.concat([x_min, y_min, x_min, y_min], -1)
+        renomalized_bboxes /= tf.concat([x_max - x_min, y_max - y_min, x_max - x_min, y_max - y_min], -1)
+        new_boxes = tf.clip_by_value(renomalized_bboxes, 0, 1)
+        return expanded_image, expanded_masks, new_boxes, labels
 
 
 # Todo I did a slightly different way for crop
@@ -253,7 +238,6 @@ class Resize(object):
         self.discard_h = discard_h
 
     def __call__(self, image, masks, boxes, labels):
-
         # resize the image to output size
         image = tf.image.resize(image, [self.output_size, self.output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
@@ -269,8 +253,8 @@ class Resize(object):
             masks = tf.expand_dims(masks, axis=0)
 
         # discard the boxes that are too small
-        w = boxes[:, 2] - boxes[:, 0]  # xmax - xmin
-        h = boxes[:, 3] - boxes[:, 1]  # ymax - ymin
+        w = self.output_size * (boxes[:, 2] - boxes[:, 0])  # xmax - xmin
+        h = self.output_size * (boxes[:, 3] - boxes[:, 1])  # ymax - ymin
 
         # find intersection of those 2 idxs
         w_keep_idxs = tf.cast(w > self.discard_w, tf.int32)
@@ -289,10 +273,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                PhotometricDistort(),
-                # Expand(mean),
+                # PhotometricDistort(),
+                Expand(),
                 # RandomSampleCrop(),
-                RandomMirror(),
+                # RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # BackbonePreprocess(preprocess_func)
             ])
