@@ -44,8 +44,8 @@ class BackbonePreprocess(object):
 
 
 class RandomBrightness(object):
-    # input image range: [0 ~ 1]
-    def __init__(self, delta=0.01):
+    # input image range: [0.0 ~ 255.0]
+    def __init__(self, delta=0.12):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -55,8 +55,8 @@ class RandomBrightness(object):
 
 
 class RandomContrast(object):
-    # input image range: [0 ~ 1]
-    def __init__(self, lower=0.5, upper=0.6):
+    # input image range: [0.0 ~ 255.0]
+    def __init__(self, lower=0.5, upper=1.5):
         self.lower = lower
         self.upper = upper
 
@@ -68,7 +68,7 @@ class RandomContrast(object):
 
 class RandomSaturation(object):
     # input image range: [0 ~ 1]
-    def __init__(self, lower=0.5, upper=0.6):
+    def __init__(self, lower=0.5, upper=1.5):
         self.lower = lower
         self.upper = upper
 
@@ -79,8 +79,8 @@ class RandomSaturation(object):
 
 
 class RandomHue(object):
-    # input image range: [0 ~ 1]
-    def __init__(self, delta=0.5):
+    # input image range: [0.0 ~ 255.0]
+    def __init__(self, delta=0.08):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -228,6 +228,7 @@ class RandomSampleCrop(object):
 
 
 class RandomMirror(object):
+    # bbox [xmin, ymin, xmax, ymax]
     def __int__(self):
         ...
 
@@ -236,8 +237,8 @@ class RandomMirror(object):
         if tf.random.uniform([1]) > 0.5:
             image = tf.image.flip_left_right(image)
             masks = tf.image.flip_left_right(tf.expand_dims(masks, -1))
-            boxes = tf.stack([boxes[:, 0], 1 - boxes[:, 3],
-                              boxes[:, 2], 1 - boxes[:, 1]], axis=-1)
+            boxes = tf.stack([1 - boxes[:, 2], boxes[:, 1],
+                              1 - boxes[:, 0], boxes[:, 3]], axis=-1)
             masks = tf.squeeze(masks, -1)
         return image, masks, boxes, labels
 
@@ -252,13 +253,12 @@ class Resize(object):
         self.discard_h = discard_h
 
     def __call__(self, image, masks, boxes, labels):
-        # todo resize image mask while maintaining aspect ratio, also consider how to convert bbox
 
         # resize the image to output size
         image = tf.image.resize(image, [self.output_size, self.output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
 
-        # resize the mask to proto_out_size
+        # resize the mask to proto_out_size and binarize
         masks = tf.image.resize(tf.expand_dims(masks, -1), [self.proto_output_size, self.proto_output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
         masks = tf.cast(masks + 0.5, tf.int64)
@@ -269,8 +269,8 @@ class Resize(object):
             masks = tf.expand_dims(masks, axis=0)
 
         # discard the boxes that are too small
-        w = self.output_size * (boxes[:, 2] - boxes[:, 0])  # xmax - xmin
-        h = self.output_size * (boxes[:, 3] - boxes[:, 1])  # ymax - ymin
+        w = boxes[:, 2] - boxes[:, 0]  # xmax - xmin
+        h = boxes[:, 3] - boxes[:, 1]  # ymax - ymin
 
         # find intersection of those 2 idxs
         w_keep_idxs = tf.cast(w > self.discard_w, tf.int32)
@@ -289,12 +289,12 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                # RandomMirror(),
-                # PhotometricDistort(),
+                PhotometricDistort(),
                 # Expand(mean),
                 # RandomSampleCrop(),
+                RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
-                BackbonePreprocess(preprocess_func)
+                # BackbonePreprocess(preprocess_func)
             ])
         else:
             # no data augmentation for validation and test set
