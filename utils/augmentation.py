@@ -109,7 +109,7 @@ class PhotometricDistort(object):
         return image, masks, boxes, labels
 
 
-class Expand(object):
+class RandomExpand(object):
     """
     From https://github.com/FurkanOM/tf-ssd/blob/734bfd0cd1343b424bfad59c4b8c3cbef4775d86/utils/bbox_utils.py#L178
     """
@@ -154,26 +154,29 @@ class Expand(object):
 # Todo I did a slightly different way for crop
 class RandomSampleCrop(object):
     def __init__(self):
-        self.min_iou = tf.constant([0.5, 0.6, 0.7, 0.8, 0.9, 1])
+        # if 0.01 means random crop image, if 2.0 means use original
+        self.overlaps = tf.constant([0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 2.0], dtype=tf.float32)
 
     def __call__(self, image, masks, boxes, labels):
         # choose the min_object_covered value in self.sample_options
-        # idx = tf.cast(tf.random.uniform([1], minval=0, maxval=5.50), tf.int32)
-        # min_iou = tf.squeeze(tf.gather(self.min_iou, idx))
-        # if min_iou == 1:
-        #     return image, masks, boxes, labels, is_crowds
+        i = tf.random.uniform((), minval=0, maxval=tf.shape(self.overlaps)[0], dtype=tf.int32)
+        if self.overlaps[i] == 2.0:
+            return image, masks, boxes, labels
 
         # Geometric Distortions (img, bbox, mask)
-        boxes = tf.clip_by_value(boxes, clip_value_min=0, clip_value_max=1)  # just in case
+        # boxes = tf.clip_by_value(boxes, clip_value_min=0, clip_value_max=1)  # just in case
+        x_min, y_min, x_max, y_max = tf.unstack(boxes, axis=-1)
+        boxes = tf.stack([y_min, x_min, y_max, x_max], axis=-1)
+
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
             tf.shape(image),
             bounding_boxes=tf.expand_dims(boxes, 0),
-            min_object_covered=1,
-            aspect_ratio_range=(0.5, 2),
-            area_range=(0.1, 1.0),
-            max_attempts=50)
+            min_object_covered=self.overlaps[i],
+            aspect_ratio_range=(0.5, 2.0))
 
         # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
+        # Be careful [ymin, xmin, ymax, xmax] used in tf.image functions
+        # But the boxes has form [xmin, ymin, xmax, ymax]
         distort_bbox = distort_bbox[0, 0]
 
         # cropped the image
@@ -188,28 +191,16 @@ class RandomSampleCrop(object):
         cropped_masks = tf.squeeze(cropped_masks, -1)
 
         # resize the scale of bboxes for cropped image
-        v = tf.stack([distort_bbox[0], distort_bbox[1], distort_bbox[0], distort_bbox[1]])
-        boxes = boxes - v
-        s = tf.stack([distort_bbox[2] - distort_bbox[0],
-                      distort_bbox[3] - distort_bbox[1],
-                      distort_bbox[2] - distort_bbox[0],
-                      distort_bbox[3] - distort_bbox[1]])
-        boxes = boxes / s
-
-        # filter out
-        scores = utils.bboxes_intersection(tf.constant([0, 0, 1, 1], boxes.dtype), boxes)
-        bool_mask = scores > 0.5
-
-        classes = tf.boolean_mask(labels, bool_mask)
-        bboxes = tf.boolean_mask(boxes, bool_mask)
+        y_min, x_min, y_max, x_max = tf.split(distort_bbox, 4)
+        new_bboxes = boxes - tf.concat([y_min, x_min, y_min, x_min], -1)
+        new_bboxes /= tf.concat([y_max - y_min, x_max - x_min, y_max - y_min, x_max - x_min], -1)
+        new_bboxes = tf.clip_by_value(new_bboxes, clip_value_min=0, clip_value_max=1)
 
         # deal with negative value of bbox
-        bboxes = tf.clip_by_value(bboxes, clip_value_min=0, clip_value_max=1)
-
-        # get new masks
-        cropped_masks = tf.boolean_mask(cropped_masks, bool_mask)
-
-        return cropped_image, cropped_masks, bboxes, classes
+        new_bboxes = tf.clip_by_value(new_bboxes, clip_value_min=0, clip_value_max=1)
+        y_min, x_min, y_max, x_max = tf.unstack(new_bboxes, axis=-1)
+        new_bboxes = tf.stack([x_min, y_min, x_max, y_max], axis=-1)
+        return cropped_image, cropped_masks, new_bboxes, labels
 
 
 class RandomMirror(object):
@@ -273,10 +264,10 @@ class SSDAugmentation(object):
         if mode == 'train':
             self.augmentations = Compose([
                 ConvertFromInts(),
-                # PhotometricDistort(),
-                Expand(),
-                # RandomSampleCrop(),
-                # RandomMirror(),
+                PhotometricDistort(),
+                RandomExpand(),
+                RandomSampleCrop(),
+                RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
                 # BackbonePreprocess(preprocess_func)
             ])
