@@ -29,7 +29,7 @@ for image, labels in train_dataset.take(1):
     image = image.numpy()[0].astype(np.uint8)
     plt.figure(figsize=(7, 7))
     plt.axis("off")
-    plt.imshow(ori)
+    plt.imshow(image)
     ax = plt.gca()
     boxes = labels['bbox'].numpy()[0]
     classes = labels['classes'].numpy()[0]
@@ -60,6 +60,9 @@ for image, labels in train_dataset.take(1):
         )
         m = mask[:, :, None]
         final_m = final_m + np.concatenate((m * color[0], m * color[1], m * color[2]), axis=-1)
+
+    plt.figure()
+    plt.imshow(ori)
 
     plt.figure()
     plt.imshow(np.asarray(final_m))
