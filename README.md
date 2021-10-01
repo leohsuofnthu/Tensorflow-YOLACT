@@ -19,7 +19,7 @@ Extract the ```/train2017```, ```/val2017```, and ```/annotations/instances_trai
 python -m  data.coco_tfrecord_creator -train_image_dir './data/train2017' 
                                       -val_image_dir './data/val2017' 
                                       -train_annotations_file './data/instances_train2017.json' 
-                                      -val_annotations_file './instances_val2017.json' 
+                                      -val_annotations_file './data/instances_val2017.json' 
                                       -output_dir './data/coco'
 ```
 ### 2. Prepare the Pascal SBD Dataset
@@ -32,7 +32,7 @@ Extract the ```/benchmark/dataset/img ``` folder from benchmark.tgz, and ```pasc
 python -m  data.coco_tfrecord_creator -train_image_dir './data/pascal_train' 
                                       -val_image_dir './data/pascal_val' 
                                       -train_annotations_file './data/pascal_sbd_train.json' 
-                                      -val_annotations_file './pascal_sbd_valid.json' 
+                                      -val_annotations_file './data/pascal_sbd_valid.json' 
                                       -output_dir './data/pascal'
 ```
 
