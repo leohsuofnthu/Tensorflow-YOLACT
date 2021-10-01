@@ -269,7 +269,7 @@ class SSDAugmentation(object):
                 RandomSampleCrop(),
                 RandomMirror(),
                 Resize(output_size, proto_output_size, discard_box_width, discard_box_height),
-                # BackbonePreprocess(preprocess_func)
+                BackbonePreprocess(preprocess_func)
             ])
         else:
             # no data augmentation for validation and test set
