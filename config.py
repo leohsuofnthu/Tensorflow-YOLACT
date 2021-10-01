@@ -5,7 +5,7 @@ import tensorflow as tf
 ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # -----------------------------------------------------------------
-# Todo Set the hyperparameter you preferred
+# Set the hyperparameter you preferred
 MIXPRECISION = False
 RANDOM_SEED = 1234
 
@@ -34,55 +34,6 @@ TOP_K = 200
 CONF_THRESHOLD = 0.05
 NMS_THRESHOLD = 0.5
 MAX_NUM_DETECTION = 100
-
-# Todo Add custom dataset label dictionary if you need
-YOUR_CUSTOM_CLASSES = ()
-
-# Todo Add the training iteration for your dataset
-TRAIN_ITER = dict({
-    "coco": 800000,
-    "pascal": 120000,
-    "your_custom_dataset": 0
-})
-
-# Todo Add the number of classes in your dataset
-NUM_CLASSES = dict({
-    "coco": 81,
-    "pascal": 21,
-    "your_custom_dataset": 0
-})
-
-# Todo Design your own learning rate schedule
-LR_STAGE = dict({
-    "coco": {'warmup_steps': 500,
-             'warmup_lr': 1e-4,
-             'initial_lr': 1e-3,
-             'stages': [280000, 600000, 700000, 750000],
-             'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]},
-
-    "pascal": {'warmup_steps': 500,
-               'warmup_lr': 1e-4,
-               'initial_lr': 1e-3,
-               'stages': [60000, 100000],
-               'stage_lrs': [1e-3, 1e-4, 1e-5]},
-
-    "your_custom_dataset": {}
-})
-
-# Todo Design your own anchors
-ANCHOR = dict({
-    "coco": {"img_size": IMG_SIZE,
-             "feature_map_size": [69, 35, 18, 9, 5],
-             "aspect_ratio": [1, 0.5, 2],
-             "scale": [24, 48, 96, 192, 384]},
-
-    "pascal": {"img_size": IMG_SIZE,
-               "feature_map_size": [69, 35, 18, 9, 5],
-               "aspect_ratio": [1, 0.5, 2],
-               "scale": [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)]},
-
-    "your_custom_dataset": {}
-})
 
 # -----------------------------------------------------------------
 
@@ -143,6 +94,58 @@ COLORS = ((244, 67, 54),
           (158, 158, 158),
           (96, 125, 139))
 
+# -----------------------------------------------------------------
+# Settings required for custom datasets
+
+# Todo Add the number of classes in your dataset
+NUM_CLASSES = dict({
+    "coco": 81,
+    "pascal": 21,
+    "your_custom_dataset": 0
+})
+
+# Todo Add the training iteration for your dataset
+TRAIN_ITER = dict({
+    "coco": 800000,
+    "pascal": 120000,
+    "your_custom_dataset": 0
+})
+
+# Todo Design your own learning rate schedule
+LR_STAGE = dict({
+    "coco": {'warmup_steps': 500,
+             'warmup_lr': 1e-4,
+             'initial_lr': 1e-3,
+             'stages': [280000, 600000, 700000, 750000],
+             'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]},
+
+    "pascal": {'warmup_steps': 500,
+               'warmup_lr': 1e-4,
+               'initial_lr': 1e-3,
+               'stages': [60000, 100000],
+               'stage_lrs': [1e-3, 1e-4, 1e-5]},
+
+    "your_custom_dataset": {}
+})
+
+# Todo Design your own anchors
+ANCHOR = dict({
+    "coco": {"img_size": IMG_SIZE,
+             "feature_map_size": [69, 35, 18, 9, 5],
+             "aspect_ratio": [1, 0.5, 2],
+             "scale": [24, 48, 96, 192, 384]},
+
+    "pascal": {"img_size": IMG_SIZE,
+               "feature_map_size": [69, 35, 18, 9, 5],
+               "aspect_ratio": [1, 0.5, 2],
+               "scale": [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)]},
+
+    "your_custom_dataset": {}
+})
+
+# Todo Add custom dataset label dictionary if you need, look the 'COCO_CLASSES' below as an example
+YOUR_CUSTOM_CLASSES = ()
+
 # Class names for COCO dataset
 COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
@@ -159,6 +162,12 @@ COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
                 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
 
+# Class names for Pascal dataset
+PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
+                  "bus", "car", "cat", "chair", "cow", "diningtable",
+                  "dog", "horse", "motorbike", "person", "pottedplant",
+                  "sheep", "sofa", "train", "tvmonitor")
+
 # mapping coco classes labels from 90 to 80
 COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   9: 9, 10: 10, 11: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16,
@@ -171,13 +180,8 @@ COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   74: 65, 75: 66, 76: 67, 77: 68, 78: 69, 79: 70, 80: 71, 81: 72,
                   82: 73, 84: 74, 85: 75, 86: 76, 87: 77, 88: 78, 89: 79, 90: 80}
 
-# Class names for Pascal dataset
-PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
-                  "bus", "car", "cat", "chair", "cow", "diningtable",
-                  "dog", "horse", "motorbike", "person", "pottedplant",
-                  "sheep", "sofa", "train", "tvmonitor")
-
 # Only coco need it to map 90 to 80 classes
+# Todo Add label map for your custom dataset if you need it, take 'COCO_LABEL_MAP' as an example
 LABEL_MAP = dict({
     "coco": COCO_LABEL_MAP,
     "pascal": None,
@@ -185,6 +189,7 @@ LABEL_MAP = dict({
 })
 
 
+# -----------------------------------------------------------------
 def get_params(dataset_name):
     parser_params = {
         "output_size": IMG_SIZE,
