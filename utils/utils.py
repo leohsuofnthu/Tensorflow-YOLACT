@@ -72,24 +72,24 @@ def crop(pred, boxes):
     # pred [num_obj, 138, 138], gt [num_bboxes, 4]
     # sanitize coordination (make sure the bboxes are in range 0 <= x, y <= image size)
     shape_pred = tf.shape(pred)
-    pred_w = shape_pred[1]
-    pred_h = shape_pred[2]
+    pred_w = shape_pred[0]
+    pred_h = shape_pred[1]
 
     xmin, xmax = sanitize_coordinates(boxes[:, 0], boxes[:, 2], pred_w, padding=1)
     ymin, ymax = sanitize_coordinates(boxes[:, 1], boxes[:, 3], pred_h, padding=1)
 
-    cols = tf.broadcast_to(tf.range(pred_h), shape_pred)
-    rows = tf.broadcast_to(tf.range(pred_w)[..., None], shape_pred)
+    rows = tf.broadcast_to(tf.range(pred_w)[None, :, None], shape_pred)
+    cols = tf.broadcast_to(tf.range(pred_h)[:, None, None], shape_pred)
 
-    xmin = tf.broadcast_to(tf.reshape(xmin, [-1, 1, 1]), shape_pred)
-    ymin = tf.broadcast_to(tf.reshape(ymin, [-1, 1, 1]), shape_pred)
-    xmax = tf.broadcast_to(tf.reshape(xmax, [-1, 1, 1]), shape_pred)
-    ymax = tf.broadcast_to(tf.reshape(ymax, [-1, 1, 1]), shape_pred)
+    xmin = xmin[None, None, :]
+    ymin = ymin[None, None, :]
+    xmax = xmax[None, None, :]
+    ymax = ymax[None, None, :]
 
-    mask_left = (cols >= tf.cast(xmin, cols.dtype))
-    mask_right = (cols <= tf.cast(xmax, cols.dtype))
-    mask_bottom = (rows >= tf.cast(ymin, rows.dtype))
-    mask_top = (rows <= tf.cast(ymax, rows.dtype))
+    mask_left = (rows >= tf.cast(xmin, cols.dtype))
+    mask_right = (rows <= tf.cast(xmax, cols.dtype))
+    mask_bottom = (cols >= tf.cast(ymin, rows.dtype))
+    mask_top = (cols <= tf.cast(ymax, rows.dtype))
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))

@@ -117,6 +117,7 @@ class YOLACTLoss(object):
             proto = proto_output[idx]
             mask_coef = pred_mask_coef[idx]
             mask_gt = gt_masks[idx]
+
             # bbox_norm = gt_bbox_norm[idx]  # [100, 4] -> [num_obj, 4]
             pos = positiveness[idx]
             max_id = max_id_for_anchors[idx]
@@ -144,7 +145,7 @@ class YOLACTLoss(object):
                 pos_max_id = tf.expand_dims(pos_max_id, axis=0)
 
             # [num_pos, k]
-            gt = tf.gather(mask_gt, pos_max_id)[0]
+            gt = tf.transpose(tf.gather(mask_gt, pos_max_id)[0], perm=[1, 2, 0])
             bbox = pos_anchor_gt
 
             if tf.rank(bbox) == 1:
@@ -155,19 +156,20 @@ class YOLACTLoss(object):
 
             # [138, 138, num_pos]
             pred_mask = tf.linalg.matmul(proto, pos_mask_coef, transpose_a=False, transpose_b=True)
-            pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))  # [num_pos, 138, 138]
             s = tf.nn.sigmoid_cross_entropy_with_logits(gt, pred_mask)
+
             # crop
             s = crop(s, bbox)
 
             # calculating loss for each mask coef correspond to each positive anchor
             bbox_center = map_to_center_form(tf.cast(bbox, tf.float32))
             area = bbox_center[:, -1] * bbox_center[:, -2]
-            mask_loss = tf.reduce_sum(s, axis=[-1, -2]) / area
+            mask_loss = tf.reduce_sum(s, axis=[0, 1]) / area
             if old_num_pos > num_pos:
                 mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-        return loss_mask / tf.cast(total_pos, loss_mask.dtype)
+        return loss_mask / tf.cast(proto_h, loss_mask.dtype) / tf.cast(proto_w, loss_mask.dtype) / tf.cast(total_pos,
+                                                                                                           loss_mask.dtype)
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
