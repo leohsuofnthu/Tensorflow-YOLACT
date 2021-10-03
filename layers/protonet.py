@@ -25,7 +25,7 @@ class ProtoNet(tf.keras.layers.Layer):
         proto = tf.nn.relu(self.Conv3(proto))
 
         # upsampling + convolution
-        proto = tf.nn.relu(self.upSampling(proto))
+        proto = self.upSampling(proto)
         proto = tf.nn.relu(self.Conv4(proto))
 
         # final convolution
