@@ -154,9 +154,9 @@ def map_to_bbox(anchors, loc_pred):
 # Functions used by eval.py
 
 def intersection(box_a, box_b):
-    # unstack the ymin, xmin, ymax, xmax
-    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
-    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+    # unstack the xmin, ymin, xmax, ymax
+    xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(box_a, axis=-1)
+    xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(box_b, axis=-1)
 
     # calculate intersection
     all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=1))
@@ -177,14 +177,11 @@ def jaccard(box_a, box_b, is_crowd=False):
     # tf.print("pairwise inter", pairwise_inter)
 
     # calculate areaA, areaB
-    ymin_a, xmin_a, ymax_a, xmax_a = tf.unstack(box_a, axis=-1)
-    ymin_b, xmin_b, ymax_b, xmax_b = tf.unstack(box_b, axis=-1)
+    xmin_a, ymin_a, xmax_a, ymax_a = tf.unstack(box_a, axis=-1)
+    xmin_b, ymin_b, xmax_b, ymax_b = tf.unstack(box_b, axis=-1)
 
     area_a = (xmax_a - xmin_a) * (ymax_a - ymin_a)
     area_b = (xmax_b - xmin_b) * (ymax_b - ymin_b)
-
-    # tf.print("area a", area_a)
-    # tf.print("area b", area_b)
 
     # create same shape of matrix as intersection
     pairwise_area = tf.expand_dims(area_a, axis=-1) + tf.expand_dims(area_b, axis=1)
@@ -200,46 +197,33 @@ def jaccard(box_a, box_b, is_crowd=False):
 def mask_iou(masks_a, masks_b, is_crowd=False):
     num_a = tf.shape(masks_a)[0]
     num_b = tf.shape(masks_b)[0]
-    # tf.print("num a", num_a)
-    # tf.print("num b", num_b)
 
     masks_a = tf.reshape(masks_a, (num_a, -1))
     masks_b = tf.reshape(masks_b, (num_b, -1))
-    # tf.print("masks a", tf.shape(masks_a))
-    # tf.print("masks b", tf.shape(masks_b))
 
     inter = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
-    # tf.print("inter", inter)
 
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
-    # tf.print("area a", tf.shape(area_a))
     area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=0)
-    # tf.print("area b", tf.shape(area_b))
-
-    # tf.print("a+b", tf.shape(area_a + area_b))
 
     union = area_a if is_crowd else (area_a + area_b - inter)
 
     return inter / union
 
 
-def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
+def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0.5):
     """post process after detection layer"""
-    # Todo: If score threshold is not zero
-    """
-    if score_threshold > 0:
-        keep = detection['score'] > score_threshold
-
-        for k in detection:
-            if k != 'proto':
-                detection[k] = detection[k][keep]
-    """
     dets = detection[batch_idx]
     dets = dets['detection']
-
     if dets is None:
         return None, None, None, None  # Warning, this is 4 copies of the same thing
-    elif tf.size(dets['score']) == 0:
+
+    keep = tf.squeeze(tf.where(dets['score'] > score_threshold))
+    for k in dets.keys():
+        if k != 'proto':
+            dets[k] = tf.gather(dets[k], keep)
+
+    if tf.size(dets['score']) == 0:
         return None, None, None, None  # Warning, this is 4 copies of the same thing
 
     classes = dets['class']
@@ -247,8 +231,13 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     scores = dets['score']
     masks = dets['mask']
     proto_pred = dets['proto']
-    # tf.print("proto pred after detection", tf.shape(proto_pred))
-    # tf.print("masks after detection", tf.shape(masks))
+
+    if tf.rank(masks) == 1:
+        masks = tf.expand_dims(masks, axis=0)
+        classes = tf.expand_dims(classes, axis=0)
+        boxes = tf.expand_dims(boxes, axis=0)
+        scores = tf.expand_dims(scores, axis=0)
+
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
     pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
