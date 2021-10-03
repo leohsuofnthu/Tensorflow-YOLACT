@@ -8,46 +8,6 @@ import tensorflow as tf
 
 
 # -----------------------------------------------------------------------------------------
-# Functions used by utils/augmentation.py
-
-def bboxes_intersection(bbox_ref, bboxes):
-    """Compute relative intersection between a reference box and a
-    collection of bounding boxes. Namely, compute the quotient between
-    intersection area and box area.
-    Args:
-      bbox_ref: (N, 4) or (4,) Tensor with reference bounding box(es).
-      bboxes: (N, 4) Tensor, collection of bounding boxes.
-    Return:
-      (N,) Tensor with relative intersection.
-    """
-    # tf.print("ref bbox", tf.shape(bbox_ref))
-    # tf.print("bboxes", tf.shape(bboxes))
-
-    # Should be more efficient to first transpose.
-    bboxes = tf.transpose(bboxes)
-    bbox_ref = tf.transpose(bbox_ref)
-
-    # Intersection bbox and volume.
-    int_ymin = tf.maximum(bboxes[0], bbox_ref[0])
-    int_xmin = tf.maximum(bboxes[1], bbox_ref[1])
-    int_ymax = tf.minimum(bboxes[2], bbox_ref[2])
-    int_xmax = tf.minimum(bboxes[3], bbox_ref[3])
-    h = tf.maximum(int_ymax - int_ymin, 0.)
-    w = tf.maximum(int_xmax - int_xmin, 0.)
-
-    # Volumes.
-    inter_vol = h * w
-    bboxes_vol = (bboxes[2] - bboxes[0]) * (bboxes[3] - bboxes[1])
-
-    # tf.print("inter vol", inter_vol)
-    # tf.print("bboxes vol", bboxes_vol)
-
-    return tf.where(
-        tf.equal(bboxes_vol, 0.0),
-        tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
-
-
-# -----------------------------------------------------------------------------------------
 # Functions used by loss/loss_yolact.py (mask loss)
 
 # mapping from [xmin, ymin, xmax, ymax] to [cx, cy, w, h]
@@ -72,24 +32,24 @@ def crop(pred, boxes):
     # pred [num_obj, 138, 138], gt [num_bboxes, 4]
     # sanitize coordination (make sure the bboxes are in range 0 <= x, y <= image size)
     shape_pred = tf.shape(pred)
-    pred_w = shape_pred[1]
-    pred_h = shape_pred[2]
+    pred_w = shape_pred[0]
+    pred_h = shape_pred[1]
 
     xmin, xmax = sanitize_coordinates(boxes[:, 0], boxes[:, 2], pred_w, padding=1)
     ymin, ymax = sanitize_coordinates(boxes[:, 1], boxes[:, 3], pred_h, padding=1)
 
-    cols = tf.broadcast_to(tf.range(pred_h), shape_pred)
-    rows = tf.broadcast_to(tf.range(pred_w)[..., None], shape_pred)
+    rows = tf.broadcast_to(tf.range(pred_w)[None, :, None], shape_pred)
+    cols = tf.broadcast_to(tf.range(pred_h)[:, None, None], shape_pred)
 
-    xmin = tf.broadcast_to(tf.reshape(xmin, [-1, 1, 1]), shape_pred)
-    ymin = tf.broadcast_to(tf.reshape(ymin, [-1, 1, 1]), shape_pred)
-    xmax = tf.broadcast_to(tf.reshape(xmax, [-1, 1, 1]), shape_pred)
-    ymax = tf.broadcast_to(tf.reshape(ymax, [-1, 1, 1]), shape_pred)
+    xmin = xmin[None, None, :]
+    ymin = ymin[None, None, :]
+    xmax = xmax[None, None, :]
+    ymax = ymax[None, None, :]
 
-    mask_left = (cols >= tf.cast(xmin, cols.dtype))
-    mask_right = (cols <= tf.cast(xmax, cols.dtype))
-    mask_bottom = (rows >= tf.cast(ymin, rows.dtype))
-    mask_top = (rows <= tf.cast(ymax, rows.dtype))
+    mask_left = (rows >= tf.cast(xmin, cols.dtype))
+    mask_right = (rows <= tf.cast(xmax, cols.dtype))
+    mask_bottom = (cols >= tf.cast(ymin, rows.dtype))
+    mask_top = (cols <= tf.cast(ymax, rows.dtype))
 
     crop_mask = tf.math.logical_and(tf.math.logical_and(mask_left, mask_right),
                                     tf.math.logical_and(mask_bottom, mask_top))
@@ -98,46 +58,65 @@ def crop(pred, boxes):
 
 # -----------------------------------------------------------------------------------------
 # Functions used by layers/detection.py
+def convert_to_corners(boxes):
+    """Changes the box format to corner coordinates
+
+    Arguments:
+      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
+        representing bounding boxes where each box is of the format
+        `[x, y, width, height]`.
+
+    Returns:
+      converted boxes with shape same as that of boxes.
+    """
+    return tf.concat(
+        [boxes[..., :2] - boxes[..., 2:] / 2.0, boxes[..., :2] + boxes[..., 2:] / 2.0],
+        axis=-1,
+    )
+
+
+def _convert_to_xywh(boxes):
+    """Changes the box format to center, width and height.
+
+    Arguments:
+      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
+        representing bounding boxes where each box is of the format
+        `[xmin, ymin, xmax, ymax]`.
+
+    Returns:
+      converted boxes with shape same as that of boxes.
+    """
+    return tf.concat(
+        [(boxes[..., :2] + boxes[..., 2:]) / 2.0, boxes[..., 2:] - boxes[..., :2]],
+        axis=-1,
+    )
+
 
 # decode the offset back to center form bounding box when evaluation and prediction
 def map_to_bbox(anchors, loc_pred):
-    # we use this variance also when we encode the offset
-    variances = [0.1, 0.2]
-
-    # convert anchor to center_form
-    anchor_h = anchors[:, 3] - anchors[:, 1]
-    anchor_w = anchors[:, 2] - anchors[:, 0]
-    anchor_cx = anchors[:, 0] + (anchor_w / 2)
-    anchor_cy = anchors[:, 1] + (anchor_h / 2)
-    # tf.print("cx", tf.shape(anchor_cx))
-
-    pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
-
-    new_cx = pred_cx * (anchor_w * variances[0]) + anchor_cx
-    new_cy = pred_cy * (anchor_h * variances[0]) + anchor_cy
-    new_w = tf.math.exp(pred_w * variances[1]) * anchor_w
-    new_h = tf.math.exp(pred_h * variances[1]) * anchor_h
-
-    ymin = new_cy - (new_h / 2)
-    xmin = new_cx - (new_w / 2)
-    ymax = new_cy + (new_h / 2)
-    xmax = new_cx + (new_w / 2)
-
-    decoded_boxes = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
-    # tf.print(tf.shape(decoded_boxes))
-
-    # tf.print("anchor", tf.shape(anchors))
-    # tf.print("pred", tf.shape(loc_pred))
-    return decoded_boxes
+    anchors = _convert_to_xywh(anchors)
+    _box_variance = tf.convert_to_tensor(
+        [0.1, 0.1, 0.2, 0.2], dtype=tf.float32
+    )
+    loc_pred = loc_pred * _box_variance
+    boxes = tf.concat(
+        [
+            loc_pred[:, :2] * anchors[:, 2:] + anchors[:, :2],
+            tf.math.exp(loc_pred[:, 2:]) * anchors[:, 2:],
+        ],
+        axis=-1,
+    )
+    boxes_transformed = convert_to_corners(boxes)
+    return boxes_transformed
 
 
 # -----------------------------------------------------------------------------------------
 # Functions used by eval.py
 
 def intersection(box_a, box_b):
-    # unstack the ymin, xmin, ymax, xmax
-    ymin_anchor, xmin_anchor, ymax_anchor, xmax_anchor = tf.unstack(box_a, axis=-1)
-    ymin_gt, xmin_gt, ymax_gt, xmax_gt = tf.unstack(box_b, axis=-1)
+    # unstack the xmin, ymin, xmax, ymax
+    xmin_anchor, ymin_anchor, xmax_anchor, ymax_anchor = tf.unstack(box_a, axis=-1)
+    xmin_gt, ymin_gt, xmax_gt, ymax_gt = tf.unstack(box_b, axis=-1)
 
     # calculate intersection
     all_pairs_max_xmin = tf.math.maximum(tf.expand_dims(xmin_anchor, axis=-1), tf.expand_dims(xmin_gt, axis=1))
@@ -158,14 +137,11 @@ def jaccard(box_a, box_b, is_crowd=False):
     # tf.print("pairwise inter", pairwise_inter)
 
     # calculate areaA, areaB
-    ymin_a, xmin_a, ymax_a, xmax_a = tf.unstack(box_a, axis=-1)
-    ymin_b, xmin_b, ymax_b, xmax_b = tf.unstack(box_b, axis=-1)
+    xmin_a, ymin_a, xmax_a, ymax_a = tf.unstack(box_a, axis=-1)
+    xmin_b, ymin_b, xmax_b, ymax_b = tf.unstack(box_b, axis=-1)
 
     area_a = (xmax_a - xmin_a) * (ymax_a - ymin_a)
     area_b = (xmax_b - xmin_b) * (ymax_b - ymin_b)
-
-    # tf.print("area a", area_a)
-    # tf.print("area b", area_b)
 
     # create same shape of matrix as intersection
     pairwise_area = tf.expand_dims(area_a, axis=-1) + tf.expand_dims(area_b, axis=1)
@@ -181,46 +157,33 @@ def jaccard(box_a, box_b, is_crowd=False):
 def mask_iou(masks_a, masks_b, is_crowd=False):
     num_a = tf.shape(masks_a)[0]
     num_b = tf.shape(masks_b)[0]
-    # tf.print("num a", num_a)
-    # tf.print("num b", num_b)
 
     masks_a = tf.reshape(masks_a, (num_a, -1))
     masks_b = tf.reshape(masks_b, (num_b, -1))
-    # tf.print("masks a", tf.shape(masks_a))
-    # tf.print("masks b", tf.shape(masks_b))
 
     inter = tf.matmul(masks_a, masks_b, transpose_a=False, transpose_b=True)
-    # tf.print("inter", inter)
 
     area_a = tf.expand_dims(tf.reduce_sum(masks_a, axis=-1), axis=-1)
-    # tf.print("area a", tf.shape(area_a))
     area_b = tf.expand_dims(tf.reduce_sum(masks_b, axis=-1), axis=0)
-    # tf.print("area b", tf.shape(area_b))
-
-    # tf.print("a+b", tf.shape(area_a + area_b))
 
     union = area_a if is_crowd else (area_a + area_b - inter)
 
     return inter / union
 
 
-def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0):
+def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0.5):
     """post process after detection layer"""
-    # Todo: If score threshold is not zero
-    """
-    if score_threshold > 0:
-        keep = detection['score'] > score_threshold
-
-        for k in detection:
-            if k != 'proto':
-                detection[k] = detection[k][keep]
-    """
     dets = detection[batch_idx]
     dets = dets['detection']
-
     if dets is None:
         return None, None, None, None  # Warning, this is 4 copies of the same thing
-    elif tf.size(dets['score']) == 0:
+
+    keep = tf.squeeze(tf.where(dets['score'] > score_threshold))
+    for k in dets.keys():
+        if k != 'proto':
+            dets[k] = tf.gather(dets[k], keep)
+
+    if tf.size(dets['score']) == 0:
         return None, None, None, None  # Warning, this is 4 copies of the same thing
 
     classes = dets['class']
@@ -228,14 +191,18 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
     scores = dets['score']
     masks = dets['mask']
     proto_pred = dets['proto']
-    # tf.print("proto pred after detection", tf.shape(proto_pred))
-    # tf.print("masks after detection", tf.shape(masks))
+
+    if tf.rank(masks) == 1:
+        masks = tf.expand_dims(masks, axis=0)
+        classes = tf.expand_dims(classes, axis=0)
+        boxes = tf.expand_dims(boxes, axis=0)
+        scores = tf.expand_dims(scores, axis=0)
+
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
-    pred_mask = tf.transpose(pred_mask, perm=(2, 0, 1))
     if crop_mask:
         masks = crop(pred_mask, boxes * float(tf.shape(pred_mask)[-1] / w))
-
+    masks = tf.transpose(masks, perm=[2, 0, 1])
     # intepolate to original size
     masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
                             method=intepolation_mode)
