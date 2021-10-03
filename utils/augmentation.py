@@ -172,7 +172,8 @@ class RandomSampleCrop(object):
             tf.shape(image),
             bounding_boxes=tf.expand_dims(boxes, 0),
             min_object_covered=self.overlaps[i],
-            aspect_ratio_range=(0.5, 2.0))
+            aspect_ratio_range=(0.5, 2.0),
+            max_attempts=30)
 
         # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
         # Be careful [ymin, xmin, ymax, xmax] used in tf.image functions
