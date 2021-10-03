@@ -98,37 +98,56 @@ def crop(pred, boxes):
 
 # -----------------------------------------------------------------------------------------
 # Functions used by layers/detection.py
+def convert_to_corners(boxes):
+    """Changes the box format to corner coordinates
+
+    Arguments:
+      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
+        representing bounding boxes where each box is of the format
+        `[x, y, width, height]`.
+
+    Returns:
+      converted boxes with shape same as that of boxes.
+    """
+    return tf.concat(
+        [boxes[..., :2] - boxes[..., 2:] / 2.0, boxes[..., :2] + boxes[..., 2:] / 2.0],
+        axis=-1,
+    )
+
+
+def _convert_to_xywh(boxes):
+    """Changes the box format to center, width and height.
+
+    Arguments:
+      boxes: A tensor of rank 2 or higher with a shape of `(..., num_boxes, 4)`
+        representing bounding boxes where each box is of the format
+        `[xmin, ymin, xmax, ymax]`.
+
+    Returns:
+      converted boxes with shape same as that of boxes.
+    """
+    return tf.concat(
+        [(boxes[..., :2] + boxes[..., 2:]) / 2.0, boxes[..., 2:] - boxes[..., :2]],
+        axis=-1,
+    )
+
 
 # decode the offset back to center form bounding box when evaluation and prediction
 def map_to_bbox(anchors, loc_pred):
-    # we use this variance also when we encode the offset
-    variances = [0.1, 0.2]
-
-    # convert anchor to center_form
-    anchor_h = anchors[:, 3] - anchors[:, 1]
-    anchor_w = anchors[:, 2] - anchors[:, 0]
-    anchor_cx = anchors[:, 0] + (anchor_w / 2)
-    anchor_cy = anchors[:, 1] + (anchor_h / 2)
-    # tf.print("cx", tf.shape(anchor_cx))
-
-    pred_cx, pred_cy, pred_w, pred_h = tf.unstack(loc_pred, axis=-1)
-
-    new_cx = pred_cx * (anchor_w * variances[0]) + anchor_cx
-    new_cy = pred_cy * (anchor_h * variances[0]) + anchor_cy
-    new_w = tf.math.exp(pred_w * variances[1]) * anchor_w
-    new_h = tf.math.exp(pred_h * variances[1]) * anchor_h
-
-    ymin = new_cy - (new_h / 2)
-    xmin = new_cx - (new_w / 2)
-    ymax = new_cy + (new_h / 2)
-    xmax = new_cx + (new_w / 2)
-
-    decoded_boxes = tf.stack([xmin, ymin, xmax, ymax], axis=-1)
-    # tf.print(tf.shape(decoded_boxes))
-
-    # tf.print("anchor", tf.shape(anchors))
-    # tf.print("pred", tf.shape(loc_pred))
-    return decoded_boxes
+    anchors = _convert_to_xywh(anchors)
+    _box_variance = tf.convert_to_tensor(
+        [0.1, 0.1, 0.2, 0.2], dtype=tf.float32
+    )
+    loc_pred = loc_pred * _box_variance
+    boxes = tf.concat(
+        [
+            loc_pred[:, :2] * anchors[:, 2:] + anchors[:, :2],
+            tf.math.exp(loc_pred[:, 2:]) * anchors[:, 2:],
+        ],
+        axis=-1,
+    )
+    boxes_transformed = convert_to_corners(boxes)
+    return boxes_transformed
 
 
 # -----------------------------------------------------------------------------------------
