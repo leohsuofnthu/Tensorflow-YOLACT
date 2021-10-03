@@ -8,46 +8,6 @@ import tensorflow as tf
 
 
 # -----------------------------------------------------------------------------------------
-# Functions used by utils/augmentation.py
-
-def bboxes_intersection(bbox_ref, bboxes):
-    """Compute relative intersection between a reference box and a
-    collection of bounding boxes. Namely, compute the quotient between
-    intersection area and box area.
-    Args:
-      bbox_ref: (N, 4) or (4,) Tensor with reference bounding box(es).
-      bboxes: (N, 4) Tensor, collection of bounding boxes.
-    Return:
-      (N,) Tensor with relative intersection.
-    """
-    # tf.print("ref bbox", tf.shape(bbox_ref))
-    # tf.print("bboxes", tf.shape(bboxes))
-
-    # Should be more efficient to first transpose.
-    bboxes = tf.transpose(bboxes)
-    bbox_ref = tf.transpose(bbox_ref)
-
-    # Intersection bbox and volume.
-    int_ymin = tf.maximum(bboxes[0], bbox_ref[0])
-    int_xmin = tf.maximum(bboxes[1], bbox_ref[1])
-    int_ymax = tf.minimum(bboxes[2], bbox_ref[2])
-    int_xmax = tf.minimum(bboxes[3], bbox_ref[3])
-    h = tf.maximum(int_ymax - int_ymin, 0.)
-    w = tf.maximum(int_xmax - int_xmin, 0.)
-
-    # Volumes.
-    inter_vol = h * w
-    bboxes_vol = (bboxes[2] - bboxes[0]) * (bboxes[3] - bboxes[1])
-
-    # tf.print("inter vol", inter_vol)
-    # tf.print("bboxes vol", bboxes_vol)
-
-    return tf.where(
-        tf.equal(bboxes_vol, 0.0),
-        tf.zeros_like(inter_vol), inter_vol / bboxes_vol)
-
-
-# -----------------------------------------------------------------------------------------
 # Functions used by loss/loss_yolact.py (mask loss)
 
 # mapping from [xmin, ymin, xmax, ymax] to [cx, cy, w, h]
