@@ -77,9 +77,6 @@ class Anchor(object):
 
     def _encode_boxes(self, anchor_boxes, matched_gt_boxes):
         """Transforms the ground truth boxes into targets for training"""
-        anchor_boxes = self._convert_to_xywh(anchor_boxes)
-        matched_gt_boxes = self._convert_to_xywh(matched_gt_boxes)
-
         _box_variance = tf.convert_to_tensor(
             [0.1, 0.1, 0.2, 0.2], dtype=tf.float32
         )
