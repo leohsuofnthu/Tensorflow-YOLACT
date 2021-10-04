@@ -44,7 +44,7 @@ class ObjectDetectionDataset:
             raise ValueError('Illegal subset name.')
 
         # apply per-element transformation
-        dataset = dataset.map(map_func=parser)
+        dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
         dataset = dataset.batch(batch_size)
         dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
