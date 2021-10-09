@@ -32,7 +32,7 @@ MAX_MASKS_FOR_TRAIN = 100
 # Detection
 TOP_K = 200
 CONF_THRESHOLD = 0.05
-NMS_THRESHOLD = 0.5
+NMS_THRESHOLD = 0.3
 MAX_NUM_DETECTION = 100
 
 # -----------------------------------------------------------------

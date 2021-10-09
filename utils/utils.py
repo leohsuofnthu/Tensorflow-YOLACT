@@ -171,7 +171,7 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
     return inter / union
 
 
-def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0.5):
+def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0.3):
     """post process after detection layer"""
     dets = detection[batch_idx]
     dets = dets['detection']
