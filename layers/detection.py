@@ -60,8 +60,6 @@ class Detect(object):
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
 
     def _traditional_nms(self, boxes, masks, scores, classes, iou_threshold=0.5, top_k=200):
-        # xmin, xmax, ymin, ymax = tf.unstack(boxes, axis=-1)
-        # boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
         if tf.rank(boxes) < 2:
             boxes = tf.expand_dims(boxes, axis=0)
             scores = tf.expand_dims(scores, axis=-1)
@@ -82,7 +80,6 @@ class Detect(object):
             masks = tf.expand_dims(masks, axis=0)
 
         scores, idx = tf.math.top_k(scores, k=top_k)
-        # tf.print(scores)
         num_classes, num_dets = tf.shape(idx)[0], tf.shape(idx)[1]
         boxes = tf.gather(boxes, idx, axis=0)
         masks = tf.gather(masks, idx, axis=0)
@@ -94,24 +91,16 @@ class Detect(object):
 
         # fitler out the unwanted ROI
         iou_max = tf.reduce_max(iou, axis=1)
-        # tf.print(iou_max)
         idx_det = (iou_max <= iou_threshold)
-        # tf.print(idx_det)
-        # tf.print(tf.shape(idx_det))
 
         # second threshold
         second_threshold = (iou_max <= self.conf_threshold)
-        # tf.print(second_threshold)
         idx_det = tf.where(tf.logical_and(idx_det, second_threshold) == True)
-        # tf.print(tf.shape(idx_det))
         classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max))
-        # tf.print(classes)
         classes = tf.gather_nd(classes, idx_det)
-        # tf.print(classes)
         boxes = tf.gather_nd(boxes, idx_det)
         masks = tf.gather_nd(masks, idx_det)
         scores = tf.gather_nd(scores, idx_det)
-        # tf.print(tf.reduce_max(scores))
 
         # number of max detection = 100 (u can choose whatever u want)
         max_num_detection = tf.math.minimum(self.max_num_detection, tf.size(scores))
