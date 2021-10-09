@@ -51,12 +51,29 @@ class Detect(object):
             scores = tf.gather(cur_score, candidate_ROI_idx, axis=-1)
             boxes = tf.gather(decoded_boxes, candidate_ROI_idx)
             masks_coef = tf.gather(mask_pred, candidate_ROI_idx)
+            conf_score_id = tf.gather(conf_score_id, candidate_ROI_idx)
 
         # Fast NMS
         top_k = tf.math.minimum(self.top_k, tf.size(candidate_ROI_idx))
         boxes, masks, classes, scores = self._fast_nms(boxes, masks_coef, scores, self.nms_threshold, top_k)
 
         return {'box': boxes, 'mask': masks, 'class': classes, 'score': scores}
+
+    def _traditional_nms(self, boxes, masks, scores, classes, iou_threshold=0.5, top_k=200):
+        # xmin, xmax, ymin, ymax = tf.unstack(boxes, axis=-1)
+        # boxes = tf.stack([ymin, xmin, ymax, xmax], axis=-1)
+        if tf.rank(boxes) < 2:
+            boxes = tf.expand_dims(boxes, axis=0)
+            scores = tf.expand_dims(scores, axis=-1)
+            masks = tf.expand_dims(masks, axis=0)
+            classes = tf.expand_dims(classes, axis=0)
+        selected_indices = tf.image.non_max_suppression(
+            boxes, tf.reduce_max(scores, axis=0), top_k, iou_threshold)
+        boxes = tf.gather(boxes, selected_indices)
+        scores = tf.gather(tf.reduce_max(scores, axis=0), selected_indices)
+        masks = tf.gather(masks, selected_indices)
+        classes = tf.gather(classes, selected_indices)
+        return boxes, masks, classes, scores
 
     def _fast_nms(self, boxes, masks, scores, iou_threshold=0.5, top_k=200):
         if tf.rank(scores) == 1:
