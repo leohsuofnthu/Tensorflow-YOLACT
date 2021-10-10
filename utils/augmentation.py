@@ -159,9 +159,9 @@ class RandomSampleCrop(object):
 
     def __call__(self, image, masks, boxes, labels):
         # choose the min_object_covered value in self.sample_options
-        i = tf.random.uniform((), minval=0, maxval=tf.shape(self.overlaps)[0], dtype=tf.int32)
-        if self.overlaps[i] == 2.0:
-            return image, masks, boxes, labels
+        # i = tf.random.uniform((), minval=0, maxval=tf.shape(self.overlaps)[0], dtype=tf.int32)
+        # if self.overlaps[i] == 2.0:
+        #     return image, masks, boxes, labels
 
         # Geometric Distortions (img, bbox, mask)
         # boxes = tf.clip_by_value(boxes, clip_value_min=0, clip_value_max=1)  # just in case
@@ -171,7 +171,7 @@ class RandomSampleCrop(object):
         bbox_begin, bbox_size, distort_bbox = tf.image.sample_distorted_bounding_box(
             tf.shape(image),
             bounding_boxes=tf.expand_dims(boxes, 0),
-            min_object_covered=self.overlaps[i],
+            min_object_covered=0.1,
             aspect_ratio_range=(0.5, 2.0),
             max_attempts=30)
 
