@@ -94,7 +94,8 @@ class Detect(object):
         idx_det = (iou_max <= iou_threshold)
 
         # second threshold
-        second_threshold = (iou_max <= self.conf_threshold)
+        # second_threshold = (iou_max <= self.conf_threshold)
+        second_threshold = (scores > self.conf_threshold)
         idx_det = tf.where(tf.logical_and(idx_det, second_threshold) == True)
         classes = tf.broadcast_to(tf.expand_dims(tf.range(num_classes), axis=-1), tf.shape(iou_max))
         classes = tf.gather_nd(classes, idx_det)
