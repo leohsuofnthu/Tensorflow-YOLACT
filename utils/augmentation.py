@@ -162,7 +162,8 @@ class RandomSampleCrop(object):
         # i = tf.random.uniform((), minval=0, maxval=tf.shape(self.overlaps)[0], dtype=tf.int32)
         # if self.overlaps[i] == 2.0:
         #     return image, masks, boxes, labels
-
+        if tf.random.uniform([1]) > 0.5:
+            return image, masks, boxes, labels
         # Geometric Distortions (img, bbox, mask)
         # boxes = tf.clip_by_value(boxes, clip_value_min=0, clip_value_max=1)  # just in case
         x_min, y_min, x_max, y_max = tf.unstack(boxes, axis=-1)
