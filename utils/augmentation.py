@@ -45,7 +45,7 @@ class BackbonePreprocess(object):
 
 class RandomBrightness(object):
     # input image range: [0.0 ~ 255.0]
-    def __init__(self, delta=0.12):
+    def __init__(self, delta=32):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -80,7 +80,7 @@ class RandomSaturation(object):
 
 class RandomHue(object):
     # input image range: [0.0 ~ 255.0]
-    def __init__(self, delta=0.08):
+    def __init__(self, delta=0.3):
         self.delta = delta
 
     def __call__(self, image, masks=None, boxes=None, labels=None):
@@ -232,6 +232,7 @@ class Resize(object):
 
     def __call__(self, image, masks, boxes, labels):
         # resize the image to output size
+        image = tf.clip_by_value(image, clip_value_min=0.0, clip_value_max=255.0)
         image = tf.image.resize(image, [self.output_size, self.output_size],
                                 method=tf.image.ResizeMethod.BILINEAR)
 
