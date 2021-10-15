@@ -50,10 +50,34 @@ python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training im
 ### 1. Configuration for COCO, Pascal SBD
 The configuration for experiment can be adjust in ```config.py```. The default hyperparameters from original paper are already written as example for you to know how to customize it. You can adjust following parameters:
 ```bash
+| Parameters for Parser | Description |
+| --- | --- |
+| NUM_MAX_PAD | The maximum padding length for batching samples |
+| THRESHOLD_POS | The positive threshold iou for anchor mathcing |
+| THRESHOLD_NEG | The negative threshold iou for anchor mathcing |
 
+| Parameters for Model | Description |
+| --- | --- |
+| BACKBONE | The name of backbone model defined in `backbones_objects` |
+| IMG_SIZE | The input size of images|
+| PROTO_OUTPUT_SIZE | Output size of protonet|
+| FPN_CHANNELS | The Number of convolution channels used in FPN|
+| NUM_MASK | The number of predicted masks for linear combination|
 
+| Parameters for Loss | Description |
+| --- | --- |
+| LOSS_WEIGHT_CLS | The loss weight for classification |
+| LOSS_WEIGHT_BOX | The loss weight for bounding box |
+| LOSS_WEIGHT_MASK | The loss weight for mask prediction |
+| LOSS_WEIGHT_SEG | The loss weight for segamentation |
+| NEG_POS_RATIO | The neg/pos ratio for OHEM in classification |
 
-
+| Parameters for Detection | Description |
+| --- | --- |
+| CONF_THRESHOLD | The threshold for filtering possible detection by confidence score |
+| TOP_K | The maximum number of input possible detection for FastNMS |
+| NMS_THRESHOLD | The threshold for FastNMS |
+| MAX_NUM_DETECTION | The maximum number of detection|
 ```
 
 ### 2. Configuration for Custom Dataset (to be updated)
