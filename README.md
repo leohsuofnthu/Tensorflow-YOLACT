@@ -69,19 +69,19 @@ The configuration for experiment can be adjust in ```config.py```. The default h
 #### Parameters for Loss
 | Parameters for Loss | Description |
 | --- | --- |
-| LOSS_WEIGHT_CLS | The loss weight for classification. |
-| LOSS_WEIGHT_BOX | The loss weight for bounding box. |
-| LOSS_WEIGHT_MASK | The loss weight for mask prediction. |
-| LOSS_WEIGHT_SEG | The loss weight for segamentation. |
-| NEG_POS_RATIO | The neg/pos ratio for OHEM in classification. |
+| `LOSS_WEIGHT_CLS` | The loss weight for classification. |
+| `LOSS_WEIGHT_BOX` | The loss weight for bounding box. |
+| `LOSS_WEIGHT_MASK` | The loss weight for mask prediction. |
+| `LOSS_WEIGHT_SEG` | The loss weight for segamentation. |
+| `NEG_POS_RATIO` | The neg/pos ratio for OHEM in classification. |
 
 #### Parameters for Detection
 | Parameters | Description |
 | --- | --- |
-| CONF_THRESHOLD | The threshold for filtering possible detection by confidence score. |
-| TOP_K | The maximum number of input possible detection for FastNMS. |
-| NMS_THRESHOLD | The threshold for FastNMS. |
-| MAX_NUM_DETECTION | The maximum number of detection.|
+| `CONF_THRESHOLD` | The threshold for filtering possible detection by confidence score. |
+| `TOP_K` | The maximum number of input possible detection for FastNMS. |
+| `NMS_THRESHOLD` | The threshold for FastNMS. |
+| `MAX_NUM_DETECTION` | The maximum number of detection.|
 
 
 ### 2. Configuration for Custom Dataset (to be updated)
