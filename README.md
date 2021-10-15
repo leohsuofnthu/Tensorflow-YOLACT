@@ -49,7 +49,7 @@ python -m  data.coco_tfrecord_creator -train_image_dir 'path to your training im
 ## Training
 ### 1. Configuration for COCO, Pascal SBD
 The configuration for experiment can be adjust in ```config.py```. The default hyperparameters from original paper are already written as example for you to know how to customize it. You can adjust following parameters:
-```bash
+
 | Parameters for Parser | Description |
 | --- | --- |
 | NUM_MAX_PAD | The maximum padding length for batching samples |
@@ -78,7 +78,7 @@ The configuration for experiment can be adjust in ```config.py```. The default h
 | TOP_K | The maximum number of input possible detection for FastNMS |
 | NMS_THRESHOLD | The threshold for FastNMS |
 | MAX_NUM_DETECTION | The maximum number of detection|
-```
+
 
 ### 2. Configuration for Custom Dataset (to be updated)
 ```bash
