@@ -191,6 +191,8 @@ def prep_metrics(ap_data, dets, img, labels, detections=None, image_id=None):
                     if max_match_idx >= 0:
                         gt_used[max_match_idx] = True
                         ap_obj.push(score_func(i), True)
+                    else:
+                        ap_obj.push(score_func(i), False)
 
 
 def prep_benchmarks():
