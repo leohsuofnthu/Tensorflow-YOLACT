@@ -64,7 +64,7 @@ for image, labels in valid_dataset.take(10):
     final_m = np.zeros_like(masks[0][:, :, None])
     # show the prediction box
     for idx in range(bbox.shape[0]):
-        b = bbox[idx]
+        b = bbox[idx].astype(int)
         m = masks[idx][:, :, None]
         class_id = cls[idx]
         color_idx = class_id % len(COLORS)
@@ -88,7 +88,7 @@ for image, labels in valid_dataset.take(10):
         final_m = final_m + np.concatenate((m * color[0] / 255.0, m * color[1] / 255.0, m * color[2] / 255.0), axis=-1)
     # show the prediction box
     for idx in range(num_obj[0]):
-        b = gt_bbox[0][idx]
+        b = gt_bbox[0][idx].astype(int)
         # m = masks[idx][:, :, None]
         class_id = gt_cls[0][idx]
         color_idx = class_id % len(COLORS)
