@@ -25,33 +25,31 @@ class ObjectDetectionDataset:
         parser = coco_tfrecord_parser.Parser(anchor_instance=self.anchor_instance,
                                              mode=subset,
                                              **self.parser_params)
+
         # get tfrecord file names
+        tfrecord_pattern = os.path.join(self.tfrecord_dir, f"{subset}.*")
         filenames = tf.io.matching_files(os.path.join(self.tfrecord_dir, f"{subset}.*"))
-        num_shards = tf.cast(tf.size(filenames), tf.int64)
-        shards = tf.data.Dataset.from_tensor_slices(filenames)
-        # ignore reading order
-        ignore_order = tf.data.Options()
-        ignore_order.experimental_deterministic = False  # disable order, increase speed
+        dataset = tf.data.TFRecordDataset.list_files(tfrecord_pattern)
 
         # apply suffle and repeat only on traininig data
         if subset == 'train':
-            # shuffle the tfrecord filename every iteration (global shuffling)
-            shards = shards.shuffle(num_shards, reshuffle_each_iteration=True)
-            shard = shards.repeat()
-            # automatically interleaves reads from multiple files
-            dataset = tf.data.TFRecordDataset(shard)
-            # uses data as soon as it streams in, rather than in its original order
-            dataset = dataset.with_options(ignore_order)
-            # local shuffling
-            dataset = dataset.shuffle(buffer_size=2048)
+            dataset = dataset.shuffle(buffer_size=1000)
+            dataset = dataset.interleave(
+                tf.data.TFRecordDataset,
+                cycle_length=1,
+                block_length=1
+            )
         elif subset == 'val' or 'test':
-            dataset = tf.data.TFRecordDataset(shards)  # automatically interleaves reads from multiple files
+            dataset = tf.data.TFRecordDataset(filenames)  # automatically interleaves reads from multiple files
         else:
             raise ValueError('Illegal subset name.')
 
         # apply per-element transformation
         dataset = dataset.map(map_func=parser, num_parallel_calls=tf.data.experimental.AUTOTUNE)
+        dataset = dataset.repeat()
+        dataset = dataset.shuffle(buffer_size=1000)
         dataset = dataset.batch(batch_size)
+        dataset = dataset.shuffle(buffer_size=batch_size)
         dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
         return dataset
