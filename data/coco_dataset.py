@@ -43,7 +43,7 @@ class ObjectDetectionDataset:
             # uses data as soon as it streams in, rather than in its original order
             dataset = dataset.with_options(ignore_order)
             # local shuffling
-            dataset = dataset.shuffle(buffer_size=1024)
+            dataset = dataset.shuffle(buffer_size=2048)
         elif subset == 'val' or 'test':
             dataset = tf.data.TFRecordDataset(shards)  # automatically interleaves reads from multiple files
         else:
