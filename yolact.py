@@ -81,7 +81,7 @@ class Yolact(tf.keras.Model):
         # add weight decay
         for layer in model.layers:
             if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
-                layer.add_loss(lambda: tf.keras.regularizers.l2(self.weight_decay)(layer.kernel))
+                setattr(layer, 'kernel_regularizer', tf.keras.regularizers.L2(self.weight_decay))
         return model
 
     def freeze_BN(self, model):
