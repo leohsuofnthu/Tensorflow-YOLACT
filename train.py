@@ -3,13 +3,14 @@ import datetime
 import os
 
 import tensorflow as tf
+import tensorflow_addons as tfa
 # it s recommanded to use absl for tf 2.0
 from absl import app
 from absl import flags
 from absl import logging
 from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
-from config import RANDOM_SEED, get_params, MIXPRECISION
+from config import RANDOM_SEED, get_params, MIXPRECISION, FREEZEBN
 from data.coco_dataset import ObjectDetectionDataset
 from eval import evaluate
 from loss import loss_yolact
@@ -84,12 +85,18 @@ def main(argv):
     logging.info("Creating the model instance of YOLACT")
     model = Yolact(**model_params)
 
-    # add weight decay
-    for layer in model.layers:
-        if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
-            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
-        if hasattr(layer, 'bias_regularizer') and layer.use_bias:
-            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
+    # Prevent the training update for batch norm layer in pretrained backbone (freeze bn)
+    if FREEZEBN:
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.BatchNormalization):
+                layer.trainable = False
+
+    # # add weight decay
+    # for layer in model.layers:
+    #     if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
+    #         layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
+    #     if hasattr(layer, 'bias_regularizer') and layer.use_bias:
+    #         layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
 
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
@@ -109,7 +116,9 @@ def main(argv):
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
-    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
+    # Using SGDW from tenosrflow addons
+    optimizer = tfa.optimizers.SGDW(weight_decay=FLAGS.weight_decay, learning_rate=lr_schedule, momentum=FLAGS.momentum)
+    # optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss(**loss_params)
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
