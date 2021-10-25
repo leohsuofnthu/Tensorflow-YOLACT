@@ -3,7 +3,6 @@ import datetime
 import os
 
 import tensorflow as tf
-import tensorflow_addons as tfa
 # it s recommanded to use absl for tf 2.0
 from absl import app
 from absl import flags
