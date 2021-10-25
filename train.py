@@ -48,7 +48,9 @@ def train_step(model,
     # training using tensorflow gradient tape
     with tf.GradientTape() as tape:
         output = model(image, training=True)
+        regularization_loss = tf.reduce_sum(model.losses)
         loc_loss, conf_loss, mask_loss, seg_loss, total_loss = loss_fn(output, labels, num_cls)
+        total_loss = total_loss + regularization_loss
     grads = tape.gradient(total_loss, model.trainable_variables)
     optimizer.apply_gradients(zip(grads, model.trainable_variables))
     metrics.update_state(total_loss)
@@ -87,16 +89,16 @@ def main(argv):
 
     # Prevent the training update for batch norm layer in pretrained backbone (freeze bn)
     if FREEZEBN:
+        logging.info("Freezing BatchNorm Layers in BackBones")
         for layer in model.layers:
             if isinstance(layer, tf.keras.layers.BatchNormalization):
                 layer.trainable = False
 
-    # # add weight decay
-    # for layer in model.layers:
-    #     if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
-    #         layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
-    #     if hasattr(layer, 'bias_regularizer') and layer.use_bias:
-    #         layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.bias))
+    # add weight decay
+    logging.info("Adding weight decay (L2 norm) to the whole model")
+    for layer in model.layers:
+        if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
+            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
 
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
@@ -116,9 +118,7 @@ def main(argv):
     # Choose the Optimizor, Loss Function, and Metrics, learning rate schedule
     lr_schedule = learning_rate_schedule.Yolact_LearningRateSchedule(**lrs_schedule_params)
     logging.info("Initiate the Optimizer and Loss function...")
-    # Using SGDW from tenosrflow addons
-    optimizer = tfa.optimizers.SGDW(weight_decay=FLAGS.weight_decay, learning_rate=lr_schedule, momentum=FLAGS.momentum)
-    # optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
+    optimizer = tf.keras.optimizers.SGD(learning_rate=lr_schedule, momentum=FLAGS.momentum)
     criterion = loss_yolact.YOLACTLoss(**loss_params)
     train_loss = tf.keras.metrics.Mean('train_loss', dtype=tf.float32)
     loc = tf.keras.metrics.Mean('loc_loss', dtype=tf.float32)
