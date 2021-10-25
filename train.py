@@ -87,19 +87,6 @@ def main(argv):
     logging.info("Creating the model instance of YOLACT")
     model = Yolact(**model_params)
 
-    # Prevent the training update for batch norm layer in pretrained backbone (freeze bn)
-    if FREEZEBN:
-        logging.info("Freezing BatchNorm Layers in BackBones")
-        for layer in model.layers:
-            if isinstance(layer, tf.keras.layers.BatchNormalization):
-                layer.trainable = False
-
-    # add weight decay
-    logging.info("Adding weight decay (L2 norm) to the whole model")
-    for layer in model.layers:
-        if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
-            layer.add_loss(lambda: tf.keras.regularizers.l2(FLAGS.weight_decay)(layer.kernel))
-
     # -----------------------------------------------------------------
     # Creating dataloaders for training and validation
     logging.info("Creating the dataloader from: %s..." % FLAGS.tfrecord_dir)

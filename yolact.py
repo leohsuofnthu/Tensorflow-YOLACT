@@ -26,6 +26,8 @@ class Yolact(tf.keras.Model):
     def __init__(self,
                  backbone,
                  fpn_channels,
+                 weight_decay,
+                 freeze_bn,
                  num_class,
                  num_mask,
                  anchor_params,
@@ -39,16 +41,28 @@ class Yolact(tf.keras.Model):
         except:
             raise Exception(f'Backbone option of {backbone} is not supported yet!!!')
 
+        # Weight decay for each Conv2D and Dense Layers
+        self.weight_decay = weight_decay
+        self.freezebn = freeze_bn
+
         # extract certain feature maps for FPN
         self.backbone = tf.keras.Model(inputs=base_model.input,
                                        outputs=[base_model.get_layer(x).output for x in out])
+        self.backbone = self.init_weights_decay(self.backbone)
+        if self.freezebn:
+            self.backbone = self.freeze_BN(self.backbone)
+
         # create remain parts of model
         self.backbone_fpn = FeaturePyramidNeck(fpn_channels)
+        self.backbone_fpn = self.init_weights_decay(self.backbone_fpn)
+
         self.protonet = ProtoNet(num_mask)
+        self.protonet = self.init_weights_decay(self.protonet)
 
         # semantic segmentation branch to boost feature richness
         # predict num_class - 1
-        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class - 1, 1, 1, padding="same")
+        self.semantic_segmentation = tf.keras.layers.Conv2D(num_class - 1, 1, 1, padding="same",
+                                                            kernel_regularizer=tf.keras.regularizers.L2(weight_decay))
 
         # instance of anchor object
         self.anchor_instance = Anchor(**anchor_params)
@@ -58,25 +72,24 @@ class Yolact(tf.keras.Model):
 
         # shared prediction head
         self.predictionHead = PredictionModule(256, len(anchor_params["aspect_ratio"]), num_class, num_mask)
+        self.predictionHead = self.init_weights_decay(self.predictionHead)
 
         # detection layer
         self.detect = Detect(anchors=priors, **detect_params)
 
-    def init_weights(self):
-        """
-        Initial all Conv layers with xavier (except the conv layer in backbone),
-        Tensorflow conv layer already have default settings
+    def init_weights_decay(self, model):
+        # add weight decay
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.Conv2D) or isinstance(layer, tf.keras.layers.Dense):
+                layer.add_loss(lambda: tf.keras.regularizers.l2(self.weight_decay)(layer.kernel))
+        return model
 
-        # tf.keras.layers.Conv2D(
-        #     filters, kernel_size, strides=(1, 1), padding='valid',
-        #     data_format=None, dilation_rate=(1, 1), groups=1, activation=None,
-        #     use_bias=True, kernel_initializer='glorot_uniform',
-        #     bias_initializer='zeros', kernel_regularizer=None,
-        #     bias_regularizer=None, activity_regularizer=None, kernel_constraint=None,
-        #     bias_constraint=None, **kwargs)
-
-        """
-        return None
+    def freeze_BN(self, model):
+        # freeze the batchnorm in backbone model
+        for layer in model.layers:
+            if isinstance(layer, tf.keras.layers.BatchNormalization):
+                layer.trainable = False
+        return model
 
     def call(self, inputs):
         # backbone(ResNet + FPN)

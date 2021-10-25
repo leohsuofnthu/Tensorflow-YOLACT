@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class ProtoNet(tf.keras.layers.Layer):
+class ProtoNet(tf.keras.Model):
     """
         Creating the component of ProtoNet
         Arguments:

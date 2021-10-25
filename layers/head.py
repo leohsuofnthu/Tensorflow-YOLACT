@@ -1,7 +1,7 @@
 import tensorflow as tf
 
 
-class PredictionModule(tf.keras.layers.Layer):
+class PredictionModule(tf.keras.Model):
     """
         Create shared prediction module
     """

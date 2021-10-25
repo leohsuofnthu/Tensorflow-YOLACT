@@ -2,7 +2,7 @@ import tensorflow as tf
 from tensorflow.python.keras.layers.preprocessing.image_preprocessing import ResizeMethod
 
 
-class FeaturePyramidNeck(tf.keras.layers.Layer):
+class FeaturePyramidNeck(tf.keras.Model):
     """
         Creating the backbone component of feature Pyramid Network
         Arguments:

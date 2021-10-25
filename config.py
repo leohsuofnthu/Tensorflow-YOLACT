@@ -21,6 +21,7 @@ PROTO_OUTPUT_SIZE = 138
 FPN_CHANNELS = 256
 NUM_MASK = 32
 FREEZEBN = True
+WEIGHT_DECAY = 5e-4
 
 # Loss
 LOSS_WEIGHT_CLS = 1
@@ -33,7 +34,7 @@ MAX_MASKS_FOR_TRAIN = 100
 # Detection
 TOP_K = 200
 CONF_THRESHOLD = 0.05
-NMS_THRESHOLD = 0.3
+NMS_THRESHOLD = 0.5
 MAX_NUM_DETECTION = 100
 
 # -----------------------------------------------------------------
@@ -237,6 +238,8 @@ def get_params(dataset_name):
     model_params = {
         "backbone": BACKBONE,
         "fpn_channels": FPN_CHANNELS,
+        "weight_decay": WEIGHT_DECAY,
+        'freeze_bn': FREEZEBN,
         "num_class": NUM_CLASSES[dataset_name],
         "num_mask": NUM_MASK,
         "anchor_params": anchor_params,
