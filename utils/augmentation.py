@@ -199,7 +199,6 @@ class RandomSampleCrop(object):
         new_bboxes = tf.clip_by_value(new_bboxes, clip_value_min=0, clip_value_max=1)
 
         # deal with negative value of bbox
-        new_bboxes = tf.clip_by_value(new_bboxes, clip_value_min=0, clip_value_max=1)
         y_min, x_min, y_max, x_max = tf.unstack(new_bboxes, axis=-1)
         new_bboxes = tf.stack([x_min, y_min, x_max, y_max], axis=-1)
         return cropped_image, cropped_masks, new_bboxes, labels
@@ -255,13 +254,12 @@ class Resize(object):
         h_keep_idxs = tf.cast(h > self.discard_h, tf.int32)
         keep_idxs = w_keep_idxs * h_keep_idxs
         # Make sure there is at least 1 ground truth
-        if tf.size(keep_idxs) < 1:
+        if tf.reduce_sum(keep_idxs) < 1:
             return image, masks, boxes, labels
 
         boxes = tf.boolean_mask(boxes, keep_idxs)
         masks = tf.boolean_mask(masks, keep_idxs)
         labels = tf.boolean_mask(labels, keep_idxs)
-
         return image, masks, boxes, labels
 
 
