@@ -56,5 +56,3 @@ class ObjectDetectionDataset:
         dataset = dataset.prefetch(buffer_size=tf.data.experimental.AUTOTUNE)
 
         return dataset
-
-        return dataset
