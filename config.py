@@ -20,7 +20,7 @@ IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
 FPN_CHANNELS = 256
 NUM_MASK = 32
-FREEZEBN = True
+FREEZEBN = False  # True if batch size is small
 WEIGHT_DECAY = 5e-4
 
 # Loss

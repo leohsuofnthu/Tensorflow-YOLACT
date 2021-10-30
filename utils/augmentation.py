@@ -155,7 +155,7 @@ class RandomExpand(object):
 class RandomSampleCrop(object):
     def __init__(self):
         # if 0.01 means random crop image, if 2.0 means use original
-        self.overlaps = tf.constant([0.01, 0.1, 0.3, 0.5, 0.7, 0.9, 2.0], dtype=tf.float32)
+        self.overlaps = tf.constant([0.1, 0.3, 0.5, 0.7, 0.9, 2.0], dtype=tf.float32)
 
     def __call__(self, image, masks, boxes, labels):
         # choose the min_object_covered value in self.sample_options
@@ -174,7 +174,7 @@ class RandomSampleCrop(object):
             bounding_boxes=tf.expand_dims(boxes, 0),
             min_object_covered=self.overlaps[i],
             aspect_ratio_range=(0.5, 2.0),
-            max_attempts=100)
+            max_attempts=50)
 
         # the distort box is the area of the cropped image, original image will be [0, 0, 1, 1]
         # Be careful [ymin, xmin, ymax, xmax] used in tf.image functions
