@@ -13,12 +13,14 @@ class PredictionModule(tf.keras.Model):
         self.num_mask = num_mask
 
         self.Conv = tf.keras.layers.Conv2D(out_channels, 3, 1, padding="same")
+        self.Conv2 = tf.keras.layers.Conv2D(out_channels, 3, 1, padding="same")
         self.classConv = tf.keras.layers.Conv2D(self.num_anchors_per_point * self.num_class, 3, 1, padding="same")
         self.boxConv = tf.keras.layers.Conv2D(self.num_anchors_per_point * 4, 3, 1, padding="same")
         self.maskConv = tf.keras.layers.Conv2D(self.num_anchors_per_point * self.num_mask, 3, 1, padding="same")
 
     def call(self, p):
         p = tf.nn.relu(self.Conv(p))
+        p = tf.nn.relu(self.Conv2(p))
 
         pred_class = self.classConv(p)
         pred_box = self.boxConv(p)
