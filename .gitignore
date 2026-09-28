@@ -148,7 +148,7 @@ cython_debug/
 /data/benchmark
 /checkpoints
 /logs
-/weights
+/weights/**
 !/weights/placeholder
 !/weights/README.md
 /results
