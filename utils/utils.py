@@ -171,12 +171,18 @@ def mask_iou(masks_a, masks_b, is_crowd=False):
     return inter / union
 
 
-def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_mask=True, score_threshold=0.5):
-    """post process after detection layer"""
+def postprocess(detection, width, height, batch_idx, intepolation_mode="bilinear",
+                crop_mask=True, score_threshold=0.5):
+    """Post-process detections into class/score/box/mask tensors.
+
+    Args:
+        width: image width (network or original, matching `boxes` units)
+        height: image height
+    """
     dets = detection[batch_idx]
     dets = dets['detection']
     if dets is None:
-        return None, None, None, None  # Warning, this is 4 copies of the same thing
+        return None, None, None, None
 
     keep = tf.squeeze(tf.where(dets['score'] > score_threshold))
     for k in dets.keys():
@@ -184,7 +190,7 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
             dets[k] = tf.gather(dets[k], keep)
 
     if tf.size(dets['score']) == 0:
-        return None, None, None, None  # Warning, this is 4 copies of the same thing
+        return None, None, None, None
 
     classes = dets['class']
     boxes = dets['box']
@@ -198,17 +204,28 @@ def postprocess(detection, w, h, batch_idx, intepolation_mode="bilinear", crop_m
         boxes = tf.expand_dims(boxes, axis=0)
         scores = tf.expand_dims(scores, axis=0)
 
+    # Assembly: M = sigmoid(P C^T)  — paper Eq. (1)
     pred_mask = tf.linalg.matmul(proto_pred, masks, transpose_a=False, transpose_b=True)
     pred_mask = tf.nn.sigmoid(pred_mask)
+
     if crop_mask:
-        masks = crop(pred_mask, boxes * float(tf.shape(pred_mask)[0] / w))
-    masks = tf.transpose(masks, perm=[2, 0, 1])
-    # intepolate to original size
-    masks = tf.image.resize(tf.expand_dims(masks, axis=-1), [w, h],
-                            method=intepolation_mode)
-    # binarized the mask
+        proto_h = tf.cast(tf.shape(pred_mask)[0], tf.float32)
+        proto_w = tf.cast(tf.shape(pred_mask)[1], tf.float32)
+        boxes_f = tf.cast(boxes, tf.float32)
+        boxes_proto = tf.stack([
+            boxes_f[:, 0] * (proto_w / tf.cast(width, tf.float32)),
+            boxes_f[:, 1] * (proto_h / tf.cast(height, tf.float32)),
+            boxes_f[:, 2] * (proto_w / tf.cast(width, tf.float32)),
+            boxes_f[:, 3] * (proto_h / tf.cast(height, tf.float32)),
+        ], axis=-1)
+        pred_mask = crop(pred_mask, boxes_proto)
+
+    masks = tf.transpose(pred_mask, perm=[2, 0, 1])
+    # tf.image.resize size is [height, width]
+    masks = tf.image.resize(
+        tf.expand_dims(masks, axis=-1), [height, width], method=intepolation_mode
+    )
     masks = tf.cast(masks + 0.5, tf.int64)
     masks = tf.squeeze(tf.cast(masks, tf.float32))
-    # tf.print("masks after postprecessing", tf.shape(masks))
 
     return classes, scores, boxes, masks

@@ -3,11 +3,10 @@ import datetime
 import os
 
 import tensorflow as tf
-# it s recommanded to use absl for tf 2.0
+# Recommended to use absl for TF 2.x
 from absl import app
 from absl import flags
 from absl import logging
-from tensorflow.keras.mixed_precision import experimental as mixed_precision
 
 from config import RANDOM_SEED, get_params, MIXPRECISION
 from data.coco_dataset import ObjectDetectionDataset
@@ -58,10 +57,9 @@ def main(argv):
     # set fixed random seed, load config files
     tf.random.set_seed(RANDOM_SEED)
 
-    # using mix precision or not
+    # Mixed precision (TF 2.4+)
     if MIXPRECISION:
-        policy = mixed_precision.Policy('mixed_float16')
-        mixed_precision.set_policy(policy)
+        tf.keras.mixed_precision.set_global_policy('mixed_float16')
 
     # get params for model
     train_iter, input_size, num_cls, lrs_schedule_params, loss_params, parser_params, model_params = get_params(
@@ -199,7 +197,12 @@ def main(argv):
             # Saving the weights:
             if mask_map > best_masks_map:
                 best_masks_map = mask_map
-                model.save_weights(f'{FLAGS.weights}/weights_{FLAGS.name}_{str(best_masks_map)}.h5')
+                os.makedirs(FLAGS.weights, exist_ok=True)
+                weight_path = os.path.join(
+                    FLAGS.weights, f'weights_{FLAGS.name}_{best_masks_map:.2f}.weights.h5'
+                )
+                model.save_weights(weight_path)
+                logging.info('Saved best weights to %s', weight_path)
 
             # reset the metrics
             train_loss.reset_states()

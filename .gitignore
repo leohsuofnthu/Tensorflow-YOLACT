@@ -149,3 +149,7 @@ cython_debug/
 /checkpoints
 /logs
 /weights
+!/weights/placeholder
+!/weights/README.md
+/results
+.idea/

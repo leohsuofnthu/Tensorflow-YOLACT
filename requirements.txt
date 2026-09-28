@@ -1,0 +1,14 @@
+# Pinned for a modern TF 2.x / Keras 3 stack (verified on Windows + TF 2.20).
+# Prefer a fresh venv: python -m venv .venv && pip install -r requirements.txt
+
+tensorflow>=2.15,<2.21
+numpy>=1.26,<2.0
+opencv-python>=4.8,<4.12
+absl-py>=2.0
+Pillow>=10.0
+contextlib2>=0.6
+h5py>=3.10,<3.12
+pytest>=7.0
+
+# COCO TFRecord masks / JSON export / official COCO eval
+pycocotools>=2.0.6

@@ -39,8 +39,10 @@ class YOLACTLoss(object):
         # calculate num_pos
         loc_loss = self._loss_location(pred_offset, box_targets, positiveness) * self._loss_weight_box
         conf_loss = self._loss_class(pred_cls, cls_targets, num_classes, positiveness) * self._loss_weight_cls
-        mask_loss = self._loss_mask(proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
-                                    max_gt_for_anchors, max_masks_for_train=100) * self._loss_weight_mask
+        mask_loss = self._loss_mask(
+            proto_out, pred_mask_coef, masks, positiveness, max_id_for_anchors,
+            max_gt_for_anchors, max_masks_for_train=self._max_masks_for_train
+        ) * self._loss_weight_mask
         seg_loss = self._loss_semantic_segmentation(seg, masks, classes, num_obj) * self._loss_weight_seg
         total_loss = loc_loss + conf_loss + mask_loss + seg_loss
         return loc_loss, conf_loss, mask_loss, seg_loss, total_loss
@@ -84,7 +86,7 @@ class YOLACTLoss(object):
 
         num_pos = tf.expand_dims(
             tf.reduce_sum(tf.cast((positiveness == 1), tf.int32), axis=-1), axis=-1)
-        num_neg = tf.clip_by_value(num_pos * 3, clip_value_min=0,
+        num_neg = tf.clip_by_value(num_pos * self._neg_pos_ratio, clip_value_min=0,
                                    clip_value_max=tf.shape(positiveness)[-1] - 1)
 
         negative_bool = tf.broadcast_to((idx_rank < num_neg), tf.shape(idx_rank))
@@ -168,7 +170,8 @@ class YOLACTLoss(object):
             if old_num_pos > num_pos:
                 mask_loss *= tf.cast((old_num_pos / num_pos), mask_loss.dtype)
             loss_mask += tf.reduce_sum(mask_loss)
-        return loss_mask / tf.cast(total_pos, loss_mask.dtype)
+        # Avoid div-by-zero when a batch has no positive anchors
+        return loss_mask / tf.cast(tf.maximum(total_pos, 1), loss_mask.dtype)
 
     def _loss_semantic_segmentation(self, pred_seg, mask_gt, classes, num_obj):
 
@@ -190,11 +193,12 @@ class YOLACTLoss(object):
             masks = tf.cast((masks > 0.5), seg.dtype)
             masks = tf.squeeze(masks)
 
-            # obj_mask shape (objects, 138, 138)
+            # obj_mask shape (objects, H, W); class ids are 1..C (0=background)
+            # seg has C = num_classes-1 channels, so map to 0..C-1 like original YOLACT
             obj_mask = masks[:objects]
-            obj_cls = tf.expand_dims(cls[:objects], axis=-1)
+            obj_cls = tf.expand_dims(tf.cast(cls[:objects], tf.int32) - 1, axis=-1)
 
-            # create empty ground truth (138, 138, num_cls)
+            # create empty ground truth (H, W, num_cls)
             seg_gt = tf.zeros_like(seg)
             seg_gt = tf.transpose(seg_gt, perm=(2, 0, 1))
             seg_gt = tf.tensor_scatter_nd_add(seg_gt, indices=obj_cls, updates=obj_mask)

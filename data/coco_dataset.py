@@ -37,15 +37,15 @@ class ObjectDetectionDataset:
         if subset == 'train':
             # shuffle the tfrecord filename every iteration (global shuffling)
             shards = shards.shuffle(num_shards, reshuffle_each_iteration=True)
-            shard = shards.repeat()
+            shards = shards.repeat()
             # automatically interleaves reads from multiple files
-            dataset = tf.data.TFRecordDataset(shard)
+            dataset = tf.data.TFRecordDataset(shards)
             # uses data as soon as it streams in, rather than in its original order
             dataset = dataset.with_options(ignore_order)
             # local shuffling
             dataset = dataset.shuffle(buffer_size=2048)
-        elif subset == 'val' or 'test':
-            dataset = tf.data.TFRecordDataset(shards)  # automatically interleaves reads from multiple files
+        elif subset in ('val', 'test'):
+            dataset = tf.data.TFRecordDataset(shards)
         else:
             raise ValueError('Illegal subset name.')
 

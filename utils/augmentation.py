@@ -207,8 +207,8 @@ class RandomSampleCrop(object):
 
 class RandomMirror(object):
     # bbox [xmin, ymin, xmax, ymax]
-    def __int__(self):
-        ...
+    def __init__(self):
+        pass
 
     def __call__(self, image, masks, boxes, labels=None):
         # random mirroring with probability 0.5

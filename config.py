@@ -15,13 +15,13 @@ THRESHOLD_POS = 0.5
 THRESHOLD_NEG = 0.4
 
 # Model
-BACKBONE = "resnet50"
+BACKBONE = 'resnet50'
 IMG_SIZE = 550
 PROTO_OUTPUT_SIZE = 138
 FPN_CHANNELS = 256
 NUM_MASK = 32
 
-# Loss
+# Loss (paper defaults)
 LOSS_WEIGHT_CLS = 1
 LOSS_WEIGHT_BOX = 1.5
 LOSS_WEIGHT_MASK = 6.125
@@ -36,44 +36,50 @@ NMS_THRESHOLD = 0.3
 MAX_NUM_DETECTION = 100
 
 # -----------------------------------------------------------------
+# Backbone feature map layer names for FPN (approx. strides 8 / 16 / 32)
 
-# Adding any backbone u want as long as the output size are: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
-backbones_objects = dict({
-    "resnet50": tf.keras.applications.ResNet50(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                               include_top=False,
-                                               weights='imagenet'),
-    "resnet101": tf.keras.applications.ResNet101(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                                 include_top=False,
-                                                 weights='imagenet'),
+backbones_extracted = {
+    'resnet50': ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
+    'resnet101': ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
+    'mobilenetv2': ['block_5_add', 'block_7_add', 'block_14_add'],
+    'efficientNet-B0': ['block3b_add', 'block4c_add', 'block6d_add'],
+}
 
-    "mobilenetv2": tf.keras.applications.MobileNetV2(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                                     include_top=False,
-                                                     weights='imagenet'),
+backbones_preprocess = {
+    'resnet50': tf.keras.applications.resnet50.preprocess_input,
+    'resnet101': tf.keras.applications.resnet50.preprocess_input,
+    'mobilenetv2': tf.keras.applications.mobilenet_v2.preprocess_input,
+    'efficientNet-B0': tf.keras.applications.efficientnet.preprocess_input,
+}
 
-    "efficientNet-B0": tf.keras.applications.EfficientNetB0(input_shape=(IMG_SIZE, IMG_SIZE, 3),
-                                                            include_top=False,
-                                                            weights='imagenet')
 
-})
+def build_backbone(name, img_size=IMG_SIZE, weights='imagenet'):
+    """Lazily construct a single backbone (avoids loading all models on import)."""
+    builders = {
+        'resnet50': tf.keras.applications.ResNet50,
+        'resnet101': tf.keras.applications.ResNet101,
+        'mobilenetv2': tf.keras.applications.MobileNetV2,
+        'efficientNet-B0': tf.keras.applications.EfficientNetB0,
+    }
+    if name not in builders:
+        raise ValueError(
+            f"Backbone '{name}' is not supported. Choose from: {list(builders)}"
+        )
+    if name not in backbones_extracted:
+        raise ValueError(f"No FPN extraction layers defined for backbone '{name}'.")
 
-# Extract the layer have following: (69, 69), (35, 35), (18, 18) [if using 550 as img size]
-# I just randomly choose layers for efficeintNet and MobilNetV2 just to get same shape
-backbones_extracted = dict({
-    "resnet50": ['conv3_block4_out', 'conv4_block6_out', 'conv5_block3_out'],
-    "resnet101": ['conv3_block4_out', 'conv4_block23_out', 'conv5_block3_out'],
-    "mobilenetv2": ['block_5_add', 'block_7_add', 'block_14_add'],
-    "efficientNet-B0": ['block3b_add', 'block4c_add', 'block6d_add']
-})
+    base = builders[name](
+        input_shape=(img_size, img_size, 3),
+        include_top=False,
+        weights=weights,
+    )
+    return base, backbones_extracted[name]
 
-# corresponded backbone preprocess
-backbones_preprocess = dict({
-    "resnet50": tf.keras.applications.resnet50.preprocess_input,
-    "resnet101": tf.keras.applications.resnet50.preprocess_input,
-    "mobilenetv2": tf.keras.applications.mobilenet_v2.preprocess_input,
-    "efficientNet-B0": tf.keras.applications.efficientnet.preprocess_input
-})
 
-# RGB values of color for drawing nice bounding boxes
+# Kept for older tests / notebooks that imported these names.
+backbones_objects = None  # use build_backbone() instead
+
+# RGB values for drawing boxes / masks
 COLORS = ((244, 67, 54),
           (233, 30, 99),
           (156, 39, 176),
@@ -95,58 +101,70 @@ COLORS = ((244, 67, 54),
           (96, 125, 139))
 
 # -----------------------------------------------------------------
-# Settings required for custom datasets
+# Dataset-specific settings
+# For a custom dataset: copy the "custom" entries and fill them in.
 
-# Todo Add the number of classes in your dataset
-NUM_CLASSES = dict({
-    "coco": 81,
-    "pascal": 21,
-    "your_custom_dataset": 0
-})
+NUM_CLASSES = {
+    'coco': 81,       # 80 classes + background
+    'pascal': 21,     # 20 classes + background
+    'custom': 0,      # TODO: set to (num_classes + 1) including background
+}
 
-# Todo Add the training iteration for your dataset
-TRAIN_ITER = dict({
-    "coco": 800000,
-    "pascal": 120000,
-    "your_custom_dataset": 0
-})
+TRAIN_ITER = {
+    'coco': 800000,
+    'pascal': 120000,
+    'custom': 100000,  # TODO: adjust for dataset size
+}
 
-# Todo Design your own learning rate schedule
-LR_STAGE = dict({
-    "coco": {'warmup_steps': 500,
-             'warmup_lr': 1e-4,
-             'initial_lr': 1e-3,
-             'stages': [280000, 600000, 700000, 750000],
-             'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7]},
+LR_STAGE = {
+    'coco': {
+        'warmup_steps': 500,
+        'warmup_lr': 1e-4,
+        'initial_lr': 1e-3,
+        'stages': [280000, 600000, 700000, 750000],
+        'stage_lrs': [1e-3, 1e-4, 1e-5, 1e-6, 1e-7],
+    },
+    'pascal': {
+        'warmup_steps': 500,
+        'warmup_lr': 1e-4,
+        'initial_lr': 1e-3,
+        'stages': [60000, 100000],
+        'stage_lrs': [1e-3, 1e-4, 1e-5],
+    },
+    # Sensible default schedule for small/medium custom datasets
+    'custom': {
+        'warmup_steps': 500,
+        'warmup_lr': 1e-4,
+        'initial_lr': 1e-3,
+        'stages': [60000, 80000],
+        'stage_lrs': [1e-3, 1e-4, 1e-5],
+    },
+}
 
-    "pascal": {'warmup_steps': 500,
-               'warmup_lr': 1e-4,
-               'initial_lr': 1e-3,
-               'stages': [60000, 100000],
-               'stage_lrs': [1e-3, 1e-4, 1e-5]},
+ANCHOR = {
+    'coco': {
+        'img_size': IMG_SIZE,
+        'feature_map_size': [69, 35, 18, 9, 5],
+        'aspect_ratio': [1, 0.5, 2],
+        'scale': [24, 48, 96, 192, 384],
+    },
+    'pascal': {
+        'img_size': IMG_SIZE,
+        'feature_map_size': [69, 35, 18, 9, 5],
+        'aspect_ratio': [1, 0.5, 2],
+        'scale': [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)],
+    },
+    'custom': {
+        'img_size': IMG_SIZE,
+        'feature_map_size': [69, 35, 18, 9, 5],
+        'aspect_ratio': [1, 0.5, 2],
+        'scale': [24, 48, 96, 192, 384],
+    },
+}
 
-    "your_custom_dataset": {}
-})
+# Optional: class name tuples used by visualization
+YOUR_CUSTOM_CLASSES = ()  # e.g. ('cat', 'dog')
 
-# Todo Design your own anchors
-ANCHOR = dict({
-    "coco": {"img_size": IMG_SIZE,
-             "feature_map_size": [69, 35, 18, 9, 5],
-             "aspect_ratio": [1, 0.5, 2],
-             "scale": [24, 48, 96, 192, 384]},
-
-    "pascal": {"img_size": IMG_SIZE,
-               "feature_map_size": [69, 35, 18, 9, 5],
-               "aspect_ratio": [1, 0.5, 2],
-               "scale": [24 * (4 / 3), 48 * (4 / 3), 96 * (4 / 3), 192 * (4 / 3), 384 * (4 / 3)]},
-
-    "your_custom_dataset": {}
-})
-
-# Todo Add custom dataset label dictionary if you need, look the 'COCO_CLASSES' below as an example
-YOUR_CUSTOM_CLASSES = ()
-
-# Class names for COCO dataset
 COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'train', 'truck', 'boat', 'traffic light', 'fire hydrant',
                 'stop sign', 'parking meter', 'bench', 'bird', 'cat', 'dog',
@@ -162,13 +180,12 @@ COCO_CLASSES = ('person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                 'toaster', 'sink', 'refrigerator', 'book', 'clock', 'vase',
                 'scissors', 'teddy bear', 'hair drier', 'toothbrush')
 
-# Class names for Pascal dataset
-PASCAL_CLASSES = ("aeroplane", "bicycle", "bird", "boat", "bottle",
-                  "bus", "car", "cat", "chair", "cow", "diningtable",
-                  "dog", "horse", "motorbike", "person", "pottedplant",
-                  "sheep", "sofa", "train", "tvmonitor")
+PASCAL_CLASSES = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle',
+                  'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
+                  'dog', 'horse', 'motorbike', 'person', 'pottedplant',
+                  'sheep', 'sofa', 'train', 'tvmonitor')
 
-# mapping coco classes labels from 90 to 80
+# Map original COCO category ids (1..90) -> contiguous model ids (1..80)
 COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   9: 9, 10: 10, 11: 11, 13: 12, 14: 13, 15: 14, 16: 15, 17: 16,
                   18: 17, 19: 18, 20: 19, 21: 20, 22: 21, 23: 22, 24: 23, 25: 24,
@@ -180,67 +197,71 @@ COCO_LABEL_MAP = {1: 1, 2: 2, 3: 3, 4: 4, 5: 5, 6: 6, 7: 7, 8: 8,
                   74: 65, 75: 66, 76: 67, 77: 68, 78: 69, 79: 70, 80: 71, 81: 72,
                   82: 73, 84: 74, 85: 75, 86: 76, 87: 77, 88: 78, 89: 79, 90: 80}
 
-# Only coco need it to map 90 to 80 classes
-# Todo Add label map for your custom dataset if you need it, take 'COCO_LABEL_MAP' as an example
-LABEL_MAP = dict({
-    "coco": COCO_LABEL_MAP,
-    "pascal": None,
-    "your_custom_dataset": None
-})
+LABEL_MAP = {
+    'coco': COCO_LABEL_MAP,
+    'pascal': None,
+    'custom': None,  # set a dict if your annotation ids are not already 1..N
+}
 
 
-# -----------------------------------------------------------------
 def get_params(dataset_name):
+    if dataset_name not in NUM_CLASSES:
+        raise KeyError(
+            f"Unknown dataset '{dataset_name}'. "
+            f"Add it in config.py (NUM_CLASSES / TRAIN_ITER / LR_STAGE / ANCHOR / LABEL_MAP)."
+        )
+    if NUM_CLASSES[dataset_name] < 2:
+        raise ValueError(
+            f"NUM_CLASSES['{dataset_name}'] must be >= 2 (classes + background). "
+            'Edit config.py before training a custom dataset.'
+        )
+
     parser_params = {
-        "output_size": IMG_SIZE,
-        "proto_out_size": PROTO_OUTPUT_SIZE,
-        "num_max_padding": NUM_MAX_PAD,
-        "augmentation_params": {
-            "preprocess_func": backbones_preprocess[BACKBONE],
-            # These are in RGB and for ImageNet
-            "mean": (0.407, 0.457, 0.485),
-            "std": (0.225, 0.224, 0.229),
-            "output_size": IMG_SIZE,
-            "proto_output_size": PROTO_OUTPUT_SIZE,
-            "discard_box_width": 4. / float(IMG_SIZE),
-            "discard_box_height": 4. / float(IMG_SIZE),
+        'output_size': IMG_SIZE,
+        'proto_out_size': PROTO_OUTPUT_SIZE,
+        'num_max_padding': NUM_MAX_PAD,
+        'augmentation_params': {
+            'preprocess_func': backbones_preprocess[BACKBONE],
+            'mean': (0.407, 0.457, 0.485),
+            'std': (0.225, 0.224, 0.229),
+            'output_size': IMG_SIZE,
+            'proto_output_size': PROTO_OUTPUT_SIZE,
+            'discard_box_width': 4. / float(IMG_SIZE),
+            'discard_box_height': 4. / float(IMG_SIZE),
         },
-        "matching_params": {
-            "threshold_pos": THRESHOLD_POS,
-            "threshold_neg": THRESHOLD_NEG
+        'matching_params': {
+            'threshold_pos': THRESHOLD_POS,
+            'threshold_neg': THRESHOLD_NEG,
         },
-        "label_map": LABEL_MAP[dataset_name]
+        'label_map': LABEL_MAP[dataset_name],
     }
 
     detection_params = {
-        "num_cls": NUM_CLASSES[dataset_name],
-        "label_background": 0,
-        "top_k": TOP_K,
-        "conf_threshold": CONF_THRESHOLD,
-        "nms_threshold": NMS_THRESHOLD,
-        "max_num_detection": MAX_NUM_DETECTION
+        'num_cls': NUM_CLASSES[dataset_name],
+        'label_background': 0,
+        'top_k': TOP_K,
+        'conf_threshold': CONF_THRESHOLD,
+        'nms_threshold': NMS_THRESHOLD,
+        'max_num_detection': MAX_NUM_DETECTION,
     }
 
     loss_params = {
-        "loss_weight_cls": LOSS_WEIGHT_CLS,
-        "loss_weight_box": LOSS_WEIGHT_BOX,
-        "loss_weight_mask": LOSS_WEIGHT_MASK,
-        "loss_weight_seg": LOSS_WEIGHT_SEG,
-        "neg_pos_ratio": NEG_POS_RATIO,
-        "max_masks_for_train": MAX_MASKS_FOR_TRAIN
+        'loss_weight_cls': LOSS_WEIGHT_CLS,
+        'loss_weight_box': LOSS_WEIGHT_BOX,
+        'loss_weight_mask': LOSS_WEIGHT_MASK,
+        'loss_weight_seg': LOSS_WEIGHT_SEG,
+        'neg_pos_ratio': NEG_POS_RATIO,
+        'max_masks_for_train': MAX_MASKS_FOR_TRAIN,
     }
-
-    lrs_schedule_params = LR_STAGE[dataset_name]
-    anchor_params = ANCHOR[dataset_name]
 
     model_params = {
-        "backbone": BACKBONE,
-        "fpn_channels": FPN_CHANNELS,
-        "num_class": NUM_CLASSES[dataset_name],
-        "num_mask": NUM_MASK,
-        "anchor_params": anchor_params,
-        "detect_params": detection_params,
+        'backbone': BACKBONE,
+        'fpn_channels': FPN_CHANNELS,
+        'num_class': NUM_CLASSES[dataset_name],
+        'num_mask': NUM_MASK,
+        'anchor_params': ANCHOR[dataset_name],
+        'detect_params': detection_params,
     }
 
-    return TRAIN_ITER[dataset_name], IMG_SIZE, NUM_CLASSES[dataset_name], \
-           lrs_schedule_params, loss_params, parser_params, model_params
+    return (TRAIN_ITER[dataset_name], IMG_SIZE, NUM_CLASSES[dataset_name],
+            LR_STAGE[dataset_name], loss_params, parser_params, model_params)

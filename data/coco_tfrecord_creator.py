@@ -21,22 +21,24 @@ from data.coco_tfrecord_utils import *
 FLAGS = flags.FLAGS
 
 flags.DEFINE_boolean('include_masks', True,
-                     'Whether to include instance segmentations masks (PNG encoded) in the result. default: False.')
-flags.DEFINE_string('train_image_dir', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/train2017',
+                     'Whether to include instance segmentations masks (PNG encoded) in the result.')
+flags.DEFINE_string('train_image_dir', '',
                     'Training image directory.')
-flags.DEFINE_string('val_image_dir', 'D:/project5-YOLACT/Tensorflow-YOLACT/data/val2017',
+flags.DEFINE_string('val_image_dir', '',
                     'Validation image directory.')
 flags.DEFINE_string('test_image_dir', '',
                     'Test image directory.')
-flags.DEFINE_string('train_annotations_file',
-                    'D:/project5-YOLACT/Tensorflow-YOLACT/data/annotations/instances_train2017.json',
+flags.DEFINE_string('train_annotations_file', '',
                     'Training annotations JSON file.')
-flags.DEFINE_string('val_annotations_file',
-                    'D:/project5-YOLACT/Tensorflow-YOLACT/data/annotations/instances_val2017.json',
+flags.DEFINE_string('val_annotations_file', '',
                     'Validation annotations JSON file.')
 flags.DEFINE_string('testdev_annotations_file', '',
                     'Test-dev annotations JSON file.')
-flags.DEFINE_string('output_dir', './coco', 'Output data directory.')
+flags.DEFINE_string('output_dir', './data/coco', 'Output data directory.')
+flags.DEFINE_integer('num_train_shards', 100,
+                     'Number of shards for the training TFRecords.')
+flags.DEFINE_integer('num_val_shards', 50,
+                     'Number of shards for the validation TFRecords.')
 
 logging.set_verbosity(logging.INFO)
 
@@ -207,14 +209,14 @@ def main(_):
         FLAGS.train_image_dir,
         train_output_path,
         FLAGS.include_masks,
-        num_shards=100)
+        num_shards=FLAGS.num_train_shards)
 
     _create_tf_record_from_coco_annotations(
         FLAGS.val_annotations_file,
         FLAGS.val_image_dir,
         val_output_path,
         FLAGS.include_masks,
-        num_shards=50)
+        num_shards=FLAGS.num_val_shards)
     """
     _create_tf_record_from_coco_annotations(
         FLAGS.testdev_annotations_file,
